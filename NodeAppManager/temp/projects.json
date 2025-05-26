@@ -1,0 +1,19 @@
+[
+  {
+    "id": "1748224136450",
+    "name": "presdk2",
+    "path": "presdk2",
+    "type": "node",
+    "status": "stopped",
+    "lastOpened": "2025-05-26T02:57:23.129Z",
+    "packageManager": "npm",
+    "scripts": [
+      {
+        "name": "start",
+        "command": "npm start",
+        "description": "启动项目"
+      }
+    ],
+    "description": "导入的项目"
+  }
+]
