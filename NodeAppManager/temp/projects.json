@@ -5,6 +5,7 @@
     "path": "presdk2",
     "type": "node",
     "status": "stopped",
+    "port": 5000,
     "lastOpened": "2025-05-26T02:57:23.129Z",
     "packageManager": "npm",
     "scripts": [
@@ -15,5 +16,40 @@
       }
     ],
     "description": "导入的项目"
+  },
+  {
+    "id": "1748237651412",
+    "name": "testApi",
+    "path": "/Users/example/ovo/testApi",
+    "type": "express",
+    "status": "stopped",
+    "port": 8000,
+    "lastOpened": "2025-05-26T05:35:08.345Z",
+    "packageManager": "npm",
+    "scripts": [
+      {
+        "name": "start",
+        "command": "npm start",
+        "description": "启动生产服务器"
+      },
+      {
+        "name": "dev",
+        "command": "npm run dev",
+        "description": "启动开发服务器"
+      },
+      {
+        "name": "build",
+        "command": "npm run build",
+        "description": "构建项目"
+      },
+      {
+        "name": "test",
+        "command": "npm test",
+        "description": "运行测试"
+      }
+    ],
+    "description": "基于 Express.js 的 JavaScript 后端 API 服务器",
+    "version": "1.0.0",
+    "template": "express"
   }
 ]

@@ -22,21 +22,26 @@ export default function Header() {
   return (
     <>
       <div className="flex justify-between items-center mb-8">
-        <h2 className="text-2xl font-semibold text-text-primary">Projects</h2>
-        <div className="space-x-4">
+        <div className="flex items-center space-x-3">
+          <h2 className="text-3xl font-bold text-white bg-gradient-to-r from-white to-gray-200 bg-clip-text text-transparent">Projects</h2>
+          <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+        </div>
+        <div className="flex space-x-3">
           <button 
             onClick={handleImportProject}
             disabled={isLoading}
-            className="px-4 py-2 text-text-primary bg-primary hover:bg-primary-hover rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2.5 text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-lg hover:shadow-xl flex items-center space-x-2"
           >
-            {isLoading ? '导入中...' : '+ Import Project'}
+            <span className="text-sm">📁</span>
+            <span>{isLoading ? '导入中...' : 'Import Project'}</span>
           </button>
           <button 
             onClick={handleCreateProject}
             disabled={isLoading}
-            className="px-4 py-2 text-text-primary border border-border hover:border-border-hover rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2.5 text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-lg hover:shadow-xl flex items-center space-x-2"
           >
-            {isLoading ? '处理中...' : 'Create New Project'}
+            <span className="text-sm">✨</span>
+            <span>{isLoading ? '处理中...' : 'Create New'}</span>
           </button>
         </div>
       </div>

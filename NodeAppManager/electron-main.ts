@@ -1,11 +1,12 @@
 /// <reference types="node" />
 /// <reference types="electron" />
 
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 
 // 导入IPC设置
 const { setupFileSystemIPC } = require('./src/ipc/fileSystemIPC.cjs');
+const { setupPM2IPC } = require('./src/ipc/pm2IPC.cjs');
 
 // 开发模式标识
 const isDev = process.env.NODE_ENV === 'development';
@@ -93,6 +94,9 @@ app.whenReady().then(() => {
   
   // 设置文件系统IPC处理器
   setupFileSystemIPC();
+  
+  // 设置PM2 IPC处理器
+  setupPM2IPC();
   
   createWindow();
 

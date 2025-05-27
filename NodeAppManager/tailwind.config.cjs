@@ -14,7 +14,7 @@ module.exports = {
         'background': {
           DEFAULT: '#0F172A',
           card: '#1E293B',
-          hover: '#2C3B52'
+          hover: '#334155'
         },
         'border': {
           DEFAULT: 'rgba(255, 255, 255, 0.1)',

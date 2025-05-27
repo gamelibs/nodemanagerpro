@@ -2,11 +2,13 @@ import { useCallback } from 'react';
 import { useApp } from '../store/AppContext';
 import { useToastContext } from '../store/ToastContext';
 import { ProjectService } from '../services/ProjectService';
-import type { Project } from '../types';
+import { usePM2ProjectRunner } from '../services/PM2ProjectRunner';
+import type { Project, ProjectCreationConfig } from '../types';
 
 export function useProjects() {
   const { state, dispatch } = useApp();
   const { showToast } = useToastContext();
+  const { startProject: runnerStartProject, stopProject: runnerStopProject } = usePM2ProjectRunner();
 
   // 加载所有项目
   const loadProjects = useCallback(async () => {
@@ -99,25 +101,20 @@ export function useProjects() {
   }, [state.projects, dispatch, showToast]);
 
   // 启动项目
-  const startProject = useCallback(async (project: Project, scriptName: string = 'start') => {
-    dispatch({ type: 'UPDATE_PROJECT_STATUS', payload: { id: project.id, status: 'running' } });
-
+  const startProject = useCallback(async (project: Project) => {
     try {
-      const result = await ProjectService.startProject(project, scriptName);
+      const success = await runnerStartProject(project);
       
-      if (result.success) {
-        dispatch({ type: 'UPDATE_PROJECT_STATUS', payload: { id: project.id, status: 'running' } });
+      if (success) {
         showToast('项目已启动', `${project.name} 正在运行`, 'success');
       } else {
-        dispatch({ type: 'UPDATE_PROJECT_STATUS', payload: { id: project.id, status: 'error' } });
-        showToast('启动失败', result.error || '启动项目失败', 'error');
+        showToast('启动失败', '启动项目失败', 'error');
       }
     } catch (error) {
-      dispatch({ type: 'UPDATE_PROJECT_STATUS', payload: { id: project.id, status: 'error' } });
       const errorMessage = error instanceof Error ? error.message : '启动项目时发生未知错误';
       showToast('启动失败', errorMessage, 'error');
     }
-  }, [dispatch, showToast]);
+  }, [runnerStartProject, showToast]);
 
   // 停止项目
   const stopProject = useCallback(async (projectId: string) => {
@@ -125,29 +122,16 @@ export function useProjects() {
     if (!project) return;
 
     try {
-      const result = await ProjectService.stopProject(projectId);
-      
-      if (result.success) {
-        dispatch({ type: 'UPDATE_PROJECT_STATUS', payload: { id: projectId, status: 'stopped' } });
-        showToast('项目已停止', `${project.name} 已停止运行`, 'success');
-      } else {
-        showToast('停止失败', result.error || '停止项目失败', 'error');
-      }
+      await runnerStopProject(project);
+      showToast('项目已停止', `${project.name} 已停止运行`, 'success');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : '停止项目时发生未知错误';
       showToast('停止失败', errorMessage, 'error');
     }
-  }, [state.projects, dispatch, showToast]);
+  }, [state.projects, runnerStopProject, showToast]);
 
   // 创建项目
-  const createProject = useCallback(async (projectConfig: {
-    name: string;
-    path: string;
-    type: Project['type'];
-    packageManager: 'npm' | 'yarn' | 'pnpm';
-    includeGit: boolean;
-    templateType?: 'basic' | 'typescript' | 'react' | 'vue' | 'electron';
-  }) => {
+  const createProject = useCallback(async (projectConfig: ProjectCreationConfig) => {
     dispatch({ type: 'SET_LOADING', payload: true });
     dispatch({ type: 'SET_ERROR', payload: null });
 
@@ -171,6 +155,20 @@ export function useProjects() {
     }
   }, [dispatch, showToast]);
 
+  // 为现有项目自动分配端口
+  const assignPortsToExisting = useCallback(async () => {
+    try {
+      const result = await ProjectService.assignPortsToExistingProjects();
+      if (result.success && result.data && result.data.updatedCount > 0) {
+        // 重新加载项目列表以反映更新
+        await loadProjects();
+        showToast('端口分配成功', `为 ${result.data.updatedCount} 个项目自动分配了端口号`, 'success');
+      }
+    } catch (error) {
+      console.error('自动分配端口失败:', error);
+    }
+  }, [loadProjects, showToast]);
+
   return {
     projects: state.projects,
     isLoading: state.isLoading,
@@ -181,6 +179,7 @@ export function useProjects() {
     startProject,
     stopProject,
     createProject,
+    assignPortsToExisting,
   };
 }
 

@@ -12,13 +12,47 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'fs:addProject',
       'fs:removeProject',
       'fs:updateProjectStatus',
-      'fs:getDataInfo'
+      'fs:getDataInfo',
+      'dialog:showOpenDialog', // 添加文件对话框频道
+      // PM2 相关频道
+      'pm2:check-installation',
+      'pm2:install',
+      'pm2:version',
+      'pm2:connect',
+      'pm2:start',
+      'pm2:stop',
+      'pm2:restart',
+      'pm2:delete',
+      'pm2:list',
+      'pm2:describe',
+      'pm2:logs',
+      'pm2:start-log-stream',
+      'pm2:stop-log-stream'
     ];
     
     if (allowedChannels.includes(channel)) {
       return ipcRenderer.invoke(channel, ...args);
     } else {
       throw new Error(`不允许的IPC频道: ${channel}`);
+    }
+  },
+
+  // 文件对话框
+  showOpenDialog: (options) => ipcRenderer.invoke('dialog:showOpenDialog', options),
+
+  // 事件监听器
+  on: (channel, callback) => {
+    const allowedChannels = ['pm2:log-data'];
+    if (allowedChannels.includes(channel)) {
+      ipcRenderer.on(channel, callback);
+    }
+  },
+
+  // 移除事件监听器
+  removeListener: (channel, callback) => {
+    const allowedChannels = ['pm2:log-data'];
+    if (allowedChannels.includes(channel)) {
+      ipcRenderer.removeListener(channel, callback);
     }
   },
 

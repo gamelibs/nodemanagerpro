@@ -1,4 +1,4 @@
-import type { Project, ProjectScript, FileSystemResult } from '../types';
+import type { Project, ProjectScript, FileSystemResult, ProjectCreationConfig, ProjectTemplate } from '../types';
 import { RendererFileSystemService } from './RendererFileSystemService';
 
 // 模拟项目数据（作为初始数据和fallback）
@@ -164,12 +164,16 @@ export class ProjectService {
       // 3. 分析项目类型
       // 4. 创建项目配置
       
+      const projectType = this.detectProjectType(projectPath);
+      const detectedPort = this.detectPortFromProject(projectPath, projectType);
+      
       const newProject: Project = {
         id: Date.now().toString(),
         name: this.extractProjectName(projectPath),
         path: projectPath,
-        type: this.detectProjectType(projectPath),
+        type: projectType,
         status: 'stopped',
+        port: detectedPort,
         lastOpened: new Date(),
         packageManager: 'npm',
         scripts: [
@@ -308,39 +312,42 @@ export class ProjectService {
   }
 
   // 创建新项目
-  static async createProject(projectConfig: {
-    name: string;
-    path: string;
-    type: Project['type'];
-    packageManager: 'npm' | 'yarn' | 'pnpm';
-    includeGit: boolean;
-    templateType?: 'basic' | 'typescript' | 'react' | 'vue' | 'electron';
-  }): Promise<FileSystemResult> {
+  static async createProject(projectConfig: ProjectCreationConfig): Promise<FileSystemResult> {
     try {
       await this.initialize();
+      
+      console.log(`🏗️ 开始创建项目: ${projectConfig.name}`);
+      console.log(`📍 路径: ${projectConfig.path}`);
+      console.log(`🎨 模板: ${projectConfig.template}`);
       
       // 模拟项目创建过程
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       // 在真实应用中，这里会：
       // 1. 创建项目目录
-      // 2. 初始化package.json
-      // 3. 安装依赖
-      // 4. 创建基础文件结构
-      // 5. 如果需要，初始化git仓库
+      // 2. 复制模板文件
+      // 3. 替换模板变量
+      // 4. 安装依赖（如果启用）
+      // 5. 初始化Git仓库（如果启用）
       
       const newProject: Project = {
         id: Date.now().toString(),
         name: projectConfig.name,
         path: projectConfig.path,
-        type: projectConfig.type,
+        type: this.mapTemplateToProjectType(projectConfig.template),
         status: 'stopped',
+        port: projectConfig.port,
         lastOpened: new Date(),
         packageManager: projectConfig.packageManager,
-        scripts: this.generateProjectScripts(projectConfig.type, projectConfig.packageManager),
-        description: `新创建的${projectConfig.type}项目`,
-        version: '1.0.0'
+        scripts: this.generateProjectScriptsFromTemplate(projectConfig),
+        description: this.getTemplateDescription(projectConfig.template),
+        version: '1.0.0',
+        template: projectConfig.template,
+        frontendFramework: projectConfig.frontendFramework
       };
+
+      // 实际创建项目文件
+      await this.createProjectFromTemplate(projectConfig);
 
       // 使用文件系统服务保存
       const result = await RendererFileSystemService.addProject(newProject);
@@ -367,84 +374,118 @@ export class ProjectService {
     }
   }
 
-  // 根据项目类型生成默认脚本
-  private static generateProjectScripts(projectType: Project['type'], packageManager: string): ProjectScript[] {
-    const pm = packageManager;
-    
-    const commonScripts = [
-      { name: 'start', command: `${pm} start`, description: '启动项目' },
-      { name: 'build', command: `${pm} run build`, description: '构建项目' },
-      { name: 'test', command: `${pm} test`, description: '运行测试' }
-    ];
+  // 映射模板到项目类型
+  private static mapTemplateToProjectType(template: ProjectTemplate): Project['type'] {
+    switch (template) {
+      case 'express':
+        return 'express';
+      case 'vite-express':
+        return 'vite-express';
+      default:
+        return 'node';
+    }
+  }
 
-    switch (projectType) {
-      case 'react':
+  // 获取模板描述
+  private static getTemplateDescription(template: ProjectTemplate): string {
+    switch (template) {
+      case 'express':
+        return '基于 Express.js 的 JavaScript 后端 API 服务器';
+      case 'vite-express':
+        return '基于 Vite + Express 的 TypeScript 全栈应用';
+      default:
+        return '新创建的项目';
+    }
+  }
+
+  // 根据模板生成项目脚本
+  private static generateProjectScriptsFromTemplate(config: ProjectCreationConfig): ProjectScript[] {
+    const pm = config.packageManager;
+    
+    switch (config.template) {
+      case 'express':
         return [
-          { name: 'dev', command: `${pm} run dev`, description: '开发模式启动' },
-          ...commonScripts,
-          { name: 'lint', command: `${pm} run lint`, description: '代码检查' }
+          { name: 'start', command: `${pm} start`, description: '启动生产服务器' },
+          { name: 'dev', command: `${pm} run dev`, description: '启动开发服务器' },
+          { name: 'build', command: `${pm} run build`, description: '构建项目' },
+          { name: 'test', command: `${pm} test`, description: '运行测试' },
+          ...(config.tools.eslint ? [{ name: 'lint', command: `${pm} run lint`, description: '代码检查' }] : []),
+          ...(config.tools.prettier ? [{ name: 'format', command: `${pm} run format`, description: '代码格式化' }] : [])
         ];
       
-      case 'vue':
+      case 'vite-express':
         return [
-          { name: 'serve', command: `${pm} run serve`, description: '开发服务器' },
-          ...commonScripts,
-          { name: 'lint', command: `${pm} run lint`, description: '代码检查' }
+          { name: 'dev', command: `${pm} run dev`, description: '启动开发服务器（前后端）' },
+          { name: 'dev:frontend', command: `${pm} run dev:frontend`, description: '仅启动前端开发服务器' },
+          { name: 'dev:backend', command: `${pm} run dev:backend`, description: '仅启动后端开发服务器' },
+          { name: 'build', command: `${pm} run build`, description: '构建前后端项目' },
+          { name: 'build:frontend', command: `${pm} run build:frontend`, description: '构建前端项目' },
+          { name: 'build:backend', command: `${pm} run build:backend`, description: '构建后端项目' },
+          { name: 'start', command: `${pm} start`, description: '启动生产服务器' },
+          { name: 'test', command: `${pm} test`, description: '运行测试' },
+          ...(config.tools.eslint ? [{ name: 'lint', command: `${pm} run lint`, description: '代码检查' }] : []),
+          ...(config.tools.prettier ? [{ name: 'format', command: `${pm} run format`, description: '代码格式化' }] : [])
         ];
       
-      case 'electron':
-        return [
-          { name: 'electron', command: `${pm} run electron`, description: '启动Electron应用' },
-          { name: 'dev', command: `${pm} run dev`, description: '开发模式' },
-          ...commonScripts
-        ];
-      
-      case 'node':
       default:
         return [
+          { name: 'start', command: `${pm} start`, description: '启动项目' },
           { name: 'dev', command: `${pm} run dev`, description: '开发模式启动' },
-          ...commonScripts
+          { name: 'build', command: `${pm} run build`, description: '构建项目' },
+          { name: 'test', command: `${pm} test`, description: '运行测试' }
         ];
     }
   }
 
-  // localStorage 降级方案
-  private static loadProjectsFromLocalStorage(): Project[] {
+  // 从模板创建项目文件
+  private static async createProjectFromTemplate(config: ProjectCreationConfig): Promise<void> {
     try {
-      const stored = localStorage.getItem('nodeAppManager_projects');
-      if (stored) {
-        const projects = JSON.parse(stored);
-        // 转换日期字符串为 Date 对象
-        return projects.map((p: any) => ({
-          ...p,
-          lastOpened: new Date(p.lastOpened)
-        }));
+      console.log(`📁 创建项目目录: ${config.path}`);
+      
+      // 在真实环境中，这里会调用 Node.js fs 模块
+      // 或通过 Electron IPC 调用主进程的文件操作
+      
+      // 模拟文件创建过程
+      await this.simulateFileCreation(config);
+      
+      console.log(`📋 复制 ${config.template} 模板文件`);
+      console.log(`🔧 配置项目设置`);
+      
+      if (config.tools.autoInstall) {
+        console.log(`📦 自动安装依赖 (${config.packageManager})`);
       }
-      return MOCK_PROJECTS;
+      
+      if (config.tools.git) {
+        console.log(`🌱 初始化 Git 仓库`);
+      }
+      
     } catch (error) {
-      console.error('localStorage读取失败:', error);
-      return MOCK_PROJECTS;
+      console.error('创建项目文件失败:', error);
+      throw error;
     }
   }
 
-  private static saveProjectsToLocalStorage(projects: Project[]): void {
-    try {
-      localStorage.setItem('nodeAppManager_projects', JSON.stringify(projects));
-    } catch (error) {
-      console.error('localStorage保存失败:', error);
-    }
+  // 模拟文件创建过程
+  private static async simulateFileCreation(config: ProjectCreationConfig): Promise<void> {
+    // 在真实应用中，这里会：
+    // 1. 创建项目目录
+    // 2. 从 templates 目录复制相应的模板文件
+    // 3. 替换模板中的变量 ({{PROJECT_NAME}}, {{PORT}}, etc.)
+    // 4. 根据配置启用/禁用 特定文件 (ESLint, Prettier, Jest 配置等)
+    // 5. 如果是 vite-express 模板，根据 frontendFramework 选择前端框架文件
+    
+    const templatePath = this.getTemplatePath(config.template);
+    console.log(`📂 使用模板路径: ${templatePath}`);
+    
+    // 模拟复制和配置过程
+    await new Promise(resolve => setTimeout(resolve, 1000));
   }
 
-  private static saveProjectToLocalStorage(project: Project): void {
-    const projects = this.loadProjectsFromLocalStorage();
-    projects.push(project);
-    this.saveProjectsToLocalStorage(projects);
-  }
-
-  private static removeProjectFromLocalStorage(projectId: string): void {
-    const projects = this.loadProjectsFromLocalStorage();
-    const filtered = projects.filter(p => p.id !== projectId);
-    this.saveProjectsToLocalStorage(filtered);
+  // 获取模板路径
+  private static getTemplatePath(template: ProjectTemplate): string {
+    // 在真实应用中，这会返回实际的模板目录路径
+    // 例如: path.join(__dirname, '../../templates', template)
+    return `templates/${template}`;
   }
 
   // 工具方法
@@ -461,6 +502,63 @@ export class ProjectService {
     if (pathLower.includes('vue')) return 'vue';
     if (pathLower.includes('electron')) return 'electron';
     return 'node';
+  }
+
+  // 尝试从项目配置中检测端口（未来可以扩展为真正读取package.json）
+  private static detectPortFromProject(projectPath: string, projectType: Project['type']): number {
+    // 在真实应用中，这里会：
+    // 1. 读取 package.json 中的 scripts
+    // 2. 检查环境变量文件 (.env)
+    // 3. 检查配置文件 (vite.config.js, webpack.config.js 等)
+    // 4. 根据项目类型和命名推测端口
+    
+    const pathLower = projectPath.toLowerCase();
+    
+    // 根据项目名称或路径推测端口
+    if (pathLower.includes('api') || pathLower.includes('server') || pathLower.includes('backend')) {
+      return 8000;
+    }
+    
+    if (pathLower.includes('frontend') || pathLower.includes('client') || pathLower.includes('web')) {
+      return 3000;
+    }
+    
+    if (pathLower.includes('admin')) {
+      return 9000;
+    }
+    
+    // 检查端口号是否在路径中
+    const portMatch = projectPath.match(/(\d{4,5})/);
+    if (portMatch) {
+      const detectedPort = parseInt(portMatch[1]);
+      if (detectedPort >= 1000 && detectedPort <= 65535) {
+        return detectedPort;
+      }
+    }
+    
+    // 返回类型默认端口
+    return this.getDefaultPortForType(projectType);
+  }
+
+  // 根据项目类型获取默认端口
+  private static getDefaultPortForType(projectType: Project['type']): number {
+    switch (projectType) {
+      case 'react':
+        return 3000;
+      case 'vue':
+        return 8080;
+      case 'express':
+        return 8000;
+      case 'node':
+        return 5000;
+      case 'electron':
+        return 3000;
+      case 'vite-express':
+        return 5173;
+      case 'other':
+      default:
+        return 8000;
+    }
   }
 
   // 获取数据存储信息（调试用）
@@ -480,6 +578,92 @@ export class ProjectService {
       return {
         fileSystem: { error: String(error) },
         localStorage: { error: 'Failed to access localStorage' }
+      };
+    }
+  }
+
+  // localStorage 辅助方法（降级方案）
+  private static loadProjectsFromLocalStorage(): Project[] {
+    try {
+      const storedData = localStorage.getItem('nodeAppManager_projects');
+      if (storedData) {
+        const projects = JSON.parse(storedData);
+        return projects.map((p: any) => ({
+          ...p,
+          lastOpened: new Date(p.lastOpened)
+        }));
+      }
+      return MOCK_PROJECTS;
+    } catch (error) {
+      console.error('加载localStorage数据失败:', error);
+      return MOCK_PROJECTS;
+    }
+  }
+
+  private static saveProjectToLocalStorage(project: Project): void {
+    try {
+      const existingProjects = this.loadProjectsFromLocalStorage();
+      const updatedProjects = [...existingProjects, project];
+      localStorage.setItem('nodeAppManager_projects', JSON.stringify(updatedProjects));
+    } catch (error) {
+      console.error('保存项目到localStorage失败:', error);
+    }
+  }
+
+  private static removeProjectFromLocalStorage(projectId: string): void {
+    try {
+      const existingProjects = this.loadProjectsFromLocalStorage();
+      const filteredProjects = existingProjects.filter(p => p.id !== projectId);
+      localStorage.setItem('nodeAppManager_projects', JSON.stringify(filteredProjects));
+    } catch (error) {
+      console.error('从localStorage删除项目失败:', error);
+    }
+  }
+
+  // 为现有项目自动分配端口（如果没有端口）
+  static async assignPortsToExistingProjects(): Promise<FileSystemResult> {
+    try {
+      await this.initialize();
+      
+      const result = await RendererFileSystemService.loadProjects();
+      if (!result.success || !result.data) {
+        return { success: false, error: '无法加载项目列表' };
+      }
+      
+      let updatedCount = 0;
+      const updatedProjects = result.data.map((project: Project) => {
+        if (!project.port) {
+          updatedCount++;
+          return {
+            ...project,
+            port: this.detectPortFromProject(project.path, project.type)
+          };
+        }
+        return project;
+      });
+      
+      if (updatedCount > 0) {
+        const saveResult = await RendererFileSystemService.saveProjects(updatedProjects);
+        if (saveResult.success) {
+          console.log(`✅ 为 ${updatedCount} 个项目自动分配了端口号`);
+          return {
+            success: true,
+            data: { updatedCount, projects: updatedProjects }
+          };
+        } else {
+          return { success: false, error: '保存更新失败' };
+        }
+      } else {
+        console.log('📝 所有项目都已有端口号，无需更新');
+        return {
+          success: true,
+          data: { updatedCount: 0, projects: result.data }
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : '自动分配端口失败'
       };
     }
   }

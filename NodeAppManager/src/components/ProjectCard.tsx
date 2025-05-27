@@ -36,8 +36,10 @@ export default function ProjectCard({ project }: ProjectCardProps) {
   };
 
   const handleShowLogs = () => {
-    // TODO: 实现日志查看功能
-    alert('日志查看功能即将推出！');
+    // 发送自定义事件来切换到日志标签页
+    window.dispatchEvent(new CustomEvent('switchToLogs', { 
+      detail: { projectId: project.id } 
+    }));
   };
 
   const formatLastOpened = (date: Date | null) => {
@@ -54,19 +56,6 @@ export default function ProjectCard({ project }: ProjectCardProps) {
     return date.toLocaleDateString();
   };
 
-  const getStatusColor = (status: Project['status']) => {
-    switch (status) {
-      case 'running':
-        return 'text-green-400';
-      case 'stopped':
-        return 'text-gray-400';
-      case 'error':
-        return 'text-red-400';
-      default:
-        return 'text-gray-400';
-    }
-  };
-
   const getStatusText = (status: Project['status']) => {
     switch (status) {
       case 'running':
@@ -81,50 +70,78 @@ export default function ProjectCard({ project }: ProjectCardProps) {
   };
 
   return (
-    <div className="p-6 bg-[#1E293B] rounded-xl border border-border hover:border-border-hover transition-all shadow-card hover:shadow-hover">
+    <div className="p-6 bg-gradient-to-br from-[#1E293B] to-[#1A2332] rounded-xl border border-border hover:border-border-hover transition-all shadow-card hover:shadow-hover group">
       <div className="flex justify-between items-center">
         <div className="flex-1">
-          <div className="flex items-center gap-3 mb-2">
-            <h3 className="text-lg font-medium text-text-primary">{project.name}</h3>
-            <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(project.status)}`}>
-              {getStatusText(project.status)}
-            </span>
+          <div className="flex items-center gap-3 mb-3">
+            <h3 className="text-lg font-semibold text-text-primary group-hover:text-white transition-colors">{project.name}</h3>
+            <div className="flex items-center space-x-2">
+              <div className={`w-2 h-2 rounded-full ${
+                project.status === 'running' ? 'bg-emerald-400 animate-pulse' :
+                project.status === 'error' ? 'bg-red-400' : 'bg-gray-400'
+              }`}></div>
+              <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
+                project.status === 'running' ? 'bg-emerald-400/20 text-emerald-300 border border-emerald-400/30' :
+                project.status === 'error' ? 'bg-red-400/20 text-red-300 border border-red-400/30' :
+                'bg-gray-400/20 text-gray-300 border border-gray-400/30'
+              }`}>
+                {getStatusText(project.status)}
+              </span>
+            </div>
           </div>
-          <p className="text-sm text-text-secondary mb-1">路径: {project.path}</p>
-          <p className="text-sm text-text-secondary mb-1">
-            最后打开: {formatLastOpened(project.lastOpened)}
-          </p>
-          {project.description && (
-            <p className="text-sm text-text-secondary">{project.description}</p>
-          )}
+          <div className="space-y-1.5 text-sm text-text-secondary">
+            <p className="flex items-center space-x-2">
+              <span className="text-xs">📂</span>
+              <span className="truncate">{project.path}</span>
+            </p>
+            <p className="flex items-center space-x-2">
+              <span className="text-xs">🕒</span>
+              <span>最后打开: {formatLastOpened(project.lastOpened)}</span>
+            </p>
+            {project.port && (
+              <p className="flex items-center space-x-2">
+                <span className="text-xs">🌐</span>
+                <span>端口: {project.port}</span>
+              </p>
+            )}
+            {project.description && (
+              <p className="flex items-center space-x-2">
+                <span className="text-xs">📝</span>
+                <span className="truncate">{project.description}</span>
+              </p>
+            )}
+          </div>
         </div>
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-2">
           <button 
             onClick={handleStart}
             disabled={isStarting || project.status === 'running'}
-            className="px-3 py-1.5 text-sm text-text-primary bg-primary hover:bg-primary-hover rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 text-sm text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-sm hover:shadow-md flex items-center space-x-1.5"
           >
-            {isStarting ? '启动中...' : '▶ Start'}
+            <span className="text-xs">▶</span>
+            <span>{isStarting ? '启动中...' : 'Start'}</span>
           </button>
           <button 
             onClick={handleStop}
             disabled={isStopping || project.status !== 'running'}
-            className="px-3 py-1.5 text-sm text-text-secondary border border-border hover:border-border-hover rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 text-sm text-white bg-slate-600 hover:bg-slate-700 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-sm hover:shadow-md flex items-center space-x-1.5"
           >
-            {isStopping ? '停止中...' : '■ Stop'}
+            <span className="text-xs">■</span>
+            <span>{isStopping ? '停止中...' : 'Stop'}</span>
           </button>
           <button 
             onClick={handleShowLogs}
-            className="px-3 py-1.5 text-sm text-text-secondary border border-border hover:border-border-hover rounded-lg transition-all"
+            className="px-4 py-2 text-sm text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-all font-medium shadow-sm hover:shadow-md flex items-center space-x-1.5"
           >
-            Logs
+            <span className="text-xs">📋</span>
+            <span>Logs</span>
           </button>
           <button 
             onClick={handleRemove}
-            className="p-1.5 text-text-secondary hover:text-red-400 rounded-lg hover:bg-background-hover transition-all"
+            className="p-2 text-white bg-red-600 hover:bg-red-700 rounded-lg transition-all font-medium shadow-sm hover:shadow-md"
             title="移除项目"
           >
-            🗑️
+            <span className="text-sm">🗑️</span>
           </button>
         </div>
       </div>
