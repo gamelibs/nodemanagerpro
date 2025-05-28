@@ -20,8 +20,9 @@ function getLogColor(level: string) {
 export default function Sidebar() {
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const { getActiveLogSessions } = useLogs();
-  const { navigation } = useApp();
+  const { navigation, i18n } = useApp();
   const { activeTab, setActiveTab } = navigation;
+  const { t } = i18n;
   
   const activeSessions = getActiveLogSessions();
 
@@ -48,10 +49,10 @@ export default function Sidebar() {
   }, []);
 
   return (
-    <aside className="w-80 border-r border-border bg-[#1E293B] flex flex-col">
+    <aside className="w-80 border-r border-border bg-[#1E293B] light-theme:bg-white theme-bg-secondary flex flex-col">
       {/* 标题 */}
-      <div className="p-4 border-b border-border">
-        <h1 className="text-xl font-semibold text-text-primary">Node App Manager</h1>
+      <div className="p-4 border-b border-border theme-border">
+        <h1 className="text-xl font-semibold text-text-primary theme-text-primary">Node App Manager</h1>
       </div>
 
       {/* 图标导航 */}
@@ -61,27 +62,27 @@ export default function Sidebar() {
           className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all font-medium ${
             activeTab === 'settings'
               ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg'
-              : 'text-text-secondary hover:text-white hover:bg-gradient-to-r hover:from-slate-700 hover:to-slate-600'
+              : 'text-text-secondary theme-text-secondary hover:bg-slate-700 light-theme:hover:bg-gray-100 hover:text-text-primary theme-text-primary'
           }`}
         >
           <span className="text-lg">⚙️</span>
-          <span>Settings</span>
+          <span>{t('nav.settings')}</span>
         </button>
         <button
           onClick={() => setActiveTab('projects')}
           className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all font-medium ${
             activeTab === 'projects'
               ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg'
-              : 'text-text-secondary hover:text-white hover:bg-gradient-to-r hover:from-slate-700 hover:to-slate-600'
+              : 'text-text-secondary theme-text-secondary hover:bg-slate-700 light-theme:hover:bg-gray-100 hover:text-text-primary theme-text-primary'
           }`}
         >
           <span className="text-lg">📁</span>
-          <span>Projects</span>
+          <span>{t('nav.projects')}</span>
         </button>
       </div>
 
       {/* 分隔线 */}
-      <div className="mx-4 border-t border-border mb-2"></div>
+      <div className="mx-4 border-t border-border theme-border mb-2"></div>
 
       {/* 日志区域（始终显示） */}
       <div className="flex-1 overflow-hidden flex flex-col">
@@ -94,23 +95,24 @@ export default function Sidebar() {
 // 用于显示选中项目的日志组件
 function ActiveProjectLogs({ activeProjectId }: { activeProjectId: string | null }) {
   const { getActiveLogSessions } = useLogs();
-  const { state } = useApp();
+  const { state, i18n } = useApp();
   const { clearProjectLogs } = useLogs();
+  const { t } = i18n;
   
   const activeSessions = getActiveLogSessions();
   
   // 如果没有活动项目，显示提示信息
   if (activeSessions.length === 0) {
     return (
-      <div className="p-6 text-center text-text-secondary flex flex-col items-center justify-center h-full">
-        <div className="mb-4 p-4 rounded-full bg-gradient-to-br from-slate-700 to-slate-600">
+      <div className="p-6 text-center text-text-secondary theme-text-secondary flex flex-col items-center justify-center h-full">
+        <div className="mb-4 p-4 rounded-full bg-gradient-to-br from-slate-700 to-slate-600 light-theme:from-gray-200 light-theme:to-gray-300">
           <span className="text-3xl">📄</span>
         </div>
-        <h3 className="text-sm font-medium text-white mb-2">暂无运行中的项目</h3>
-        <p className="text-xs text-gray-400">启动项目后将在此显示实时日志</p>
+        <h3 className="text-sm font-medium text-white theme-text-primary mb-2">{t('logs.noActiveProjects')}</h3>
+        <p className="text-xs text-gray-400 theme-text-muted">{t('logs.noActiveProjectsDesc')}</p>
         <div className="mt-4 flex items-center space-x-1 text-xs text-indigo-400">
           <span>💡</span>
-          <span>点击项目卡片的 Start 按钮开始</span>
+          <span>{t('logs.startHint')}</span>
         </div>
       </div>
     );

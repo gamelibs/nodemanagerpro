@@ -26,6 +26,13 @@ export class RendererFileSystemService {
   }
 
   /**
+   * 公开的方法检查是否在Electron环境中
+   */
+  static isInElectron(): boolean {
+    return this.isElectron();
+  }
+
+  /**
    * 加载项目列表
    */
   static async loadProjects(): Promise<FileSystemResult> {

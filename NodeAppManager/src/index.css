@@ -12,10 +12,34 @@
     background-color: #0F172A;
   }
 
+  /* 浅色主题样式 */
+  .light-theme {
+    color: #1F2937;
+    background-color: #F9FAFB;
+  }
+
+  .light-theme body {
+    background-color: #F9FAFB;
+    color: #1F2937;
+  }
+
   body {
     margin: 0;
     background-color: #0F172A;
     color: #FFFFFF;
+  }
+
+  /* 浅色主题滚动条 */
+  .light-theme ::-webkit-scrollbar-track {
+    background-color: #F9FAFB;
+  }
+
+  .light-theme ::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.1);
+  }
+
+  .light-theme ::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(0, 0, 0, 0.2);
   }
 
   /* 滚动条样式 */
@@ -178,6 +202,73 @@ h1 {
   button {
     background-color: #f9f9f9;
   }
+}
+
+/* 主题变量 */
+:root {
+  /* 深色主题变量 */
+  --bg-primary: #0F172A;
+  --bg-secondary: #1E293B;
+  --bg-tertiary: #334155;
+  --text-primary: #FFFFFF;
+  --text-secondary: #CBD5E1;
+  --text-muted: #64748B;
+  --border-color: #334155;
+  --accent-color: #3B82F6;
+}
+
+.light-theme {
+  /* 浅色主题变量 */
+  --bg-primary: #F9FAFB;
+  --bg-secondary: #FFFFFF;
+  --bg-tertiary: #F3F4F6;
+  --text-primary: #1F2937;
+  --text-secondary: #4B5563;
+  --text-muted: #6B7280;
+  --border-color: #E5E7EB;
+  --accent-color: #3B82F6;
+}
+
+/* 主题适应的组件样式 */
+.theme-bg-primary {
+  background-color: var(--bg-primary);
+}
+
+.theme-bg-secondary {
+  background-color: var(--bg-secondary);
+}
+
+.theme-bg-tertiary {
+  background-color: var(--bg-tertiary);
+}
+
+.theme-text-primary {
+  color: var(--text-primary);
+}
+
+.theme-text-secondary {
+  color: var(--text-secondary);
+}
+
+.theme-text-muted {
+  color: var(--text-muted);
+}
+
+.theme-border {
+  border-color: var(--border-color);
+}
+
+.theme-bg-accent {
+  background-color: rgba(59, 130, 246, 0.1);
+}
+
+.light-theme .theme-bg-accent {
+  background-color: rgba(59, 130, 246, 0.05);
+}
+
+/* 平滑过渡 */
+* {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
 * {

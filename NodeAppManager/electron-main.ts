@@ -7,10 +7,14 @@ const path = require('path');
 // 导入IPC设置
 const { setupFileSystemIPC } = require('./src/ipc/fileSystemIPC.cjs');
 const { setupPM2IPC } = require('./src/ipc/pm2IPC.cjs');
+const { setupSettingsIPC } = require('./src/ipc/settingsIPC.cjs');
 
 // 开发模式标识
 const isDev = process.env.NODE_ENV === 'development';
 const VITE_DEV_SERVER_URL = 'http://localhost:9966';
+
+// 全局主窗口引用
+let mainWindow: any;
 
 console.log('🚀 启动 Electron...');
 console.log('📊 开发模式:', isDev);
@@ -18,11 +22,11 @@ console.log('🌐 服务器地址:', isDev ? VITE_DEV_SERVER_URL : '本地文件
 
 function createWindow(): void {
   // 创建浏览器窗口
-  const mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
-    minWidth: 800,
-    minHeight: 600,
+  mainWindow = new BrowserWindow({
+    width: 1400,     // 增加宽度，更适合项目管理界面
+    height: 900,     // 增加高度，提供更好的显示空间
+    minWidth: 1000,  // 提高最小宽度
+    minHeight: 700,  // 提高最小高度
     webPreferences: {
       nodeIntegration: false, // 关闭node集成以提高安全性
       contextIsolation: true, // 启用上下文隔离
@@ -32,6 +36,7 @@ function createWindow(): void {
     backgroundColor: '#0F172A',
     titleBarStyle: 'default',
     show: false, // 先不显示，等加载完成后再显示
+    center: true, // 窗口居中显示
   });
 
   // 窗口准备好后显示
@@ -49,8 +54,7 @@ function createWindow(): void {
       console.log('💡 请确保 Vite 开发服务器正在运行 (npm run dev)');
     });
     
-    // 打开开发者工具
-    mainWindow.webContents.openDevTools();
+    // 不再默认打开开发者工具，改为通过设置控制
     
     // 开发模式下启用实时重载
     mainWindow.webContents.on('did-frame-finish-load', () => {
@@ -98,6 +102,9 @@ app.whenReady().then(() => {
   // 设置PM2 IPC处理器
   setupPM2IPC();
   
+  // 设置设置IPC处理器
+  setupSettingsIPC();
+  
   createWindow();
 
   app.on('activate', () => {
@@ -128,3 +135,43 @@ if (isDev) {
     });
   });
 }
+
+// 设置调试工具控制IPC处理器
+ipcMain.handle('dev-tools:toggle', async () => {
+  try {
+    if (mainWindow && mainWindow.webContents) {
+      if (mainWindow.webContents.isDevToolsOpened()) {
+        mainWindow.webContents.closeDevTools();
+        console.log('🔧 关闭开发者工具');
+        return { success: true, isOpen: false };
+      } else {
+        // 以独立窗口方式打开开发者工具
+        mainWindow.webContents.openDevTools({ mode: 'detach' });
+        console.log('🔧 打开开发者工具（独立窗口）');
+        return { success: true, isOpen: true };
+      }
+    }
+    return { success: false, error: '主窗口不可用' };
+  } catch (error) {
+    console.error('🔧 切换开发者工具失败:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : '切换开发者工具失败' 
+    };
+  }
+});
+
+ipcMain.handle('dev-tools:status', async () => {
+  try {
+    if (mainWindow && mainWindow.webContents) {
+      const isOpen = mainWindow.webContents.isDevToolsOpened();
+      return { success: true, isOpen };
+    }
+    return { success: false, error: '主窗口不可用' };
+  } catch (error) {
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : '获取开发者工具状态失败' 
+    };
+  }
+});

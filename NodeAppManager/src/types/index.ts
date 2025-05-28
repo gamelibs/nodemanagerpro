@@ -118,3 +118,32 @@ export interface TemplateInfo {
   features: string[];
   supportsFrontendFramework: boolean;
 }
+
+// 应用设置类型
+export interface AppSettings {
+  theme: 'dark' | 'light';
+  language: 'zh' | 'en';
+  autoStart: boolean;
+  minimizeToTray: boolean;
+  devTools: boolean; // 添加开发者工具控制
+  notifications: {
+    projectStatus: boolean;
+    errors: boolean;
+  };
+  projects: {
+    defaultPath: string;
+    portRange: {
+      express: { start: number; end: number };
+      vite: { start: number; end: number };
+      other: { start: number; end: number };
+    };
+    defaultPackageManager: 'npm' | 'yarn' | 'pnpm';
+  };
+}
+
+// 设置相关的Action类型
+export type SettingsAction =
+  | { type: 'SET_SETTINGS'; payload: AppSettings }
+  | { type: 'UPDATE_THEME'; payload: 'dark' | 'light' }
+  | { type: 'UPDATE_LANGUAGE'; payload: 'zh' | 'en' }
+  | { type: 'UPDATE_SETTING'; payload: { key: keyof AppSettings; value: any } };

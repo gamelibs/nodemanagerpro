@@ -1,5 +1,7 @@
 import { createContext, useContext, useReducer, type ReactNode, useEffect, useState } from 'react';
-import type { AppState, AppAction } from '../types';
+import type { AppState, AppAction, AppSettings } from '../types';
+import { SettingsService } from '../services/SettingsService';
+import { I18nService } from '../services/i18n';
 
 // 初始状态
 const initialState: AppState = {
@@ -125,6 +127,16 @@ export interface AppContextValue {
     activeTab: 'settings' | 'projects';
     setActiveTab: (tab: 'settings' | 'projects') => void;
   };
+  // 添加设置和国际化
+  settings: {
+    current: AppSettings;
+    updateSetting: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void;
+    resetSettings: () => void;
+  };
+  i18n: {
+    t: (key: string) => string;
+    language: 'zh' | 'en';
+  };
 }
 
 export const AppContext = createContext<AppContextValue | undefined>(undefined);
@@ -133,15 +145,80 @@ export const AppContext = createContext<AppContextValue | undefined>(undefined);
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
   const [activeTab, setActiveTab] = useState<'settings' | 'projects'>('projects');
+  const [currentSettings, setCurrentSettings] = useState<AppSettings | null>(null);
 
   // 应用初始化
   useEffect(() => {
     // 启动时初始化为空数组，实际的项目加载会通过 ProjectService 进行
     dispatch({ type: 'SET_PROJECTS', payload: [] });
+    
+    // 初始化设置
+    const initializeSettings = async () => {
+      try {
+        const settings = await SettingsService.loadSettings();
+        setCurrentSettings(settings);
+        
+        // 应用主题
+        applyTheme(settings.theme);
+        
+        // 初始化国际化
+        I18nService.setLanguage(settings.language);
+      } catch (error) {
+        console.error('Failed to initialize settings:', error);
+        // 使用默认设置
+        const defaultSettings = SettingsService.getDefaultSettings();
+        setCurrentSettings(defaultSettings);
+        applyTheme(defaultSettings.theme);
+        I18nService.setLanguage(defaultSettings.language);
+      }
+    };
+    
+    initializeSettings();
   }, []);
-  
-  // 项目状态变化不再自动保存到localStorage
-  // 保存操作由 ProjectService 统一处理
+
+  // 应用主题
+  const applyTheme = (theme: 'dark' | 'light') => {
+    const root = document.documentElement;
+    if (theme === 'light') {
+      root.classList.add('light-theme');
+    } else {
+      root.classList.remove('light-theme');
+    }
+  };
+
+  // 更新设置
+  const updateSetting = async <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
+    if (!currentSettings) return;
+    
+    try {
+      const newSettings = { ...currentSettings, [key]: value };
+      await SettingsService.updateSetting(key, value);
+      setCurrentSettings(newSettings);
+      
+      // 特殊处理主题和语言
+      if (key === 'theme') {
+        applyTheme(value as 'dark' | 'light');
+      }
+      if (key === 'language') {
+        I18nService.setLanguage(value as 'zh' | 'en');
+      }
+    } catch (error) {
+      console.error('Failed to update setting:', error);
+    }
+  };
+
+  // 重置设置
+  const resetSettings = async () => {
+    try {
+      await SettingsService.resetToDefaults();
+      const defaultSettings = SettingsService.getDefaultSettings();
+      setCurrentSettings(defaultSettings);
+      applyTheme(defaultSettings.theme);
+      I18nService.setLanguage(defaultSettings.language);
+    } catch (error) {
+      console.error('Failed to reset settings:', error);
+    }
+  };
 
   const contextValue: AppContextValue = {
     state,
@@ -149,6 +226,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     navigation: {
       activeTab,
       setActiveTab
+    },
+    settings: {
+      current: currentSettings || SettingsService.getDefaultSettings(),
+      updateSetting,
+      resetSettings
+    },
+    i18n: {
+      t: (key: string) => I18nService.t(key as any),
+      language: currentSettings?.language || 'zh'
     }
   };
 

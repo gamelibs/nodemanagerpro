@@ -14,6 +14,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'fs:updateProjectStatus',
       'fs:getDataInfo',
       'dialog:showOpenDialog', // 添加文件对话框频道
+      // 设置相关频道
+      'settings:load',
+      'settings:save',
+      // 开发者工具控制频道
+      'dev-tools:toggle',
+      'dev-tools:status',
       // PM2 相关频道
       'pm2:check-installation',
       'pm2:install',
