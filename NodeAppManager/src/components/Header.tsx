@@ -26,7 +26,7 @@ export default function Header() {
     <>
       <div className="flex justify-between items-center mb-8">
         <div className="flex items-center space-x-3">
-          <h2 className="text-3xl font-bold text-white light-theme:text-gray-900 bg-gradient-to-r from-white to-gray-200 light-theme:from-gray-900 light-theme:to-gray-700 bg-clip-text text-transparent">{t('projects.title')}</h2>
+          <h2 className="text-3xl font-bold theme-text-primary">{t('projects.title')}</h2>
           <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
         </div>
         <div className="flex space-x-3">

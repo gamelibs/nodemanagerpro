@@ -1,7 +1,7 @@
 {
   "name": "{{PROJECT_NAME}}",
   "version": "1.0.0",
-  "description": "Express API 服务器 - 快速构建 Web 应用或 API 服务器",
+  "description": "静态网站 + API 服务器 - 现代网站开发，提供静态文件服务和 API 接口",
   "type": "module",
   "main": "src/app.js",
   "scripts": {
@@ -9,7 +9,7 @@
     "dev": "nodemon src/app.js",
     "test": "jest"
   },
-  "keywords": ["express", "api", "server"],
+  "keywords": ["express", "api", "server", "static", "website"],
   "author": "",
   "license": "MIT",
   "dependencies": {

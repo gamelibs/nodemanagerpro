@@ -1,13 +1,16 @@
 import { useState } from 'react';
 import { useProjects } from '../hooks/useProjects';
+import { useLogs } from '../hooks/useLogs';
 import type { Project } from '../types';
 
 interface ProjectCardProps {
   project: Project;
+  onOpenSettings?: (project: Project) => void;
 }
 
-export default function ProjectCard({ project }: ProjectCardProps) {
+export default function ProjectCard({ project, onOpenSettings }: ProjectCardProps) {
   const { removeProject, startProject, stopProject } = useProjects();
+  const { startLogSession } = useLogs();
   const [isStarting, setIsStarting] = useState(false);
   const [isStopping, setIsStopping] = useState(false);
 
@@ -35,11 +38,19 @@ export default function ProjectCard({ project }: ProjectCardProps) {
     }
   };
 
-  const handleShowLogs = () => {
+  const handleOpenSettings = () => {
+    // 启动日志会话以便在设置中看到安装进度
+    startLogSession(project.id, project.name);
+    
     // 发送自定义事件来切换到日志标签页
     window.dispatchEvent(new CustomEvent('switchToLogs', { 
       detail: { projectId: project.id } 
     }));
+    
+    // 打开设置模态框
+    if (onOpenSettings) {
+      onOpenSettings(project);
+    }
   };
 
   const formatLastOpened = (date: Date | null) => {
@@ -124,17 +135,17 @@ export default function ProjectCard({ project }: ProjectCardProps) {
           <button 
             onClick={handleStop}
             disabled={isStopping || project.status !== 'running'}
-            className="px-4 py-2 text-sm text-white bg-slate-600 hover:bg-slate-700 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-sm hover:shadow-md flex items-center space-x-1.5"
+            className="px-4 py-2 text-sm text-white bg-slate-600 hover:bg-slate-700 light-theme:bg-gray-500 light-theme:hover:bg-gray-600 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-sm hover:shadow-md flex items-center space-x-1.5"
           >
             <span className="text-xs">■</span>
             <span>{isStopping ? '停止中...' : 'Stop'}</span>
           </button>
           <button 
-            onClick={handleShowLogs}
-            className="px-4 py-2 text-sm text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-all font-medium shadow-sm hover:shadow-md flex items-center space-x-1.5"
+            onClick={handleOpenSettings}
+            className="px-4 py-2 text-sm text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-all font-medium shadow-sm hover:shadow-md flex items-center space-x-1.5"
           >
-            <span className="text-xs">📋</span>
-            <span>Logs</span>
+            <span className="text-xs">⚙️</span>
+            <span>Settings</span>
           </button>
           <button 
             onClick={handleRemove}

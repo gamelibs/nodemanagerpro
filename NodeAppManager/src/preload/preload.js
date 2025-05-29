@@ -13,7 +13,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'fs:removeProject',
       'fs:updateProjectStatus',
       'fs:getDataInfo',
+      'fs:validateDirectory', // 添加目录验证频道
+      'fs:createProjectFromTemplate', // 添加创建项目模板频道
       'dialog:showOpenDialog', // 添加文件对话框频道
+      'shell:openExternal', // 添加使用系统默认浏览器打开URL频道
       // 设置相关频道
       'settings:load',
       'settings:save',
@@ -33,7 +36,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'pm2:describe',
       'pm2:logs',
       'pm2:start-log-stream',
-      'pm2:stop-log-stream'
+      'pm2:stop-log-stream',
+      // 日志相关频道
+      'logger:getLogDirectory',
+      'logger:getRecentLogFiles',
+      'logger:readLogFile',
+      'logger:log',
+      // 项目管理相关频道
+      'project:getPackageInfo',
+      'project:installDependencies',
+      'project:installSpecificPackages',
+      'project:createPackageJson',
     ];
     
     if (allowedChannels.includes(channel)) {

@@ -1,13 +1,17 @@
 /// <reference types="node" />
 /// <reference types="electron" />
 
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 
 // 导入IPC设置
 const { setupFileSystemIPC } = require('./src/ipc/fileSystemIPC.cjs');
 const { setupPM2IPC } = require('./src/ipc/pm2IPC.cjs');
 const { setupSettingsIPC } = require('./src/ipc/settingsIPC.cjs');
+const { setupLoggerIPC } = require('./src/ipc/loggerIPC.cjs');
+
+// 导入日志服务
+const { LoggerService } = require('./src/services/LoggerService.cjs');
 
 // 开发模式标识
 const isDev = process.env.NODE_ENV === 'development';
@@ -16,11 +20,17 @@ const VITE_DEV_SERVER_URL = 'http://localhost:9966';
 // 全局主窗口引用
 let mainWindow: any;
 
+// 初始化日志服务
+LoggerService.initialize();
+
 console.log('🚀 启动 Electron...');
+LoggerService.info('Electron 应用启动', { isDev, url: isDev ? VITE_DEV_SERVER_URL : '本地文件' });
 console.log('📊 开发模式:', isDev);
 console.log('🌐 服务器地址:', isDev ? VITE_DEV_SERVER_URL : '本地文件');
 
 function createWindow(): void {
+  LoggerService.info('开始创建主窗口');
+  
   // 创建浏览器窗口
   mainWindow = new BrowserWindow({
     width: 1400,     // 增加宽度，更适合项目管理界面
@@ -35,22 +45,53 @@ function createWindow(): void {
     },
     backgroundColor: '#0F172A',
     titleBarStyle: 'default',
+    title: 'NodeHub Pro',
     show: false, // 先不显示，等加载完成后再显示
     center: true, // 窗口居中显示
   });
 
   // 窗口准备好后显示
-  mainWindow.once('ready-to-show', () => {
+  mainWindow.once('ready-to-show', async () => {
     mainWindow.show();
     console.log('✅ Electron 窗口已显示');
+    LoggerService.info('Electron 窗口显示完成');
+    
+    // 在开发模式下，根据设置决定是否打开开发者工具
+    if (isDev) {
+      try {
+        // 延迟一点时间确保所有初始化完成
+        setTimeout(async () => {
+          try {
+            const { loadSettingsFromMain } = require('./src/ipc/settingsIPC.cjs');
+            const result = await loadSettingsFromMain();
+            
+            if (result.success && result.data && result.data.devTools) {
+              console.log('🔧 根据设置打开开发者工具');
+              mainWindow.webContents.openDevTools({ mode: 'detach' });
+              LoggerService.info('根据设置自动打开开发者工具');
+            } else {
+              console.log('🔧 根据设置不打开开发者工具');
+              LoggerService.info('根据设置不自动打开开发者工具');
+            }
+          } catch (error) {
+            console.warn('⚠️ 无法加载开发者工具设置，使用默认行为:', error);
+            LoggerService.warn('无法加载开发者工具设置', error);
+          }
+        }, 1000);
+      } catch (error) {
+        console.warn('⚠️ 设置模块加载失败，跳过开发者工具自动打开:', error);
+      }
+    }
   });
 
   // 根据环境加载不同的内容
   if (isDev) {
     // 开发模式：从本地开发服务器加载
     console.log('🔗 正在连接 Vite 开发服务器...');
+    LoggerService.info('连接 Vite 开发服务器', { url: VITE_DEV_SERVER_URL });
     mainWindow.loadURL(VITE_DEV_SERVER_URL).catch((err: Error) => {
       console.error('❌ 无法连接到 Vite 开发服务器:', err.message);
+      LoggerService.error('无法连接到 Vite 开发服务器', err);
       console.log('💡 请确保 Vite 开发服务器正在运行 (npm run dev)');
     });
     
@@ -68,6 +109,7 @@ function createWindow(): void {
     // 生产模式：从本地文件加载
     const indexPath = path.join(__dirname, 'index.html');
     console.log('📁 加载本地文件:', indexPath);
+    LoggerService.info('加载本地文件', { path: indexPath });
     mainWindow.loadFile(indexPath);
   }
 
@@ -95,15 +137,38 @@ function createWindow(): void {
 // 部分 API 在 ready 事件触发后才能使用。
 app.whenReady().then(() => {
   console.log('⚡ Electron 应用已准备就绪');
+  LoggerService.info('Electron 应用已准备就绪');
   
   // 设置文件系统IPC处理器
   setupFileSystemIPC();
+  LoggerService.info('文件系统 IPC 处理器已设置');
   
   // 设置PM2 IPC处理器
   setupPM2IPC();
+  LoggerService.info('PM2 IPC 处理器已设置');
   
   // 设置设置IPC处理器
   setupSettingsIPC();
+  LoggerService.info('设置 IPC 处理器已设置');
+  
+  // 设置日志IPC处理器
+  setupLoggerIPC();
+  LoggerService.info('日志 IPC 处理器已设置');
+  
+  // 设置 Shell IPC 处理器
+  ipcMain.handle('shell:openExternal', async (_: any, url: string) => {
+    try {
+      await shell.openExternal(url);
+      return { success: true };
+    } catch (error) {
+      console.error('打开外部链接失败:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : '打开链接失败' 
+      };
+    }
+  });
+  LoggerService.info('Shell IPC 处理器已设置');
   
   createWindow();
 
@@ -111,6 +176,7 @@ app.whenReady().then(() => {
     // 在 macOS 上，当单击 dock 图标并且没有其他窗口打开时，
     // 通常在应用程序中重新创建一个窗口。
     if (BrowserWindow.getAllWindows().length === 0) {
+      LoggerService.info('重新创建窗口 (macOS activate)');
       createWindow();
     }
   });
@@ -122,6 +188,7 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     console.log('👋 退出 Electron 应用');
+    LoggerService.info('Electron 应用退出', { platform: process.platform });
     app.quit();
   }
 });

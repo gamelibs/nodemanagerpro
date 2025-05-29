@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{PROJECT_NAME}} - Static Website</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <nav class="nav">
+                <div class="logo">
+                    <i class="fas fa-rocket"></i>
+                    <span>{{PROJECT_NAME}}</span>
+                </div>
+                <ul class="nav-links">
+                    <li><a href="#home" class="nav-link active">首页</a></li>
+                    <li><a href="#about" class="nav-link">关于</a></li>
+                    <li><a href="#services" class="nav-link">服务</a></li>
+                    <li><a href="#contact" class="nav-link">联系</a></li>
+                </ul>
+                <div class="hamburger">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </nav>
+        </header>
+
+        <main class="main">
+            <section id="home" class="hero">
+                <div class="hero-content">
+                    <h1 class="hero-title">欢迎来到 {{PROJECT_NAME}}</h1>
+                    <p class="hero-subtitle">这是一个基于 Express.js 的静态网站模板，包含现代化的设计和完整的 API 后端支持。</p>
+                    <div class="hero-actions">
+                        <button class="btn btn-primary" onclick="testAPI()">
+                            <i class="fas fa-play"></i>
+                            测试 API
+                        </button>
+                        <a href="#about" class="btn btn-secondary">
+                            <i class="fas fa-info-circle"></i>
+                            了解更多
+                        </a>
+                    </div>
+                </div>
+                <div class="hero-image">
+                    <div class="hero-illustration">
+                        <i class="fas fa-server"></i>
+                    </div>
+                </div>
+            </section>
+
+            <section id="about" class="section">
+                <div class="section-header">
+                    <h2>关于项目</h2>
+                    <p>这是一个功能完整的静态网站 + API 项目模板</p>
+                </div>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-bolt"></i>
+                        </div>
+                        <h3>快速开发</h3>
+                        <p>基于 Express.js 的轻量级后端，支持快速 API 开发和静态文件服务。</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-mobile-alt"></i>
+                        </div>
+                        <h3>响应式设计</h3>
+                        <p>现代化的响应式设计，完美适配桌面、平板和移动设备。</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-cogs"></i>
+                        </div>
+                        <h3>易于扩展</h3>
+                        <p>清晰的项目结构，易于添加新功能和自定义业务逻辑。</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="services" class="section">
+                <div class="section-header">
+                    <h2>API 服务</h2>
+                    <p>项目提供的后端 API 接口</p>
+                </div>
+                <div class="api-list">
+                    <div class="api-item">
+                        <div class="api-method get">GET</div>
+                        <div class="api-info">
+                            <span class="api-path">/api/health</span>
+                            <span class="api-desc">健康检查接口</span>
+                        </div>
+                        <button class="api-test" onclick="testEndpoint('GET', '/api/health')">测试</button>
+                    </div>
+                    <div class="api-item">
+                        <div class="api-method get">GET</div>
+                        <div class="api-info">
+                            <span class="api-path">/api/time</span>
+                            <span class="api-desc">获取服务器时间</span>
+                        </div>
+                        <button class="api-test" onclick="testEndpoint('GET', '/api/time')">测试</button>
+                    </div>
+                    <div class="api-item">
+                        <div class="api-method post">POST</div>
+                        <div class="api-info">
+                            <span class="api-path">/api/echo</span>
+                            <span class="api-desc">回显测试接口</span>
+                        </div>
+                        <button class="api-test" onclick="testEndpoint('POST', '/api/echo', {message: 'Hello World'})">测试</button>
+                    </div>
+                </div>
+            </section>
+
+            <section id="contact" class="section">
+                <div class="section-header">
+                    <h2>技术栈</h2>
+                    <p>项目使用的主要技术</p>
+                </div>
+                <div class="tech-stack">
+                    <div class="tech-item">
+                        <i class="fab fa-node-js"></i>
+                        <span>Node.js</span>
+                    </div>
+                    <div class="tech-item">
+                        <i class="fas fa-server"></i>
+                        <span>Express.js</span>
+                    </div>
+                    <div class="tech-item">
+                        <i class="fab fa-html5"></i>
+                        <span>HTML5</span>
+                    </div>
+                    <div class="tech-item">
+                        <i class="fab fa-css3-alt"></i>
+                        <span>CSS3</span>
+                    </div>
+                    <div class="tech-item">
+                        <i class="fab fa-js-square"></i>
+                        <span>JavaScript</span>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="footer">
+            <div class="footer-content">
+                <div class="footer-info">
+                    <div class="logo">
+                        <i class="fas fa-rocket"></i>
+                        <span>{{PROJECT_NAME}}</span>
+                    </div>
+                    <p>基于 Express.js 的静态网站模板</p>
+                </div>
+                <div class="footer-links">
+                    <a href="#home">首页</a>
+                    <a href="#about">关于</a>
+                    <a href="#services">服务</a>
+                    <a href="#contact">联系</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 {{PROJECT_NAME}}. All rights reserved.</p>
+            </div>
+        </footer>
+    </div>
+
+    <!-- API 结果模态框 -->
+    <div id="apiModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>API 测试结果</h3>
+                <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <pre id="apiResult"></pre>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/main.js"></script>
+</body>
+</html>

@@ -6,6 +6,7 @@ export function useLogs() {
   const { state, dispatch } = useApp();
 
   const startLogSession = useCallback((projectId: string, projectName: string) => {
+    console.log('🚀 启动日志会话:', projectId, projectName);
     dispatch({
       type: 'START_LOG_SESSION',
       payload: { projectId, projectName }
@@ -13,6 +14,7 @@ export function useLogs() {
   }, [dispatch]);
 
   const endLogSession = useCallback((projectId: string) => {
+    console.log('🔚 结束日志会话:', projectId);
     dispatch({
       type: 'END_LOG_SESSION',
       payload: projectId
@@ -25,6 +27,8 @@ export function useLogs() {
       id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       timestamp: new Date()
     };
+    
+    console.log('📝 添加日志:', newLog);
     
     dispatch({
       type: 'ADD_LOG',

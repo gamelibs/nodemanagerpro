@@ -1,5 +1,6 @@
 {
-  "name": "nodeappmanager",
+  "name": "nodehub-pro",
+  "productName": "NodeHub Pro",
   "private": true,
   "version": "0.0.0",
   "type": "module",

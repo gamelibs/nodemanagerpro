@@ -1,60 +1,8 @@
-import type { Project, ProjectScript, FileSystemResult, ProjectCreationConfig, ProjectTemplate } from '../types';
+import type { Project, ProjectScript, FileSystemResult, ProjectCreationConfig, ProjectTemplate, ProjectCreationProgress } from '../types';
 import { RendererFileSystemService } from './RendererFileSystemService';
 
 // 模拟项目数据（作为初始数据和fallback）
-const MOCK_PROJECTS: Project[] = [
-  {
-    id: '1',
-    name: 'My React App',
-    path: '/Users/example/my-react-app',
-    type: 'react',
-    status: 'stopped',
-    port: 3000,
-    lastOpened: new Date('2024-05-20'),
-    packageManager: 'npm',
-    scripts: [
-      { name: 'start', command: 'npm start', description: '启动开发服务器' },
-      { name: 'build', command: 'npm run build', description: '构建生产版本' },
-      { name: 'test', command: 'npm test', description: '运行测试' },
-    ],
-    description: 'A modern React application with TypeScript',
-    version: '1.0.0'
-  },
-  {
-    id: '2',
-    name: 'Node API Server',
-    path: '/Users/example/node-api',
-    type: 'node',
-    status: 'running',
-    port: 5000,
-    lastOpened: new Date('2024-05-25'),
-    packageManager: 'npm',
-    scripts: [
-      { name: 'start', command: 'npm start', description: '启动服务器' },
-      { name: 'dev', command: 'npm run dev', description: '开发模式启动' },
-      { name: 'test', command: 'npm test', description: '运行测试' },
-    ],
-    description: 'RESTful API server with Express.js',
-    version: '2.1.0'
-  },
-  {
-    id: '3',
-    name: 'Vue Dashboard',
-    path: '/Users/example/vue-dashboard',
-    type: 'vue',
-    status: 'stopped',
-    port: 8080,
-    lastOpened: new Date('2024-05-18'),
-    packageManager: 'yarn',
-    scripts: [
-      { name: 'serve', command: 'yarn serve', description: '启动开发服务器' },
-      { name: 'build', command: 'yarn build', description: '构建生产版本' },
-      { name: 'lint', command: 'yarn lint', description: '代码检查' },
-    ],
-    description: 'Admin dashboard built with Vue 3',
-    version: '0.5.2'
-  }
-];
+const MOCK_PROJECTS: Project[] = [];
 
 // 项目服务类
 export class ProjectService {
@@ -112,9 +60,9 @@ export class ProjectService {
           console.error('❌ localStorage数据解析失败:', parseError);
         }
       } else {
-        // 如果都没有数据，保存初始的模拟数据
-        console.log('📝 没有发现现有数据，保存初始示例项目');
-        await RendererFileSystemService.saveProjects(MOCK_PROJECTS);
+        // 如果都没有数据，不自动创建测试项目，保持空状态
+        console.log('📝 没有发现现有数据，保持空项目列表状态');
+        // await RendererFileSystemService.saveProjects(MOCK_PROJECTS); // 已禁用自动创建测试数据
       }
     } catch (error) {
       console.error('❌ 数据迁移过程出错:', error);
@@ -312,16 +260,22 @@ export class ProjectService {
   }
 
   // 创建新项目
-  static async createProject(projectConfig: ProjectCreationConfig): Promise<FileSystemResult> {
+  static async createProject(projectConfig: ProjectCreationConfig, progressCallback?: ProjectCreationProgress): Promise<FileSystemResult> {
     try {
       await this.initialize();
       
-      console.log(`🏗️ 开始创建项目: ${projectConfig.name}`);
-      console.log(`📍 路径: ${projectConfig.path}`);
-      console.log(`🎨 模板: ${projectConfig.template}`);
+      const onProgress = progressCallback?.onProgress || (() => {});
+      
+      onProgress(`🏗️ 开始创建项目: ${projectConfig.name}`);
+      onProgress(`📍 路径: ${projectConfig.path}`);
+      onProgress(`🎨 模板: ${projectConfig.template}`);
       
       // 模拟项目创建过程
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      onProgress('⏳ 准备项目环境...', 'info');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      onProgress('📁 创建项目目录...', 'info');
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       // 在真实应用中，这里会：
       // 1. 创建项目目录
@@ -347,13 +301,14 @@ export class ProjectService {
       };
 
       // 实际创建项目文件
-      await this.createProjectFromTemplate(projectConfig);
+      await this.createProjectFromTemplate(projectConfig, onProgress);
 
       // 使用文件系统服务保存
+      onProgress('💾 保存项目配置...', 'info');
       const result = await RendererFileSystemService.addProject(newProject);
       
       if (result.success) {
-        console.log(`✅ 成功创建项目: ${newProject.name}`);
+        onProgress(`✅ 成功创建项目: ${newProject.name}`, 'success');
         return {
           success: true,
           data: newProject
@@ -361,15 +316,18 @@ export class ProjectService {
       } else {
         // 降级到localStorage
         this.saveProjectToLocalStorage(newProject);
+        onProgress(`✅ 项目创建完成 (使用本地存储)`, 'success');
         return {
           success: true,
           data: newProject
         };
       }
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '创建项目失败';
+      progressCallback?.onProgress?.(`❌ 创建失败: ${errorMessage}`, 'error');
       return {
         success: false,
-        error: error instanceof Error ? error.message : '创建项目失败'
+        error: errorMessage
       };
     }
   }
@@ -377,10 +335,12 @@ export class ProjectService {
   // 映射模板到项目类型
   private static mapTemplateToProjectType(template: ProjectTemplate): Project['type'] {
     switch (template) {
-      case 'express':
-        return 'express';
-      case 'vite-express':
-        return 'vite-express';
+      case 'pure-api':
+        return 'node';
+      case 'static-app':
+        return 'node';
+      case 'full-stack':
+        return 'node';
       default:
         return 'node';
     }
@@ -389,10 +349,12 @@ export class ProjectService {
   // 获取模板描述
   private static getTemplateDescription(template: ProjectTemplate): string {
     switch (template) {
-      case 'express':
-        return '基于 Express.js 的 JavaScript 后端 API 服务器';
-      case 'vite-express':
-        return '基于 Vite + Express 的 TypeScript 全栈应用';
+      case 'pure-api':
+        return '纯 API 后端服务，适合构建 RESTful API';
+      case 'static-app':
+        return '静态网站应用，适合构建纯前端页面';
+      case 'full-stack':
+        return '全栈应用，包含前端和后端完整解决方案';
       default:
         return '新创建的项目';
     }
@@ -403,7 +365,7 @@ export class ProjectService {
     const pm = config.packageManager;
     
     switch (config.template) {
-      case 'express':
+      case 'pure-api':
         return [
           { name: 'start', command: `${pm} start`, description: '启动生产服务器' },
           { name: 'dev', command: `${pm} run dev`, description: '启动开发服务器' },
@@ -413,7 +375,17 @@ export class ProjectService {
           ...(config.tools.prettier ? [{ name: 'format', command: `${pm} run format`, description: '代码格式化' }] : [])
         ];
       
-      case 'vite-express':
+      case 'static-app':
+        return [
+          { name: 'dev', command: `${pm} run dev`, description: '启动开发服务器' },
+          { name: 'build', command: `${pm} run build`, description: '构建项目' },
+          { name: 'start', command: `${pm} start`, description: '启动项目' },
+          { name: 'test', command: `${pm} test`, description: '运行测试' },
+          ...(config.tools.eslint ? [{ name: 'lint', command: `${pm} run lint`, description: '代码检查' }] : []),
+          ...(config.tools.prettier ? [{ name: 'format', command: `${pm} run format`, description: '代码格式化' }] : [])
+        ];
+      
+      case 'full-stack':
         return [
           { name: 'dev', command: `${pm} run dev`, description: '启动开发服务器（前后端）' },
           { name: 'dev:frontend', command: `${pm} run dev:frontend`, description: '仅启动前端开发服务器' },
@@ -438,54 +410,33 @@ export class ProjectService {
   }
 
   // 从模板创建项目文件
-  private static async createProjectFromTemplate(config: ProjectCreationConfig): Promise<void> {
+  private static async createProjectFromTemplate(config: ProjectCreationConfig, onProgress: (message: string, level?: 'info' | 'warn' | 'error' | 'success') => void): Promise<void> {
     try {
-      console.log(`📁 创建项目目录: ${config.path}`);
+      onProgress(`📁 创建项目目录: ${config.path}`);
       
-      // 在真实环境中，这里会调用 Node.js fs 模块
-      // 或通过 Electron IPC 调用主进程的文件操作
+      // 调用实际的文件系统服务创建项目模板
+      const result = await RendererFileSystemService.createProjectFromTemplate(config);
       
-      // 模拟文件创建过程
-      await this.simulateFileCreation(config);
+      if (!result.success) {
+        throw new Error(result.error || '创建项目模板失败');
+      }
       
-      console.log(`📋 复制 ${config.template} 模板文件`);
-      console.log(`🔧 配置项目设置`);
+      onProgress(`📋 复制 ${config.template} 模板文件`, 'success');
+      onProgress(`🔧 配置项目设置`, 'success');
       
       if (config.tools.autoInstall) {
-        console.log(`📦 自动安装依赖 (${config.packageManager})`);
+        onProgress(`📦 注意: 需要手动安装依赖 (${config.packageManager})`, 'info');
       }
       
       if (config.tools.git) {
-        console.log(`🌱 初始化 Git 仓库`);
+        onProgress(`🌱 注意: 需要手动初始化 Git 仓库`, 'info');
       }
       
     } catch (error) {
-      console.error('创建项目文件失败:', error);
+      const errorMessage = error instanceof Error ? error.message : '创建项目文件失败';
+      onProgress(`❌ ${errorMessage}`, 'error');
       throw error;
     }
-  }
-
-  // 模拟文件创建过程
-  private static async simulateFileCreation(config: ProjectCreationConfig): Promise<void> {
-    // 在真实应用中，这里会：
-    // 1. 创建项目目录
-    // 2. 从 templates 目录复制相应的模板文件
-    // 3. 替换模板中的变量 ({{PROJECT_NAME}}, {{PORT}}, etc.)
-    // 4. 根据配置启用/禁用 特定文件 (ESLint, Prettier, Jest 配置等)
-    // 5. 如果是 vite-express 模板，根据 frontendFramework 选择前端框架文件
-    
-    const templatePath = this.getTemplatePath(config.template);
-    console.log(`📂 使用模板路径: ${templatePath}`);
-    
-    // 模拟复制和配置过程
-    await new Promise(resolve => setTimeout(resolve, 1000));
-  }
-
-  // 获取模板路径
-  private static getTemplatePath(template: ProjectTemplate): string {
-    // 在真实应用中，这会返回实际的模板目录路径
-    // 例如: path.join(__dirname, '../../templates', template)
-    return `templates/${template}`;
   }
 
   // 工具方法
@@ -547,14 +498,16 @@ export class ProjectService {
         return 3000;
       case 'vue':
         return 8080;
-      case 'express':
+      case 'pure-api':
         return 8000;
+      case 'static-app':
+        return 3000;
+      case 'full-stack':
+        return 5173;
       case 'node':
         return 5000;
       case 'electron':
         return 3000;
-      case 'vite-express':
-        return 5173;
       case 'other':
       default:
         return 8000;

@@ -6,6 +6,12 @@ declare global {
   interface Window {
     electronAPI?: {
       invoke: (channel: string, ...args: any[]) => Promise<any>;
+      showOpenDialog: (options: any) => Promise<any>;
+      on: (channel: string, callback: (...args: any[]) => void) => void;
+      removeListener: (channel: string, callback: (...args: any[]) => void) => void;
+      getAppVersion: () => Promise<string>;
+      platform: string;
+      isDev: boolean; // 开发模式标识
     };
   }
 }
@@ -160,6 +166,135 @@ export class RendererFileSystemService {
         success: false,
         error: error instanceof Error ? error.message : '获取数据信息失败'
       };
+    }
+  }
+
+  /**
+   * 从模板创建项目文件
+   */
+  static async createProjectFromTemplate(projectConfig: any): Promise<FileSystemResult> {
+    console.log('🔄 RendererFileSystemService.createProjectFromTemplate() 开始:', projectConfig);
+    
+    if (!this.isElectron()) {
+      console.warn('⚠️ 不在Electron环境中，无法创建项目文件');
+      return { 
+        success: false, 
+        error: '不在Electron环境中，无法创建项目文件' 
+      };
+    }
+
+    try {
+      const result = await window.electronAPI!.invoke('fs:createProjectFromTemplate', projectConfig);
+      console.log('✅ RendererFileSystemService.createProjectFromTemplate() 成功:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ RendererFileSystemService.createProjectFromTemplate() 失败:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : '创建项目模板失败'
+      };
+    }
+  }
+
+  /**
+   * 获取项目包信息
+   */
+  static async getProjectPackageInfo(projectPath: string): Promise<FileSystemResult> {
+    console.log('🔄 RendererFileSystemService.getProjectPackageInfo() 开始:', projectPath);
+    
+    if (!this.isElectron()) {
+      console.warn('⚠️ 不在Electron环境中，无法获取项目包信息');
+      return { 
+        success: false, 
+        error: '不在Electron环境中，无法获取项目包信息' 
+      };
+    }
+
+    try {
+      const result = await window.electronAPI!.invoke('project:getPackageInfo', projectPath);
+      console.log('✅ RendererFileSystemService.getProjectPackageInfo() 成功:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ RendererFileSystemService.getProjectPackageInfo() 失败:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : '获取项目包信息失败'
+      };
+    }
+  }
+
+  /**
+   * 安装项目依赖
+   */
+  static async installProjectDependencies(projectPath: string): Promise<FileSystemResult> {
+    console.log('🔄 RendererFileSystemService.installProjectDependencies() 开始:', projectPath);
+    
+    if (!this.isElectron()) {
+      console.warn('⚠️ 不在Electron环境中，无法安装项目依赖');
+      return { 
+        success: false, 
+        error: '不在Electron环境中，无法安装项目依赖' 
+      };
+    }
+
+    try {
+      const result = await window.electronAPI!.invoke('project:installDependencies', projectPath);
+      console.log('✅ RendererFileSystemService.installProjectDependencies() 成功:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ RendererFileSystemService.installProjectDependencies() 失败:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : '安装项目依赖失败'
+      };
+    }
+  }
+
+  /**
+   * 安装特定的项目依赖包
+   */
+  static async installSpecificPackages(projectPath: string, packages: string[]): Promise<FileSystemResult> {
+    console.log('🔄 RendererFileSystemService.installSpecificPackages() 开始:', projectPath, packages);
+    
+    if (!this.isElectron()) {
+      console.warn('⚠️ 不在Electron环境中，无法安装特定依赖包');
+      return { 
+        success: false, 
+        error: '不在Electron环境中，无法安装特定依赖包' 
+      };
+    }
+
+    try {
+      const result = await window.electronAPI!.invoke('project:installSpecificPackages', projectPath, packages);
+      console.log('✅ RendererFileSystemService.installSpecificPackages() 成功:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ RendererFileSystemService.installSpecificPackages() 失败:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : '安装特定依赖包失败'
+      };
+    }
+  }
+
+  /**
+   * 创建基础的 package.json 文件
+   */
+  static async createPackageJson(projectPath: string, projectName?: string) {
+    console.log('🔄 RendererFileSystemService.createPackageJson() 开始:', projectPath, projectName);
+    console.log('🔍 检查Electron环境:', !!window.electronAPI);
+    
+    if (!window.electronAPI) {
+      return { success: false, error: '非 Electron 环境' };
+    }
+    
+    try {
+      const result = await window.electronAPI.invoke('project:createPackageJson', projectPath, projectName);
+      console.log('✅ RendererFileSystemService.createPackageJson() 成功:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ RendererFileSystemService.createPackageJson() 失败:', error);
+      return { success: false, error: '创建 package.json 失败' };
     }
   }
 }

@@ -50,6 +50,16 @@ Ctrl + C
 
 ## 📖 详细文档
 
+### 核心文档
+- **[PROJECT_GUIDE.md](./PROJECT_GUIDE.md)** - 项目完整使用指南
+- **[LOGGING_SYSTEM_GUIDE.md](./LOGGING_SYSTEM_GUIDE.md)** - 日志系统设计文档 🆕
+- **[PM2_INTEGRATION_REPORT.md](./PM2_INTEGRATION_REPORT.md)** - PM2集成报告
+- **[TEMPLATE_REDESIGN_COMPLETION.md](./TEMPLATE_REDESIGN_COMPLETION.md)** - 模板系统文档
+
+### 技术文档
+- **[COMPLETION_SUMMARY.md](./COMPLETION_SUMMARY.md)** - 项目完成总结
+- **[MIGRATION_TEST.md](./MIGRATION_TEST.md)** - 文件系统迁移测试
+
 完整的使用指南、技术架构和开发文档请查看：
 **[📚 PROJECT_GUIDE.md](./PROJECT_GUIDE.md)**
 

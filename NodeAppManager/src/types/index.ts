@@ -1,5 +1,5 @@
 // 项目模板类型
-export type ProjectTemplate = 'express' | 'vite-express';
+export type ProjectTemplate = 'pure-api' | 'static-app' | 'full-stack';
 
 // 前端框架类型（仅用于 vite-express 模板）
 export type FrontendFramework = 'vanilla-ts' | 'react' | 'vue';
@@ -9,7 +9,7 @@ export interface Project {
   id: string;
   name: string;
   path: string;
-  type: 'node' | 'react' | 'vue' | 'electron' | 'other' | 'express' | 'vite-express';
+  type: 'node' | 'react' | 'vue' | 'electron' | 'other' | 'pure-api' | 'static-app' | 'full-stack';
   status: 'stopped' | 'running' | 'error';
   port?: number;
   lastOpened: Date;
@@ -82,6 +82,11 @@ export interface IPCResult<T = any> {
   success: boolean;
   data?: T;
   error?: string;
+}
+
+// 项目创建进度回调类型
+export interface ProjectCreationProgress {
+  onProgress?: (message: string, level?: 'info' | 'warn' | 'error' | 'success') => void;
 }
 
 // 项目创建配置接口

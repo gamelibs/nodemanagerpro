@@ -196,4 +196,75 @@ export class FileSystemService {
       isDev: process.env.NODE_ENV === 'development'
     };
   }
+
+  /**
+   * 从模板创建项目文件
+   */
+  static async createProjectFromTemplate(projectConfig: any): Promise<void> {
+    const { template, path: projectPath, name: projectName } = projectConfig;
+    
+    // 确定模板源目录
+    const templateSrcDir = path.join(process.cwd(), 'templates', template);
+    
+    console.log(`📁 从模板创建项目:`, { templateSrcDir, projectPath, projectName });
+    
+    // 检查模板目录是否存在
+    if (!fs.existsSync(templateSrcDir)) {
+      throw new Error(`模板目录不存在: ${templateSrcDir}`);
+    }
+    
+    // 确保目标目录存在
+    if (!fs.existsSync(projectPath)) {
+      fs.mkdirSync(projectPath, { recursive: true });
+      console.log(`📂 创建项目目录: ${projectPath}`);
+    }
+    
+    // 递归复制模板文件
+    await this.copyDirectory(templateSrcDir, projectPath, projectConfig);
+    
+    console.log(`✅ 项目模板复制完成: ${projectName}`);
+  }
+
+  /**
+   * 递归复制目录
+   */
+  private static async copyDirectory(srcDir: string, destDir: string, projectConfig: any): Promise<void> {
+    const items = fs.readdirSync(srcDir);
+    
+    for (const item of items) {
+      const srcPath = path.join(srcDir, item);
+      const destPath = path.join(destDir, item);
+      const stat = fs.statSync(srcPath);
+      
+      if (stat.isDirectory()) {
+        // 递归复制子目录
+        if (!fs.existsSync(destPath)) {
+          fs.mkdirSync(destPath, { recursive: true });
+        }
+        await this.copyDirectory(srcPath, destPath, projectConfig);
+      } else {
+        // 复制文件并替换模板变量
+        await this.copyFileWithTemplateReplacement(srcPath, destPath, projectConfig);
+      }
+    }
+  }
+
+  /**
+   * 复制文件并替换模板变量
+   */
+  private static async copyFileWithTemplateReplacement(srcPath: string, destPath: string, projectConfig: any): Promise<void> {
+    let content = fs.readFileSync(srcPath, 'utf8');
+    
+    // 替换模板变量
+    content = content
+      .replace(/\{\{PROJECT_NAME\}\}/g, projectConfig.name)
+      .replace(/\{\{PROJECT_PATH\}\}/g, projectConfig.path)
+      .replace(/\{\{PORT\}\}/g, projectConfig.port?.toString() || '3000')
+      .replace(/\{\{PACKAGE_MANAGER\}\}/g, projectConfig.packageManager || 'npm')
+      .replace(/\{\{DESCRIPTION\}\}/g, projectConfig.description || `A new ${projectConfig.template} project`);
+    
+    // 写入目标文件
+    fs.writeFileSync(destPath, content, 'utf8');
+    console.log(`📄 复制文件: ${path.relative(process.cwd(), destPath)}`);
+  }
 }

@@ -1,6 +1,6 @@
 # {{PROJECT_NAME}}
 
-Vite + Express 全栈应用 - 前后端同构快速搭建
+全栈应用 - 现代 React + TypeScript + Express 开发
 
 ## 特性
 

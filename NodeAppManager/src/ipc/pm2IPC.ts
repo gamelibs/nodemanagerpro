@@ -1,7 +1,9 @@
 import { ipcMain } from 'electron';
-import * as pm2 from 'pm2';
 import { spawn, exec } from 'child_process';
 import { promisify } from 'util';
+
+// 使用 require 导入 PM2 避免 ES modules 问题
+const pm2 = require('pm2');
 
 const execAsync = promisify(exec);
 
@@ -88,7 +90,7 @@ export function setupPM2IPC() {
     }
 
     return new Promise((resolve) => {
-      pm2.connect((err) => {
+      pm2.connect((err: any) => {
         if (err) {
           console.error('❌ PM2 连接失败:', err);
           resolve({ 
@@ -140,7 +142,7 @@ export function setupPM2IPC() {
       await ensureConnected();
       
       return new Promise((resolve) => {
-        pm2.stop(projectId, (err) => {
+        pm2.stop(projectId, (err: any) => {
           if (err) {
             console.error('❌ PM2 停止失败:', err);
             resolve({ 
@@ -167,23 +169,29 @@ export function setupPM2IPC() {
       await ensureConnected();
       
       return new Promise((resolve) => {
-        pm2.restart(projectId, (err) => {
-          if (err) {
-            console.error('❌ PM2 重启失败:', err);
-            resolve({ 
-              success: false, 
-              error: err.message 
-            });
+        // 首先尝试删除现有进程（如果存在）
+        pm2.delete(projectId, (deleteErr: any) => {
+          // 忽略删除错误（进程可能不存在）
+          if (deleteErr) {
+            console.log(`⚠️ 删除进程 ${projectId} 时出错（可能不存在）:`, deleteErr.message);
           } else {
-            console.log(`✅ PM2 重启成功: ${projectId}`);
-            resolve({ success: true });
+            console.log(`🗑️ 成功删除进程 ${projectId}`);
           }
+          
+          // 无论删除是否成功，都标识需要重新启动
+          console.log(`🔄 进程 ${projectId} 需要重新启动`);
+          resolve({ 
+            success: false, 
+            error: `进程需要重新启动`,
+            needsStart: true // 标识需要重新启动而不是重启
+          });
         });
       });
     } catch (error) {
       return { 
         success: false, 
-        error: error instanceof Error ? error.message : '重启失败' 
+        error: error instanceof Error ? error.message : '重启失败',
+        needsStart: true
       };
     }
   });
@@ -194,7 +202,7 @@ export function setupPM2IPC() {
       await ensureConnected();
       
       return new Promise((resolve) => {
-        pm2.delete(projectId, (err) => {
+        pm2.delete(projectId, (err: any) => {
           if (err) {
             console.error('❌ PM2 删除失败:', err);
             resolve({ 
@@ -221,7 +229,7 @@ export function setupPM2IPC() {
       await ensureConnected();
       
       return new Promise((resolve) => {
-        pm2.list((err, list) => {
+        pm2.list((err: any, list: any) => {
           if (err) {
             console.error('❌ PM2 获取列表失败:', err);
             resolve({ 
@@ -250,7 +258,7 @@ export function setupPM2IPC() {
       await ensureConnected();
       
       return new Promise((resolve) => {
-        pm2.describe(projectId, (err, desc) => {
+        pm2.describe(projectId, (err: any, desc: any) => {
           if (err) {
             console.error('❌ PM2 获取描述失败:', err);
             resolve({ 
@@ -260,7 +268,7 @@ export function setupPM2IPC() {
           } else {
             resolve({ 
               success: true, 
-              status: desc[0] 
+              data: desc
             });
           }
         });
@@ -332,7 +340,7 @@ export function setupPM2IPC() {
   });
 
   // 停止日志流
-  ipcMain.handle('pm2:stop-log-stream', async (_, projectId) => {
+  ipcMain.handle('pm2:stop-log-stream', async (_, _projectId) => {
     // 在实际实现中，这里需要管理日志流的生命周期
     return { success: true };
   });
@@ -347,7 +355,7 @@ export function setupPM2IPC() {
 async function ensureConnected(): Promise<void> {
   if (!isConnected) {
     return new Promise((resolve, reject) => {
-      pm2.connect((err) => {
+      pm2.connect((err: any) => {
         if (err) {
           reject(new Error(`PM2 连接失败: ${err.message}`));
         } else {

@@ -45,6 +45,60 @@
 # NodeAppManager 完整开发环境启动脚本
 cd "$(dirname "$0")"
 
+# 🤖 自动启动日志监控系统
+start_log_monitoring() {
+    echo "🤖 启动自动化日志监控..."
+    
+    # 创建监控目录
+    mkdir -p ./logs-monitor
+    
+    # 启动后端日志监控
+    {
+        LOG_DIR="$HOME/Library/Application Support/Electron/logs"
+        while [ ! -d "$LOG_DIR" ]; do
+            sleep 1
+        done
+        tail -F "$LOG_DIR"/*.log 2>/dev/null | while read line; do
+            echo "[$(date '+%H:%M:%S')] 🔧 BACKEND: $line" >> ./logs-monitor/realtime.log
+        done
+    } &
+    
+    # 保存监控进程PID
+    echo $! > ./logs-monitor/monitor.pid
+    
+    # 创建前端日志注入脚本
+    cat > ./logs-monitor/frontend-inject.js << 'EOF'
+// 自动前端日志监控
+console.log('🤖 前端日志监控已激活');
+const originalLog = console.log;
+const originalError = console.error;
+const originalWarn = console.warn;
+console.log = (...args) => { originalLog('🔍 LOG:', ...args); };
+console.error = (...args) => { originalError('❌ ERROR:', ...args); };
+console.warn = (...args) => { originalWarn('⚠️ WARN:', ...args); };
+window.addEventListener('error', e => console.error('未捕获错误:', e.error));
+window.addEventListener('unhandledrejection', e => console.error('Promise拒绝:', e.reason));
+EOF
+    
+    echo "✅ 日志监控已启动 (PID: $(cat ./logs-monitor/monitor.pid))"
+    echo "💡 前端监控: 在开发者工具运行 fetch('./logs-monitor/frontend-inject.js').then(r=>r.text()).then(eval)"
+}
+
+# 清理函数
+cleanup_monitoring() {
+    if [ -f "./logs-monitor/monitor.pid" ]; then
+        kill $(cat "./logs-monitor/monitor.pid") 2>/dev/null || true
+        rm "./logs-monitor/monitor.pid" 2>/dev/null || true
+    fi
+    pkill -f "tail.*Electron.*logs" 2>/dev/null || true
+}
+
+# 设置清理陷阱
+trap cleanup_monitoring EXIT INT TERM
+
+# 启动监控
+start_log_monitoring
+
 echo "🚀 NodeAppManager 开发环境启动"
 echo "═══════════════════════════════════════"
 echo "📦 技术栈: Electron + React + Vite + TypeScript"
@@ -62,8 +116,8 @@ echo ""
 
 # 清理可能残留的进程
 echo "🧹 清理残留进程..."
-pkill -f "node.*vite" 2>/dev/null || true
-pkill -f "electron" 2>/dev/null || true
+pkill -f "vite.*9966" 2>/dev/null || true
+pkill -f "electron.*NodeAppManager" 2>/dev/null || true
 sleep 1
 
 # 清理端口占用

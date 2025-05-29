@@ -1,6 +1,6 @@
 # {{PROJECT_NAME}}
 
-Express API 服务器 - 快速构建 Web 应用或 API 服务器
+纯 API 服务器 - 专注于 API 开发，无前端界面
 
 ## 特性
 

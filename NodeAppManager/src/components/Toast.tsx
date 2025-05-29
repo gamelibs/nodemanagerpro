@@ -68,15 +68,15 @@ function Toast({ message, onClose }: ToastProps) {
       <div className="flex items-start space-x-3">
         <span className="text-lg">{getIcon()}</span>
         <div className="flex-1">
-          <h4 className="text-sm font-medium text-white">{message.title}</h4>
-          <p className="text-sm text-gray-100 mt-1">{message.message}</p>
+          <h4 className="text-sm font-medium text-white light-theme:text-gray-900">{message.title}</h4>
+          <p className="text-sm text-gray-100 light-theme:text-gray-700 mt-1">{message.message}</p>
         </div>
         <button
           onClick={() => {
             setIsVisible(false);
             setTimeout(() => onClose(message.id), 300);
           }}
-          className="text-white hover:text-gray-200 transition-colors"
+          className="text-white light-theme:text-gray-900 hover:text-gray-200 light-theme:hover:text-gray-600 transition-colors"
         >
           ✕
         </button>

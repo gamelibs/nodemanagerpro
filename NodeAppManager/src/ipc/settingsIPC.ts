@@ -79,3 +79,28 @@ export function setupSettingsIPC() {
   isSetup = true;
   console.log('🔗 设置IPC处理器已设置');
 }
+
+/**
+ * 从主进程直接加载设置（不通过IPC）
+ * 用于启动时读取设置
+ */
+export async function loadSettingsFromMain() {
+  try {
+    const userDataPath = app.getPath('userData');
+    const settingsPath = path.join(userDataPath, 'app-settings.json');
+    
+    if (fs.existsSync(settingsPath)) {
+      const data = fs.readFileSync(settingsPath, 'utf8');
+      const settings = JSON.parse(data);
+      return { success: true, data: settings };
+    } else {
+      return { success: true, data: null }; // 设置文件不存在，返回null，使用默认设置
+    }
+  } catch (error) {
+    console.error('从主进程加载设置失败:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : '加载设置失败' 
+    };
+  }
+}

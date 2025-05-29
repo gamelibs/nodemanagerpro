@@ -1,29 +1,12 @@
 [
   {
-    "id": "1748224136450",
-    "name": "presdk2",
-    "path": "presdk2",
+    "id": "1748415152141",
+    "name": "test",
+    "path": "/Users/vidar/ovo/test",
     "type": "node",
     "status": "stopped",
-    "lastOpened": "2025-05-26T02:57:23.129Z",
-    "packageManager": "npm",
-    "scripts": [
-      {
-        "name": "start",
-        "command": "npm start",
-        "description": "启动项目"
-      }
-    ],
-    "description": "导入的项目"
-  },
-  {
-    "id": "1748237651412",
-    "name": "testApi",
-    "path": "/Users/example/ovo/testApi",
-    "type": "express",
-    "status": "running",
     "port": 8000,
-    "lastOpened": "2025-05-26T05:34:56.507Z",
+    "lastOpened": "2025-05-28T06:52:32.141Z",
     "packageManager": "npm",
     "scripts": [
       {
@@ -47,8 +30,43 @@
         "description": "运行测试"
       }
     ],
-    "description": "基于 Express.js 的 JavaScript 后端 API 服务器",
+    "description": "纯 API 后端服务，适合构建 RESTful API",
     "version": "1.0.0",
-    "template": "express"
+    "template": "pure-api"
+  },
+  {
+    "id": "1748415225184",
+    "name": "test1",
+    "path": "/Users/vidar/ovo/test1",
+    "type": "node",
+    "status": "stopped",
+    "port": 8001,
+    "lastOpened": "2025-05-28T06:53:45.184Z",
+    "packageManager": "npm",
+    "scripts": [
+      {
+        "name": "dev",
+        "command": "npm run dev",
+        "description": "启动开发服务器"
+      },
+      {
+        "name": "build",
+        "command": "npm run build",
+        "description": "构建项目"
+      },
+      {
+        "name": "start",
+        "command": "npm start",
+        "description": "启动项目"
+      },
+      {
+        "name": "test",
+        "command": "npm test",
+        "description": "运行测试"
+      }
+    ],
+    "description": "静态网站应用，适合构建纯前端页面",
+    "version": "1.0.0",
+    "template": "static-app"
   }
 ]

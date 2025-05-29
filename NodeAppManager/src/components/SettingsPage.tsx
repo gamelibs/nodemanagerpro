@@ -1,4 +1,6 @@
 import { useApp } from '../store/AppContext';
+import HotReloadTest from './HotReloadTest';
+import StorageDebugInfo from './StorageDebugInfo';
 
 export default function SettingsPage() {
   const { settings, i18n } = useApp();
@@ -22,45 +24,43 @@ export default function SettingsPage() {
 
         <div className="space-y-8">
           {/* 应用设置 */}
-          <div className="bg-gradient-to-br from-[#1E293B] to-[#1A2332] light-theme:from-white light-theme:to-gray-50 p-6 rounded-xl border border-slate-700 theme-border shadow-lg">
+          <div className="theme-bg-secondary p-6 rounded-xl border theme-border shadow-lg">
             <h2 className="text-xl font-semibold theme-text-primary mb-6 flex items-center space-x-2">
               <span className="text-lg">🎨</span>
               <span>{t('settings.app.title')}</span>
-            </h2>
-            
-            {/* 主题设置 */}
-            <div className="space-y-6">
-              <div className="flex items-center justify-between py-4 border-b border-slate-600 theme-border last:border-b-0">
-                <div className="flex-1">
-                  <label className="text-base font-medium theme-text-primary block mb-1">{t('settings.app.theme')}</label>
-                  <p className="text-sm theme-text-muted">{t('settings.app.themeDesc')}</p>
+            </h2>              {/* 主题设置 */}
+              <div className="space-y-6">
+                <div className="flex items-center justify-between py-4 border-b theme-border-b last:border-b-0">
+                  <div className="flex-1">
+                    <label className="text-base font-medium theme-text-primary block mb-1">{t('settings.app.theme')}</label>
+                    <p className="text-sm theme-text-muted">{t('settings.app.themeDesc')}</p>
+                  </div>
+                  <div className="flex bg-slate-700/50 light-theme:bg-gray-200 rounded-xl p-1 ml-6">
+                    <button
+                      onClick={() => updateSetting('theme', 'dark')}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all min-w-[80px] ${
+                        current.theme === 'dark'
+                          ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md'
+                          : 'text-gray-400 hover:text-gray-300 light-theme:text-gray-600 light-theme:hover:text-gray-800'
+                      }`}
+                    >
+                      🌙 {t('theme.dark')}
+                    </button>
+                    <button
+                      onClick={() => updateSetting('theme', 'light')}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all min-w-[80px] ${
+                        current.theme === 'light'
+                          ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md'
+                          : 'text-gray-400 hover:text-gray-300 light-theme:text-gray-600 light-theme:hover:text-gray-800'
+                      }`}
+                    >
+                      ☀️ {t('theme.light')}
+                    </button>
+                  </div>
                 </div>
-                <div className="flex bg-slate-700/50 light-theme:bg-gray-200 rounded-xl p-1 ml-6">
-                  <button
-                    onClick={() => updateSetting('theme', 'dark')}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all min-w-[80px] ${
-                      current.theme === 'dark'
-                        ? 'bg-indigo-600 text-white shadow-md'
-                        : 'text-gray-400 hover:text-gray-200 light-theme:text-gray-600 light-theme:hover:text-gray-800'
-                    }`}
-                  >
-                    🌙 {t('theme.dark')}
-                  </button>
-                  <button
-                    onClick={() => updateSetting('theme', 'light')}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all min-w-[80px] ${
-                      current.theme === 'light'
-                        ? 'bg-indigo-600 text-white shadow-md'
-                        : 'text-gray-400 hover:text-gray-200 light-theme:text-gray-600 light-theme:hover:text-gray-800'
-                    }`}
-                  >
-                    ☀️ {t('theme.light')}
-                  </button>
-                </div>
-              </div>
               
               {/* 语言设置 */}
-              <div className="flex items-center justify-between py-4 border-b border-slate-600 theme-border last:border-b-0">
+              <div className="flex items-center justify-between py-4 border-b theme-border-b last:border-b-0">
                 <div className="flex-1">
                   <label className="text-base font-medium theme-text-primary block mb-1">{t('settings.app.language')}</label>
                   <p className="text-sm theme-text-muted">{t('settings.app.languageDesc')}</p>
@@ -70,8 +70,8 @@ export default function SettingsPage() {
                     onClick={() => updateSetting('language', 'zh')}
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-all min-w-[80px] ${
                       current.language === 'zh'
-                        ? 'bg-indigo-600 text-white shadow-md'
-                        : 'text-gray-400 hover:text-gray-200 light-theme:text-gray-600 light-theme:hover:text-gray-800'
+                        ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md'
+                        : 'text-gray-400 hover:text-gray-300 light-theme:text-gray-600 light-theme:hover:text-gray-800'
                     }`}
                   >
                     🇨🇳 中文
@@ -80,8 +80,8 @@ export default function SettingsPage() {
                     onClick={() => updateSetting('language', 'en')}
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-all min-w-[80px] ${
                       current.language === 'en'
-                        ? 'bg-indigo-600 text-white shadow-md'
-                        : 'text-gray-400 hover:text-gray-200 light-theme:text-gray-600 light-theme:hover:text-gray-800'
+                        ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md'
+                        : 'text-gray-400 hover:text-gray-300 light-theme:text-gray-600 light-theme:hover:text-gray-800'
                     }`}
                   >
                     🇺🇸 English
@@ -90,7 +90,7 @@ export default function SettingsPage() {
               </div>
 
               {/* 自动启动 */}
-              <div className="flex items-center justify-between py-4 border-b border-slate-600 theme-border last:border-b-0">
+              <div className="flex items-center justify-between py-4 border-b theme-border-b last:border-b-0">
                 <div className="flex-1">
                   <label className="text-base font-medium theme-text-primary block mb-1">{t('settings.app.autoStart')}</label>
                   <p className="text-sm theme-text-muted">{t('settings.app.autoStartDesc')}</p>
@@ -98,7 +98,7 @@ export default function SettingsPage() {
                 <button
                   onClick={() => updateSetting('autoStart', !current.autoStart)}
                   className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ml-6 ${
-                    current.autoStart ? 'bg-indigo-600' : 'bg-gray-600 light-theme:bg-gray-300'
+                    current.autoStart ? 'bg-gradient-to-r from-indigo-600 to-purple-600' : 'bg-gray-600 light-theme:bg-gray-300'
                   }`}
                 >
                   <span
@@ -130,7 +130,7 @@ export default function SettingsPage() {
                     }
                   }}
                   className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ml-6 ${
-                    current.devTools ? 'bg-indigo-600' : 'bg-gray-600 light-theme:bg-gray-300'
+                    current.devTools ? 'bg-gradient-to-r from-indigo-600 to-purple-600' : 'bg-gray-600 light-theme:bg-gray-300'
                   }`}
                 >
                   <span
@@ -144,14 +144,14 @@ export default function SettingsPage() {
           </div>
 
           {/* 通知设置 */}
-          <div className="bg-gradient-to-br from-[#1E293B] to-[#1A2332] light-theme:from-white light-theme:to-gray-50 p-6 rounded-xl border border-slate-700 theme-border shadow-lg">
+          <div className="theme-bg-secondary p-6 rounded-xl border theme-border shadow-lg">
             <h2 className="text-xl font-semibold theme-text-primary mb-6 flex items-center space-x-2">
               <span className="text-lg">🔔</span>
               <span>{t('settings.notifications.title')}</span>
             </h2>
             
             <div className="space-y-6">
-              <div className="flex items-center justify-between py-4 border-b border-slate-600 theme-border last:border-b-0">
+              <div className="flex items-center justify-between py-4 border-b theme-border-b last:border-b-0">
                 <div className="flex-1">
                   <label className="text-base font-medium theme-text-primary block mb-1">{t('settings.notifications.projectStatus')}</label>
                   <p className="text-sm theme-text-muted">{t('settings.notifications.projectStatusDesc')}</p>
@@ -162,7 +162,7 @@ export default function SettingsPage() {
                     projectStatus: !current.notifications.projectStatus 
                   })}
                   className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ml-6 ${
-                    current.notifications.projectStatus ? 'bg-indigo-600' : 'bg-gray-600 light-theme:bg-gray-300'
+                    current.notifications.projectStatus ? 'bg-gradient-to-r from-indigo-600 to-purple-600' : 'bg-gray-600 light-theme:bg-gray-300'
                   }`}
                 >
                   <span
@@ -184,7 +184,7 @@ export default function SettingsPage() {
                     errors: !current.notifications.errors 
                   })}
                   className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ml-6 ${
-                    current.notifications.errors ? 'bg-indigo-600' : 'bg-gray-600 light-theme:bg-gray-300'
+                    current.notifications.errors ? 'bg-gradient-to-r from-indigo-600 to-purple-600' : 'bg-gray-600 light-theme:bg-gray-300'
                   }`}
                 >
                   <span
@@ -198,7 +198,7 @@ export default function SettingsPage() {
           </div>
 
           {/* 应用信息 */}
-          <div className="bg-gradient-to-br from-[#1E293B] to-[#1A2332] light-theme:from-white light-theme:to-gray-50 p-6 rounded-xl border border-slate-700 theme-border shadow-lg">
+          <div className="theme-bg-secondary p-6 rounded-xl border theme-border shadow-lg">
             <h2 className="text-xl font-semibold theme-text-primary mb-6 flex items-center space-x-2">
               <span className="text-lg">ℹ️</span>
               <span>{t('settings.about.title')}</span>
@@ -211,7 +211,7 @@ export default function SettingsPage() {
           </div>
 
           {/* 技术栈 */}
-          <div className="bg-gradient-to-br from-[#1E293B] to-[#1A2332] light-theme:from-white light-theme:to-gray-50 p-6 rounded-xl border border-slate-700 theme-border shadow-lg">
+          <div className="theme-bg-secondary p-6 rounded-xl border theme-border shadow-lg">
             <h2 className="text-xl font-semibold theme-text-primary mb-6 flex items-center space-x-2">
               <span className="text-lg">🛠️</span>
               <span>{t('settings.about.techStack')}</span>
@@ -224,6 +224,39 @@ export default function SettingsPage() {
               ))}
             </div>
           </div>
+
+          {/* 开发者调试工具 - 仅在开发模式下显示 */}
+          {window.electronAPI?.isDev && (
+            <div className="theme-bg-secondary p-6 rounded-xl border theme-border shadow-lg">
+              <h2 className="text-xl font-semibold theme-text-primary mb-6 flex items-center space-x-2">
+                <span className="text-lg">🛠️</span>
+                <span>{t('settings.debugTools.title')}</span>
+              </h2>
+              <p className="text-sm theme-text-muted mb-6">{t('settings.debugTools.description')}</p>
+              
+              <div className="space-y-6">
+                {/* 热重载测试 */}
+                <div className="border theme-border rounded-lg p-4">
+                  <h3 className="text-lg font-medium theme-text-primary mb-2 flex items-center space-x-2">
+                    <span>🔥</span>
+                    <span>{t('settings.debugTools.hotReload')}</span>
+                  </h3>
+                  <p className="text-sm theme-text-muted mb-4">{t('settings.debugTools.hotReloadDesc')}</p>
+                  <HotReloadTest />
+                </div>
+
+                {/* 存储调试信息 */}
+                <div className="border theme-border rounded-lg p-4">
+                  <h3 className="text-lg font-medium theme-text-primary mb-2 flex items-center space-x-2">
+                    <span>📊</span>
+                    <span>{t('settings.debugTools.storageInfo')}</span>
+                  </h3>
+                  <p className="text-sm theme-text-muted mb-4">{t('settings.debugTools.storageInfoDesc')}</p>
+                  <StorageDebugInfo />
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* 重置设置 */}
           <div className="flex justify-center pt-6">

@@ -3,11 +3,13 @@ import { useApp } from '../store/AppContext';
 import { useToastContext } from '../store/ToastContext';
 import { ProjectService } from '../services/ProjectService';
 import { usePM2ProjectRunner } from '../services/PM2ProjectRunner';
+import { useLogs } from './useLogs';
 import type { Project, ProjectCreationConfig } from '../types';
 
 export function useProjects() {
   const { state, dispatch } = useApp();
   const { showToast } = useToastContext();
+  const { startLogSession, endLogSession, addLog } = useLogs();
   const { startProject: runnerStartProject, stopProject: runnerStopProject } = usePM2ProjectRunner();
 
   // 加载所有项目
@@ -135,25 +137,120 @@ export function useProjects() {
     dispatch({ type: 'SET_LOADING', payload: true });
     dispatch({ type: 'SET_ERROR', payload: null });
 
+    // 为项目创建生成临时ID
+    const tempProjectId = `creating-${Date.now()}`;
+    const projectDisplayName = `创建项目: ${projectConfig.name}`;
+
+    console.log('🔄 开始创建项目，临时ID:', tempProjectId);
+
+    // 启动日志会话
+    startLogSession(tempProjectId, projectDisplayName);
+    
+    // 添加开始日志
+    addLog({
+      projectId: tempProjectId,
+      level: 'info',
+      message: `🏗️ 开始创建项目: ${projectConfig.name}`,
+      source: 'system'
+    });
+
+    addLog({
+      projectId: tempProjectId,
+      level: 'info',
+      message: `📍 项目路径: ${projectConfig.path}`,
+      source: 'system'
+    });
+
+    addLog({
+      projectId: tempProjectId,
+      level: 'info',
+      message: `🎨 使用模板: ${projectConfig.template}`,
+      source: 'system'
+    });
+
     try {
-      const result = await ProjectService.createProject(projectConfig);
+      const result = await ProjectService.createProject(projectConfig, {
+        onProgress: (message: string, level: 'info' | 'warn' | 'error' | 'success' = 'info') => {
+          console.log('📝 添加创建日志:', message);
+          addLog({
+            projectId: tempProjectId,
+            level,
+            message,
+            source: 'system'
+          });
+        }
+      });
       
       if (result.success && result.data) {
+        // 添加成功日志
+        addLog({
+          projectId: tempProjectId,
+          level: 'success',
+          message: `✅ 项目创建成功: ${result.data.name}`,
+          source: 'system'
+        });
+
+        addLog({
+          projectId: tempProjectId,
+          level: 'info',
+          message: `🎉 项目已添加到项目列表，可以开始开发了！`,
+          source: 'system'
+        });
+
         dispatch({ type: 'ADD_PROJECT', payload: result.data });
         showToast('项目创建成功', `已成功创建项目: ${result.data.name}`, 'success');
+
+        // 添加最终提示，但不自动关闭日志会话
+        addLog({
+          projectId: tempProjectId,
+          level: 'info',
+          message: `💡 提示: 日志会话将保持开启，您可以随时查看创建过程。点击其他项目或刷新页面来切换视图。`,
+          source: 'system'
+        });
+
+        // 不自动关闭日志会话，让用户可以继续查看创建日志
+        // 用户可以通过选择其他项目或手动操作来切换视图
       } else {
         const errorMsg = result.error || '创建项目失败';
+        
+        addLog({
+          projectId: tempProjectId,
+          level: 'error',
+          message: `❌ 创建失败: ${errorMsg}`,
+          source: 'system'
+        });
+
         dispatch({ type: 'SET_ERROR', payload: errorMsg });
         showToast('创建失败', errorMsg, 'error');
+        
+        // 出错时延迟关闭日志会话，让用户看到错误信息
+        setTimeout(() => {
+          console.log('🔚 出错后结束创建日志会话:', tempProjectId);
+          endLogSession(tempProjectId);
+        }, 5000);
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : '创建项目时发生未知错误';
+      
+      addLog({
+        projectId: tempProjectId,
+        level: 'error',
+        message: `💥 异常错误: ${errorMessage}`,
+        source: 'system'
+      });
+
       dispatch({ type: 'SET_ERROR', payload: errorMessage });
       showToast('创建失败', errorMessage, 'error');
+      
+      // 异常错误时延迟关闭日志会话，让用户看到错误信息
+      setTimeout(() => {
+        console.log('🔚 异常后结束创建日志会话:', tempProjectId);
+        endLogSession(tempProjectId);
+      }, 5000);
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
-  }, [dispatch, showToast]);
+  }, [dispatch, showToast, startLogSession, endLogSession, addLog]);
 
   // 为现有项目自动分配端口
   const assignPortsToExisting = useCallback(async () => {

@@ -4,15 +4,11 @@ import SettingsPage from './components/SettingsPage';
 import { AppProvider, useApp } from './store/AppContext';
 import { ToastProvider } from './store/ToastContext';
 import { useProjects } from './hooks/useProjects';
-import { useTestData } from './hooks/useTestData';
 import { useEffect } from 'react';
 import './App.css';
 
 function AppContent() {
-  // 添加开发模式标识
-  const isDev = import.meta.env.DEV;
   const { projects, isLoading, error, loadProjects } = useProjects();
-  const { initializeTestData } = useTestData();
   const { navigation } = useApp();
   const { activeTab } = navigation;
 
@@ -20,6 +16,21 @@ function AppContent() {
   useEffect(() => {
     loadProjects();
   }, [loadProjects]);
+
+  // 监听日志切换事件
+  useEffect(() => {
+    const handleSwitchToLogs = (event: any) => {
+      console.log('收到 switchToLogs 事件:', event.detail);
+      // 由于日志区域已经在 Sidebar 中显示，这里可能不需要额外操作
+      // 或者你可以在这里添加一些特定的逻辑，比如高亮显示等
+    };
+
+    window.addEventListener('switchToLogs', handleSwitchToLogs);
+    
+    return () => {
+      window.removeEventListener('switchToLogs', handleSwitchToLogs);
+    };
+  }, []);
 
   return (
     <div className="flex h-screen bg-[#0F172A] light-theme:bg-gray-50 theme-bg-primary">
@@ -31,11 +42,9 @@ function AppContent() {
         ) : (
           // 项目页面 - 独立页面
           <ProjectsPage 
-            isDev={isDev}
             projects={projects}
             isLoading={isLoading}
             error={error}
-            initializeTestData={initializeTestData}
           />
         )}
       </main>
