@@ -16,6 +16,10 @@ interface ElectronAPI {
   getAppVersion: () => Promise<string>;
   platform: string;
   isDev: boolean; // 开发模式标识
+  
+  // 端口服务方法
+  checkPort: (port: number) => Promise<{ available: boolean; error?: string }>;
+  updateProjectPort: (projectId: string, port: number) => Promise<{ success: boolean; error?: string }>;
 }
 
 declare global {

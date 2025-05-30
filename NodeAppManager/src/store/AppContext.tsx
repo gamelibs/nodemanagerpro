@@ -41,6 +41,17 @@ function appReducer(state: AppState, action: AppAction): AppState {
         activeProject: state.activeProject?.id === action.payload.id ? action.payload : state.activeProject
       };
     
+    case 'UPDATE_PROJECT_PARTIAL':
+      return { 
+        ...state, 
+        projects: state.projects.map(p => 
+          p.id === action.payload.id ? { ...p, ...action.payload.updates } : p
+        ),
+        activeProject: state.activeProject?.id === action.payload.id 
+          ? { ...state.activeProject, ...action.payload.updates } 
+          : state.activeProject
+      };
+    
     case 'SET_LOADING':
       return { ...state, isLoading: action.payload };
     

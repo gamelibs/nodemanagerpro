@@ -33,10 +33,8 @@ export default function Sidebar() {
       <div className="p-4 space-y-2">
         <button
           onClick={() => setActiveTab('settings')}
-          className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all font-medium theme-text-primary ${
-            activeTab === 'settings'
-              ? 'bg-gradient-to-r from-indigo-600 to-purple-600 shadow-lg text-white'
-              : 'bg-gradient-to-r from-indigo-800 to-purple-800 light-theme:from-indigo-200 light-theme:to-purple-200 opacity-75 hover:opacity-90 hover:shadow-md light-theme:text-gray-700'
+          className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all font-medium nav-button ${
+            activeTab === 'settings' ? 'active' : ''
           }`}
         >
           <span className="text-lg">⚙️</span>
@@ -44,10 +42,8 @@ export default function Sidebar() {
         </button>
         <button
           onClick={() => setActiveTab('projects')}
-          className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all font-medium theme-text-primary ${
-            activeTab === 'projects'
-              ? 'bg-gradient-to-r from-emerald-600 to-teal-600 shadow-lg text-white'
-              : 'bg-gradient-to-r from-emerald-800 to-teal-800 light-theme:from-emerald-200 light-theme:to-teal-200 opacity-75 hover:opacity-90 hover:shadow-md light-theme:text-gray-700'
+          className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all font-medium nav-button ${
+            activeTab === 'projects' ? 'active' : ''
           }`}
         >
           <span className="text-lg">📁</span>

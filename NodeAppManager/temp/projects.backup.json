@@ -68,5 +68,40 @@
     "description": "静态网站应用，适合构建纯前端页面",
     "version": "1.0.0",
     "template": "static-app"
+  },
+  {
+    "id": "1748484224390",
+    "name": "test0",
+    "path": "/Users/vidar/ovo/test0",
+    "type": "node",
+    "status": "stopped",
+    "port": 8002,
+    "lastOpened": "2025-05-29T02:03:44.390Z",
+    "packageManager": "npm",
+    "scripts": [
+      {
+        "name": "start",
+        "command": "npm start",
+        "description": "启动生产服务器"
+      },
+      {
+        "name": "dev",
+        "command": "npm run dev",
+        "description": "启动开发服务器"
+      },
+      {
+        "name": "build",
+        "command": "npm run build",
+        "description": "构建项目"
+      },
+      {
+        "name": "test",
+        "command": "npm test",
+        "description": "运行测试"
+      }
+    ],
+    "description": "纯 API 后端服务，适合构建 RESTful API",
+    "version": "1.0.0",
+    "template": "pure-api"
   }
 ]

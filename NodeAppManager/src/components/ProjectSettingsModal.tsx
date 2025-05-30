@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { Project } from '../types';
 import { RendererFileSystemService } from '../services/RendererFileSystemService';
+import { useProjects } from '../hooks/useProjects';
 
 interface ProjectSettingsModalProps {
   project: Project;
@@ -37,6 +38,11 @@ const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
   const [selectedPackages, setSelectedPackages] = useState<string[]>([]);
   const [installing, setInstalling] = useState(false);
   const [pm2Data, setPM2Data] = useState<PM2ProcessData | null>(null);
+  const [startingProject, setStartingProject] = useState(false);
+  const [stoppingProject, setStoppingProject] = useState(false);
+  
+  // Import project management functions
+  const { startProject, stopProject, synchronizeProjectStatuses } = useProjects();
 
   // Load package info when dependencies tab is opened
   useEffect(() => {
@@ -201,6 +207,32 @@ const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
       if (window.electronAPI) {
         await window.electronAPI.invoke('logger:log', 'ERROR', `创建出错: ${error}`);
       }
+    }
+  };
+
+  const handleStartProject = async () => {
+    setStartingProject(true);
+    try {
+      await startProject(project);
+      await loadPM2Data(); // 重新加载数据
+      await synchronizeProjectStatuses(); // 同步状态
+    } catch (error) {
+      console.error('Failed to start project:', error);
+    } finally {
+      setStartingProject(false);
+    }
+  };
+
+  const handleStopProject = async () => {
+    setStoppingProject(true);
+    try {
+      await stopProject(project.id);
+      await loadPM2Data(); // 重新加载数据
+      await synchronizeProjectStatuses(); // 同步状态
+    } catch (error) {
+      console.error('Failed to stop project:', error);
+    } finally {
+      setStoppingProject(false);
     }
   };
 
@@ -406,8 +438,46 @@ const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
           {activeTab === 'performance' && (
             <div className="space-y-6">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-medium text-gray-900">进程监控</h3>
+                <h3 className="text-lg font-medium text-gray-900">项目控制</h3>
                 <div className="flex space-x-2">
+                  {/* Project Control Buttons */}
+                  {project.status === 'running' ? (
+                    <button
+                      onClick={handleStopProject}
+                      disabled={stoppingProject}
+                      className="text-sm bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
+                    >
+                      {stoppingProject ? (
+                        <>
+                          <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
+                          <span>停止中...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>⏹️</span>
+                          <span>停止项目</span>
+                        </>
+                      )}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleStartProject}
+                      disabled={startingProject}
+                      className="text-sm bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
+                    >
+                      {startingProject ? (
+                        <>
+                          <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
+                          <span>启动中...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>▶️</span>
+                          <span>启动项目</span>
+                        </>
+                      )}
+                    </button>
+                  )}
                   <button
                     onClick={loadPM2Data}
                     className="text-sm bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700"
@@ -416,14 +486,21 @@ const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
                   </button>
                   <button
                     onClick={handleRestartProject}
-                    className="text-sm bg-green-600 text-white px-3 py-1 rounded-md hover:bg-green-700"
+                    className="text-sm bg-orange-600 text-white px-3 py-1 rounded-md hover:bg-orange-700"
                   >
                     重启项目
                   </button>
                 </div>
               </div>
 
-              {pm2Data ? (
+              {/* Process Monitoring Section */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h4 className="font-medium text-gray-900 mb-3 flex items-center">
+                  <span className="mr-2">📊</span>
+                  进程监控
+                </h4>
+
+                {pm2Data ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <h4 className="font-medium text-gray-900 mb-2">基本信息</h4>
@@ -488,6 +565,7 @@ const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
                   </div>
                 </div>
               )}
+              </div>
             </div>
           )}
         </div>

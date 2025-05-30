@@ -3,30 +3,40 @@ import HotReloadTest from './HotReloadTest';
 import StorageDebugInfo from './StorageDebugInfo';
 
 export default function SettingsPage() {
-  const { settings, i18n } = useApp();
+  const { settings, i18n, navigation } = useApp();
   const { current, updateSetting, resetSettings } = settings;
   const { t } = i18n;
+  const { setActiveTab } = navigation;
 
   return (
     <div className="p-8 h-full overflow-auto">
       {/* 页面容器 */}
       <div className="max-w-4xl mx-auto">
         {/* 页面标题 */}
-        <div className="flex items-center space-x-4 mb-8">
-          <div className="p-3 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl">
-            <span className="text-white text-2xl">⚙️</span>
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center space-x-3">
+            <span className="text-2xl">⚙️</span>
+            <div>
+              <h1 className="text-2xl font-bold theme-text-primary">{t('settings.title')}</h1>
+              <p className="text-sm theme-text-muted mt-1">{t('settings.description')}</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-3xl font-bold theme-text-primary">{t('settings.title')}</h1>
-            <p className="text-sm theme-text-muted mt-1">{t('settings.description')}</p>
-          </div>
+          
+          {/* 返回按钮 */}
+          <button
+            onClick={() => setActiveTab('projects')}
+            className="px-4 py-2 theme-bg-secondary hover:theme-bg-tertiary border theme-border rounded-lg text-sm flex items-center space-x-2 transition-colors"
+          >
+            <span>←</span>
+            <span>{current.language === 'zh' ? '返回' : 'Back'}</span>
+          </button>
         </div>
 
         <div className="space-y-8">
           {/* 应用设置 */}
           <div className="theme-bg-secondary p-6 rounded-xl border theme-border shadow-lg">
-            <h2 className="text-xl font-semibold theme-text-primary mb-6 flex items-center space-x-2">
-              <span className="text-lg">🎨</span>
+            <h2 className="text-xl font-semibold theme-text-primary mb-6 flex items-center space-x-3">
+              <span>🎨</span>
               <span>{t('settings.app.title')}</span>
             </h2>              {/* 主题设置 */}
               <div className="space-y-6">
@@ -65,26 +75,27 @@ export default function SettingsPage() {
                   <label className="text-base font-medium theme-text-primary block mb-1">{t('settings.app.language')}</label>
                   <p className="text-sm theme-text-muted">{t('settings.app.languageDesc')}</p>
                 </div>
-                <div className="flex bg-slate-700/50 light-theme:bg-gray-200 rounded-xl p-1 ml-6">
+                <div className="flex items-center space-x-1">
                   <button
                     onClick={() => updateSetting('language', 'zh')}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all min-w-[80px] ${
+                    className={`px-3 py-1 rounded text-sm transition-all ${
                       current.language === 'zh'
-                        ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md'
-                        : 'text-gray-400 hover:text-gray-300 light-theme:text-gray-600 light-theme:hover:text-gray-800'
+                        ? 'theme-text-primary font-medium'
+                        : 'theme-text-muted hover:theme-text-primary'
                     }`}
                   >
-                    🇨🇳 中文
+                    中文
                   </button>
+                  <span className="text-sm theme-text-muted">|</span>
                   <button
                     onClick={() => updateSetting('language', 'en')}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all min-w-[80px] ${
+                    className={`px-3 py-1 rounded text-sm transition-all ${
                       current.language === 'en'
-                        ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md'
-                        : 'text-gray-400 hover:text-gray-300 light-theme:text-gray-600 light-theme:hover:text-gray-800'
+                        ? 'theme-text-primary font-medium'
+                        : 'theme-text-muted hover:theme-text-primary'
                     }`}
                   >
-                    🇺🇸 English
+                    English
                   </button>
                 </div>
               </div>
@@ -162,7 +173,7 @@ export default function SettingsPage() {
                     projectStatus: !current.notifications.projectStatus 
                   })}
                   className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ml-6 ${
-                    current.notifications.projectStatus ? 'bg-gradient-to-r from-indigo-600 to-purple-600' : 'bg-gray-600 light-theme:bg-gray-300'
+                    current.notifications.projectStatus ? 'btn-primary' : 'bg-gray-600 light-theme:bg-gray-300'
                   }`}
                 >
                   <span
@@ -184,7 +195,7 @@ export default function SettingsPage() {
                     errors: !current.notifications.errors 
                   })}
                   className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ml-6 ${
-                    current.notifications.errors ? 'bg-gradient-to-r from-indigo-600 to-purple-600' : 'bg-gray-600 light-theme:bg-gray-300'
+                    current.notifications.errors ? 'btn-primary' : 'bg-gray-600 light-theme:bg-gray-300'
                   }`}
                 >
                   <span
@@ -197,39 +208,251 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {/* 应用信息 */}
+          {/* 项目管理设置 */}
           <div className="theme-bg-secondary p-6 rounded-xl border theme-border shadow-lg">
             <h2 className="text-xl font-semibold theme-text-primary mb-6 flex items-center space-x-2">
-              <span className="text-lg">ℹ️</span>
-              <span>{t('settings.about.title')}</span>
+              <span className="text-lg">📁</span>
+              <span>{t('settings.projects.title')}</span>
             </h2>
-            <div className="space-y-3 text-base theme-text-secondary">
-              <p>• {t('settings.about.description')}</p>
-              <p>• {t('settings.about.features1')}</p>
-              <p>• {t('settings.about.features2')}</p>
+            
+            <div className="space-y-6">
+              <div className="flex items-center justify-between py-4 border-b theme-border-b">
+                <div className="flex-1">
+                  <label className="text-base font-medium theme-text-primary block mb-1">{t('settings.projects.autoInstallDeps')}</label>
+                  <p className="text-sm theme-text-muted">{t('settings.projects.autoInstallDepsDesc')}</p>
+                </div>
+                <button
+                  onClick={() => updateSetting('projects', { 
+                    ...current.projects, 
+                    autoInstallDeps: !current.projects.autoInstallDeps 
+                  })}
+                  className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ml-6 ${
+                    current.projects.autoInstallDeps ? 'btn-primary' : 'bg-gray-600 light-theme:bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                      current.projects.autoInstallDeps ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between py-4 border-b theme-border-b">
+                <div className="flex-1">
+                  <label className="text-base font-medium theme-text-primary block mb-1">{t('settings.projects.autoOpenBrowser')}</label>
+                  <p className="text-sm theme-text-muted">{t('settings.projects.autoOpenBrowserDesc')}</p>
+                </div>
+                <button
+                  onClick={() => updateSetting('projects', { 
+                    ...current.projects, 
+                    autoOpenBrowser: !current.projects.autoOpenBrowser 
+                  })}
+                  className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ml-6 ${
+                    current.projects.autoOpenBrowser ? 'btn-primary' : 'bg-gray-600 light-theme:bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                      current.projects.autoOpenBrowser ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between py-4 border-b theme-border-b">
+                <div className="flex-1">
+                  <label className="text-base font-medium theme-text-primary block mb-1">{t('settings.projects.maxConcurrentProjects')}</label>
+                  <p className="text-sm theme-text-muted">{t('settings.projects.maxConcurrentProjectsDesc')}</p>
+                </div>
+                <div className="flex items-center space-x-2 ml-6">
+                  <input
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={current.projects.maxConcurrentProjects}
+                    onChange={(e) => updateSetting('projects', { 
+                      ...current.projects, 
+                      maxConcurrentProjects: parseInt(e.target.value) || 1 
+                    })}
+                    className="w-20 px-3 py-1 theme-bg-primary theme-text-primary border theme-border rounded-lg text-center"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between py-4">
+                <div className="flex-1">
+                  <label className="text-base font-medium theme-text-primary block mb-1">{t('settings.projects.gitIntegration')}</label>
+                  <p className="text-sm theme-text-muted">{t('settings.projects.gitIntegrationDesc')}</p>
+                </div>
+                <button
+                  onClick={() => updateSetting('projects', { 
+                    ...current.projects, 
+                    gitIntegration: !current.projects.gitIntegration 
+                  })}
+                  className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ml-6 ${
+                    current.projects.gitIntegration ? 'btn-primary' : 'bg-gray-600 light-theme:bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                      current.projects.gitIntegration ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* 技术栈 */}
+          {/* 性能监控设置 */}
           <div className="theme-bg-secondary p-6 rounded-xl border theme-border shadow-lg">
             <h2 className="text-xl font-semibold theme-text-primary mb-6 flex items-center space-x-2">
-              <span className="text-lg">🛠️</span>
-              <span>{t('settings.about.techStack')}</span>
+              <span className="text-lg">📊</span>
+              <span>{t('settings.monitoring.title')}</span>
             </h2>
-            <div className="flex flex-wrap gap-3">
-              {['Electron', 'React', 'TypeScript', 'Vite', 'PM2', 'Tailwind CSS'].map(tech => (
-                <span key={tech} className="px-4 py-2 bg-indigo-600/20 text-indigo-300 light-theme:bg-indigo-100 light-theme:text-indigo-700 rounded-lg text-sm font-medium border border-indigo-500/30 light-theme:border-indigo-200">
-                  {tech}
-                </span>
-              ))}
+            
+            <div className="space-y-6">
+              <div className="flex items-center justify-between py-4 border-b theme-border-b">
+                <div className="flex-1">
+                  <label className="text-base font-medium theme-text-primary block mb-1">{t('settings.monitoring.enablePerformanceMonitoring')}</label>
+                  <p className="text-sm theme-text-muted">{t('settings.monitoring.enablePerformanceMonitoringDesc')}</p>
+                </div>
+                <button
+                  onClick={() => updateSetting('projects', { 
+                    ...current.projects, 
+                    monitoring: {
+                      ...current.projects.monitoring,
+                      enablePerformanceMonitoring: !current.projects.monitoring.enablePerformanceMonitoring
+                    }
+                  })}
+                  className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ml-6 ${
+                    current.projects.monitoring.enablePerformanceMonitoring ? 'btn-primary' : 'bg-gray-600 light-theme:bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                      current.projects.monitoring.enablePerformanceMonitoring ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between py-4 border-b theme-border-b">
+                <div className="flex-1">
+                  <label className="text-base font-medium theme-text-primary block mb-1">{t('settings.monitoring.alertOnHighCPU')}</label>
+                  <p className="text-sm theme-text-muted">{t('settings.monitoring.alertOnHighCPUDesc')}</p>
+                </div>
+                <div className="flex items-center space-x-2 ml-6">
+                  <input
+                    type="number"
+                    min="50"
+                    max="100"
+                    value={current.projects.monitoring.cpuThreshold}
+                    onChange={(e) => updateSetting('projects', { 
+                      ...current.projects, 
+                      monitoring: {
+                        ...current.projects.monitoring,
+                        cpuThreshold: parseInt(e.target.value) || 80
+                      }
+                    })}
+                    className="w-20 px-3 py-1 theme-bg-primary theme-text-primary border theme-border rounded-lg text-center"
+                  />
+                  <span className="text-sm theme-text-secondary">%</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between py-4">
+                <div className="flex-1">
+                  <label className="text-base font-medium theme-text-primary block mb-1">{t('settings.monitoring.autoCleanupLogs')}</label>
+                  <p className="text-sm theme-text-muted">{t('settings.monitoring.autoCleanupLogsDesc')}</p>
+                </div>
+                <button
+                  onClick={() => updateSetting('projects', { 
+                    ...current.projects, 
+                    monitoring: {
+                      ...current.projects.monitoring,
+                      autoCleanupLogs: !current.projects.monitoring.autoCleanupLogs
+                    }
+                  })}
+                  className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ml-6 ${
+                    current.projects.monitoring.autoCleanupLogs ? 'btn-primary' : 'bg-gray-600 light-theme:bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                      current.projects.monitoring.autoCleanupLogs ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* 编辑器集成设置 */}
+          <div className="theme-bg-secondary p-6 rounded-xl border theme-border shadow-lg">
+            <h2 className="text-xl font-semibold theme-text-primary mb-6 flex items-center space-x-2">
+              <span className="text-lg">💻</span>
+              <span>{t('settings.editor.title')}</span>
+            </h2>
+            
+            <div className="space-y-6">
+              <div className="flex items-center justify-between py-4 border-b theme-border-b">
+                <div className="flex-1">
+                  <label className="text-base font-medium theme-text-primary block mb-1">{t('settings.editor.defaultEditor')}</label>
+                  <p className="text-sm theme-text-muted">{t('settings.editor.defaultEditorDesc')}</p>
+                </div>
+                <select
+                  value={current.projects.editor.defaultEditor}
+                  onChange={(e) => updateSetting('projects', { 
+                    ...current.projects, 
+                    editor: {
+                      ...current.projects.editor,
+                      defaultEditor: e.target.value as any
+                    }
+                  })}
+                  className="px-3 py-2 theme-bg-primary theme-text-primary border theme-border rounded-lg ml-6"
+                >
+                  <option value="vscode">VS Code</option>
+                  <option value="webstorm">WebStorm</option>
+                  <option value="atom">Atom</option>
+                  <option value="sublime">Sublime Text</option>
+                  <option value="vim">Vim</option>
+                  <option value="custom">自定义</option>
+                </select>
+              </div>
+
+              <div className="flex items-center justify-between py-4">
+                <div className="flex-1">
+                  <label className="text-base font-medium theme-text-primary block mb-1">{t('settings.editor.openProjectOnCreate')}</label>
+                  <p className="text-sm theme-text-muted">{t('settings.editor.openProjectOnCreateDesc')}</p>
+                </div>
+                <button
+                  onClick={() => updateSetting('projects', { 
+                    ...current.projects, 
+                    editor: {
+                      ...current.projects.editor,
+                      openProjectOnCreate: !current.projects.editor.openProjectOnCreate
+                    }
+                  })}
+                  className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ml-6 ${
+                    current.projects.editor.openProjectOnCreate ? 'btn-primary' : 'bg-gray-600 light-theme:bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                      current.projects.editor.openProjectOnCreate ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
             </div>
           </div>
 
           {/* 开发者调试工具 - 仅在开发模式下显示 */}
           {window.electronAPI?.isDev && (
             <div className="theme-bg-secondary p-6 rounded-xl border theme-border shadow-lg">
-              <h2 className="text-xl font-semibold theme-text-primary mb-6 flex items-center space-x-2">
-                <span className="text-lg">🛠️</span>
+              <h2 className="text-xl font-semibold theme-text-primary mb-6 flex items-center space-x-3">
+                <span>🛠️</span>
                 <span>{t('settings.debugTools.title')}</span>
               </h2>
               <p className="text-sm theme-text-muted mb-6">{t('settings.debugTools.description')}</p>

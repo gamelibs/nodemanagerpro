@@ -5,11 +5,10 @@ export interface PM2Process {
   pid: number;
   name: string;
   pm_id: number;
-  status: 'online' | 'stopped' | 'error' | 'stopping' | 'launching';
-  cpu: number;
-  memory: number;
-  uptime: number;
-  restarts: number;
+  status?: 'online' | 'stopped' | 'error' | 'stopping' | 'launching';
+  cpu?: number;
+  memory?: number;
+  uptime?: number;
   pm2_env: {
     status: string;
     pm_cwd: string;
@@ -17,6 +16,11 @@ export interface PM2Process {
     pm_exec_path: string;
     [key: string]: any;
   };
+  monit?: {
+    memory: number;
+    cpu: number;
+  };
+  [key: string]: any; // 允许其他未知字段
 }
 
 // PM2 日志信息接口
@@ -32,6 +36,13 @@ export interface PM2LogData {
  */
 export class PM2Service {
   private static isInitialized = false;
+
+  /**
+   * 生成 PM2 进程名称
+   */
+  private static generateProcessName(project: { name: string; id: string }): string {
+    return `${project.name}-${project.id}`;
+  }
 
   /**
    * 初始化 PM2 服务
@@ -215,7 +226,7 @@ export class PM2Service {
   /**
    * 获取项目状态
    */
-  static async getProjectStatus(projectId: string): Promise<{
+  static async getProjectStatus(project: Project): Promise<{
     success: boolean;
     status?: PM2Process;
     error?: string;
@@ -225,7 +236,9 @@ export class PM2Service {
         return { success: false, error: '不在 Electron 环境中' };
       }
 
-      const result = await window.electronAPI.invoke('pm2:describe', projectId);
+      // 使用正确的进程名称
+      const processName = this.generateProcessName(project);
+      const result = await window.electronAPI.invoke('pm2:describe', processName);
       
       if (result.success && result.status) {
         return {
@@ -247,6 +260,45 @@ export class PM2Service {
   }
 
   /**
+   * 获取项目性能数据 (CPU和内存使用率)
+   */
+  static async getProjectPerformance(project: Project): Promise<{
+    success: boolean;
+    performance?: {
+      cpu: number;
+      memory: number;
+      uptime: number;
+    };
+    error?: string;
+  }> {
+    try {
+      const statusResult = await this.getProjectStatus(project);
+      
+      if (statusResult.success && statusResult.status) {
+        const status = statusResult.status;
+        return {
+          success: true,
+          performance: {
+            cpu: Math.round((status.cpu || 0) * 10) / 10, // 保留一位小数
+            memory: Math.round((status.memory || 0) / 1024 / 1024 * 10) / 10, // 转换为MB并保留一位小数
+            uptime: status.uptime || 0
+          }
+        };
+      } else {
+        return {
+          success: false,
+          error: statusResult.error || '获取性能数据失败'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : '获取性能数据时发生错误'
+      };
+    }
+  }
+
+  /**
    * 获取所有 PM2 管理的进程
    */
   static async listAllProcesses(): Promise<{
@@ -255,24 +307,32 @@ export class PM2Service {
     error?: string;
   }> {
     try {
+      console.log('🔍 PM2Service.listAllProcesses: 开始获取进程列表');
+      
       if (!window.electronAPI) {
+        console.error('❌ PM2Service.listAllProcesses: 不在 Electron 环境中');
         return { success: false, error: '不在 Electron 环境中' };
       }
 
+      console.log('🔗 PM2Service.listAllProcesses: 调用 pm2:list IPC');
       const result = await window.electronAPI.invoke('pm2:list');
+      console.log('📋 PM2Service.listAllProcesses: IPC 返回结果:', result);
       
       if (result.success) {
+        console.log('✅ PM2Service.listAllProcesses: 成功获取', result.processes?.length || 0, '个进程');
         return {
           success: true,
           processes: result.processes || []
         };
       } else {
+        console.error('❌ PM2Service.listAllProcesses: 失败:', result.error);
         return {
           success: false,
           error: result.error || '获取进程列表失败'
         };
       }
     } catch (error) {
+      console.error('💥 PM2Service.listAllProcesses: 异常:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : '获取进程列表时发生错误'
@@ -357,7 +417,7 @@ export class PM2Service {
     const startScript = project.scripts.find(s => s.name === 'start') || project.scripts[0];
     
     return {
-      name: project.id,
+      name: `${project.name}-${project.id}`, // 使用名称+ID的组合，便于识别
       script: startScript?.command || 'npm start',
       cwd: project.path,
       env: {

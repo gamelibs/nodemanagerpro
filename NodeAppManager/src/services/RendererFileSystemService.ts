@@ -124,6 +124,26 @@ export class RendererFileSystemService {
   }
 
   /**
+   * 更新项目信息
+   */
+  static async updateProject(projectId: string, updates: Partial<Project>): Promise<FileSystemResult> {
+    if (!this.isElectron()) {
+      console.warn('⚠️ 不在Electron环境中，跳过更新');
+      return { success: false, error: '不在Electron环境中' };
+    }
+
+    try {
+      const result = await window.electronAPI!.invoke('fs:updateProject', projectId, updates);
+      return result;
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : '更新项目失败'
+      };
+    }
+  }
+
+  /**
    * 更新项目状态
    */
   static async updateProjectStatus(projectId: string, status: Project['status']): Promise<FileSystemResult> {

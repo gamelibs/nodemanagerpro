@@ -164,6 +164,25 @@ export class FileSystemService {
   }
 
   /**
+   * 更新项目信息
+   */
+  static async updateProject(projectId: string, updates: Partial<Project>): Promise<void> {
+    const projects = await this.loadProjects();
+    const projectIndex = projects.findIndex(p => p.id === projectId);
+    
+    if (projectIndex === -1) {
+      throw new Error(`项目 ID ${projectId} 不存在`);
+    }
+    
+    // 合并更新
+    projects[projectIndex] = { ...projects[projectIndex], ...updates };
+    projects[projectIndex].lastOpened = new Date();
+    
+    await this.saveProjects(projects);
+    console.log(`📝 更新项目信息: ${projectId}`, updates);
+  }
+
+  /**
    * 更新项目状态
    */
   static async updateProjectStatus(projectId: string, status: Project['status']): Promise<void> {

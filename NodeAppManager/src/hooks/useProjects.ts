@@ -266,6 +266,96 @@ export function useProjects() {
     }
   }, [loadProjects, showToast]);
 
+  // 同步项目状态与PM2
+  const synchronizeProjectStatuses = useCallback(async () => {
+    try {
+      console.log('🔄 正在同步项目状态...');
+      
+      // 遍历所有项目，检查其实际状态
+      const updates: { id: string; status: 'running' | 'stopped' | 'error'; name: string }[] = [];
+      
+      for (const project of state.projects) {
+        try {
+          const result = await window.electronAPI?.invoke('pm2:describe', project.id);
+          
+          if (result?.success && result.status) {
+            // PM2 进程存在且运行
+            const pm2Status = result.status.status;
+            let projectStatus: 'running' | 'stopped' | 'error' = 'stopped';
+            
+            if (pm2Status === 'online') {
+              projectStatus = 'running';
+            } else if (pm2Status === 'error') {
+              projectStatus = 'error';
+            }
+            
+            // 如果状态不一致，记录需要更新
+            if (project.status !== projectStatus) {
+              updates.push({ id: project.id, status: projectStatus, name: project.name });
+              console.log(`📝 项目 ${project.name} 状态同步: ${project.status} -> ${projectStatus}`);
+            }
+          } else {
+            // PM2 进程不存在，应该标记为stopped
+            if (project.status !== 'stopped') {
+              updates.push({ id: project.id, status: 'stopped', name: project.name });
+              console.log(`📝 项目 ${project.name} 未在PM2中运行，状态同步: ${project.status} -> stopped`);
+            }
+          }
+        } catch (error) {
+          console.warn(`检查项目 ${project.name} 状态失败:`, error);
+        }
+      }
+      
+      // 批量更新状态
+      for (const update of updates) {
+        dispatch({
+          type: 'UPDATE_PROJECT_STATUS',
+          payload: { id: update.id, status: update.status }
+        });
+      }
+      
+      if (updates.length > 0) {
+        const statusChangeText = updates.map(u => `${u.name}: ${u.status}`).join(', ');
+        showToast(
+          '状态同步完成', 
+          `更新了 ${updates.length} 个项目状态: ${statusChangeText}`, 
+          'success'
+        );
+        console.log(`✅ 同步完成，更新了 ${updates.length} 个项目的状态`);
+      } else {
+        console.log('✅ 所有项目状态已同步');
+      }
+    } catch (error) {
+      console.error('❌ 同步项目状态失败:', error);
+      showToast('同步失败', '无法同步项目状态，请稍后重试', 'error');
+    }
+  }, [state.projects, dispatch, showToast]);
+
+  // 更新项目信息
+  const updateProject = useCallback(async (projectId: string, updates: Partial<Project>) => {
+    try {
+      const result = await ProjectService.updateProject(projectId, updates);
+      
+      if (result.success) {
+        // 更新本地状态
+        dispatch({
+          type: 'UPDATE_PROJECT_PARTIAL',
+          payload: { id: projectId, updates }
+        });
+        
+        showToast('更新成功', '项目信息已更新', 'success');
+        return { success: true };
+      } else {
+        showToast('更新失败', result.error || '更新项目失败', 'error');
+        return { success: false, error: result.error };
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '更新项目时发生未知错误';
+      showToast('更新失败', errorMessage, 'error');
+      return { success: false, error: errorMessage };
+    }
+  }, [dispatch, showToast]);
+
   return {
     projects: state.projects,
     isLoading: state.isLoading,
@@ -276,7 +366,9 @@ export function useProjects() {
     startProject,
     stopProject,
     createProject,
+    updateProject,
     assignPortsToExisting,
+    synchronizeProjectStatuses,
   };
 }
 

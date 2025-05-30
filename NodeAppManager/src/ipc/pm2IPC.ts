@@ -141,18 +141,45 @@ export function setupPM2IPC() {
     try {
       await ensureConnected();
       
+      // 首先检查进程是否存在
       return new Promise((resolve) => {
-        pm2.stop(projectId, (err: any) => {
-          if (err) {
-            console.error('❌ PM2 停止失败:', err);
+        pm2.list((listErr: any, processes: any[]) => {
+          if (listErr) {
+            console.error('❌ 获取进程列表失败:', listErr.message);
             resolve({ 
               success: false, 
-              error: err.message 
+              error: `获取进程列表失败: ${listErr.message}` 
             });
-          } else {
-            console.log(`✅ PM2 停止成功: ${projectId}`);
-            resolve({ success: true });
+            return;
           }
+          
+          // 查找对应的进程
+          const targetProcess = processes.find(proc => 
+            proc.name === projectId || proc.pm_id === projectId
+          );
+          
+          if (!targetProcess) {
+            console.log(`⚠️ 进程 ${projectId} 不存在，可能已经停止`);
+            resolve({ 
+              success: true  // 进程不存在视为已停止，返回成功
+            });
+            return;
+          }
+          
+          console.log(`⏹️ 找到进程 ${projectId}，状态: ${targetProcess.pm2_env?.status}，开始停止...`);
+          
+          pm2.stop(projectId, (err: any) => {
+            if (err) {
+              console.error('❌ PM2 停止失败:', err);
+              resolve({ 
+                success: false, 
+                error: `停止失败: ${err.message}` 
+              });
+            } else {
+              console.log(`✅ PM2 停止成功: ${projectId}`);
+              resolve({ success: true });
+            }
+          });
         });
       });
     } catch (error) {
@@ -168,30 +195,55 @@ export function setupPM2IPC() {
     try {
       await ensureConnected();
       
+      // 首先检查进程是否存在
       return new Promise((resolve) => {
-        // 首先尝试删除现有进程（如果存在）
-        pm2.delete(projectId, (deleteErr: any) => {
-          // 忽略删除错误（进程可能不存在）
-          if (deleteErr) {
-            console.log(`⚠️ 删除进程 ${projectId} 时出错（可能不存在）:`, deleteErr.message);
-          } else {
-            console.log(`🗑️ 成功删除进程 ${projectId}`);
+        pm2.list((listErr: any, processes: any[]) => {
+          if (listErr) {
+            console.error('❌ 获取进程列表失败:', listErr.message);
+            resolve({ 
+              success: false, 
+              error: `获取进程列表失败: ${listErr.message}` 
+            });
+            return;
           }
           
-          // 无论删除是否成功，都标识需要重新启动
-          console.log(`🔄 进程 ${projectId} 需要重新启动`);
-          resolve({ 
-            success: false, 
-            error: `进程需要重新启动`,
-            needsStart: true // 标识需要重新启动而不是重启
+          // 查找对应的进程
+          const targetProcess = processes.find(proc => 
+            proc.name === projectId || proc.pm_id === projectId
+          );
+          
+          if (!targetProcess) {
+            console.error(`❌ 未找到进程 ${projectId}，当前进程:`, processes.map(p => p.name));
+            resolve({ 
+              success: false, 
+              error: `进程 ${projectId} 不存在，请先启动项目` 
+            });
+            return;
+          }
+          
+          console.log(`🔄 找到进程 ${projectId}，状态: ${targetProcess.pm2_env?.status}，开始重启...`);
+          
+          // 使用 PM2 的 restart 命令
+          pm2.restart(projectId, (restartErr: any) => {
+            if (restartErr) {
+              console.error(`❌ 重启进程 ${projectId} 失败:`, restartErr.message);
+              resolve({ 
+                success: false, 
+                error: `重启失败: ${restartErr.message}` 
+              });
+            } else {
+              console.log(`✅ 成功重启进程 ${projectId}`);
+              resolve({ 
+                success: true 
+              });
+            }
           });
         });
       });
     } catch (error) {
       return { 
         success: false, 
-        error: error instanceof Error ? error.message : '重启失败',
-        needsStart: true
+        error: error instanceof Error ? error.message : '重启失败'
       };
     }
   });

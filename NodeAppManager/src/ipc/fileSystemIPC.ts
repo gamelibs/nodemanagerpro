@@ -19,6 +19,7 @@ export function setupFileSystemIPC() {
     ipcMain.removeHandler('fs:saveProjects');
     ipcMain.removeHandler('fs:addProject');
     ipcMain.removeHandler('fs:removeProject');
+    ipcMain.removeHandler('fs:updateProject');
     ipcMain.removeHandler('fs:updateProjectStatus');
     ipcMain.removeHandler('fs:getDataInfo');
     ipcMain.removeHandler('fs:validateDirectory');
@@ -83,6 +84,19 @@ export function setupFileSystemIPC() {
       return { 
         success: false, 
         error: error instanceof Error ? error.message : '移除项目失败' 
+      };
+    }
+  });
+
+  // 更新项目信息
+  ipcMain.handle('fs:updateProject', async (_, projectId: string, updates: Partial<Project>) => {
+    try {
+      await FileSystemService.updateProject(projectId, updates);
+      return { success: true, data: { projectId, updates } };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : '更新项目失败' 
       };
     }
   });

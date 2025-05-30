@@ -9,6 +9,7 @@ const { setupFileSystemIPC } = require('./src/ipc/fileSystemIPC.cjs');
 const { setupPM2IPC } = require('./src/ipc/pm2IPC.cjs');
 const { setupSettingsIPC } = require('./src/ipc/settingsIPC.cjs');
 const { setupLoggerIPC } = require('./src/ipc/loggerIPC.cjs');
+const { setupPortIPC } = require('./src/ipc/portIPC.cjs');
 
 // 导入日志服务
 const { LoggerService } = require('./src/services/LoggerService.cjs');
@@ -146,6 +147,10 @@ app.whenReady().then(() => {
   // 设置PM2 IPC处理器
   setupPM2IPC();
   LoggerService.info('PM2 IPC 处理器已设置');
+  
+  // 设置端口检测IPC处理器
+  setupPortIPC();
+  LoggerService.info('端口检测 IPC 处理器已设置');
   
   // 设置设置IPC处理器
   setupSettingsIPC();

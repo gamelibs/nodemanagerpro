@@ -103,5 +103,23 @@
     "description": "纯 API 后端服务，适合构建 RESTful API",
     "version": "1.0.0",
     "template": "pure-api"
+  },
+  {
+    "id": "1748584950749",
+    "name": "presdk2",
+    "path": "presdk2",
+    "type": "node",
+    "status": "stopped",
+    "port": 5000,
+    "lastOpened": "2025-05-30T06:02:30.749Z",
+    "packageManager": "npm",
+    "scripts": [
+      {
+        "name": "start",
+        "command": "npm start",
+        "description": "启动项目"
+      }
+    ],
+    "description": "导入的项目"
   }
 ]

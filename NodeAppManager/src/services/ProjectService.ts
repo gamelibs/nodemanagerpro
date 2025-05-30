@@ -183,6 +183,33 @@ export class ProjectService {
     }
   }
 
+  // 更新项目信息
+  static async updateProject(projectId: string, updates: Partial<Project>): Promise<FileSystemResult> {
+    try {
+      await this.initialize();
+      
+      // 使用文件系统服务更新项目
+      const result = await RendererFileSystemService.updateProject(projectId, updates);
+      
+      if (result.success) {
+        return {
+          success: true,
+          data: result.data
+        };
+      } else {
+        return {
+          success: false,
+          error: result.error || '更新项目失败'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : '更新项目失败'
+      };
+    }
+  }
+
   // 更新项目状态
   static async updateProjectStatus(projectId: string, status: Project['status']): Promise<FileSystemResult> {
     try {
