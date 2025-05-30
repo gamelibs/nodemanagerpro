@@ -107,13 +107,106 @@
     --tw-ring-color: rgba(100, 108, 255, var(--tw-ring-opacity));
   }
 
+  /* 主要按钮样式 */
   .btn-primary {
-    background-color: #646cff;
-    color: #FFFFFF;
+    background: #6366F1;
+    color: white;
+    border: 1px solid #6366F1;
   }
 
   .btn-primary:hover {
-    background-color: #747bff;
+    background: #5855F7;
+    border-color: #5855F7;
+  }
+
+  .light-theme .btn-primary {
+    background: #6366F1;
+    color: white;
+    border: 1px solid #6366F1;
+  }
+
+  .light-theme .btn-primary:hover {
+    background: #5855F7;
+    border-color: #5855F7;
+  }
+
+  /* 成功按钮样式 */
+  .btn-success {
+    background: #10B981;
+    color: white;
+    border: 1px solid #10B981;
+  }
+
+  .btn-success:hover {
+    background: #059669;
+    border-color: #059669;
+  }
+
+  .light-theme .btn-success {
+    background: #10B981;
+    color: white;
+    border: 1px solid #10B981;
+  }
+
+  .light-theme .btn-success:hover {
+    background: #059669;
+    border-color: #059669;
+  }
+
+  /* 信息按钮样式 */
+  .btn-info {
+    background: #3B82F6;
+    color: white;
+    border: 1px solid #3B82F6;
+  }
+
+  .btn-info:hover {
+    background: #2563EB;
+    border-color: #2563EB;
+  }
+
+  .light-theme .btn-info {
+    background: #3B82F6;
+    color: white;
+    border: 1px solid #3B82F6;
+  }
+
+  .light-theme .btn-info:hover {
+    background: #2563EB;
+    border-color: #2563EB;
+  }
+
+  /* 导航按钮样式 */
+  .nav-button {
+    background: #6366F1;
+    color: white;
+    border: 1px solid #6366F1;
+  }
+
+  .nav-button:hover {
+    background: #5855F7;
+    border-color: #5855F7;
+  }
+
+  .nav-button.active {
+    background: #4F46E5;
+    border-color: #4F46E5;
+  }
+
+  .light-theme .nav-button {
+    background: #6366F1;
+    color: white;
+    border: 1px solid #6366F1;
+  }
+
+  .light-theme .nav-button:hover {
+    background: #5855F7;
+    border-color: #5855F7;
+  }
+
+  .light-theme .nav-button.active {
+    background: #4F46E5;
+    border-color: #4F46E5;
   }
 
   .btn-secondary {
@@ -202,6 +295,73 @@
 
   .sidebar-item:hover {
     background-color: rgba(255, 255, 255, 0.05);
+  }
+
+  /* 按钮样式 */
+  .btn-settings {
+    background: #6366F1;
+    color: white;
+    border: 1px solid #6366F1;
+  }
+
+  .btn-settings:hover {
+    background: #5855F7;
+    border-color: #5855F7;
+  }
+
+  .light-theme .btn-settings {
+    background: #6366F1;
+    color: white;
+    border: 1px solid #6366F1;
+  }
+
+  .light-theme .btn-settings:hover {
+    background: #5855F7;
+    border-color: #5855F7;
+  }
+
+  .btn-remove {
+    background: #EF4444;
+    color: white;
+    border: 1px solid #EF4444;
+  }
+
+  .btn-remove:hover {
+    background: #DC2626;
+    border-color: #DC2626;
+  }
+
+  .light-theme .btn-remove {
+    background: #EF4444;
+    color: white;
+    border: 1px solid #EF4444;
+  }
+
+  .light-theme .btn-remove:hover {
+    background: #DC2626;
+    border-color: #DC2626;
+  }
+
+  /* 版本标签样式 */
+  .version-badge {
+    background: #F3F4F6;
+    color: #6B7280;
+    border: 1px solid #E5E7EB;
+  }
+
+  .light-theme .version-badge {
+    background: #F3F4F6;
+    color: #6B7280;
+    border: 1px solid #E5E7EB;
+  }
+
+  /* 状态指示器美化 */
+  .status-indicator {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .light-theme .status-indicator {
+    border: 1px solid rgba(0, 0, 0, 0.1);
   }
 }
 
@@ -299,6 +459,59 @@ h1 {
 
 .light-theme .theme-bg-accent {
   background-color: rgba(59, 130, 246, 0.05);
+}
+
+.theme-text-accent {
+  color: var(--accent-color);
+}
+
+/* 状态相关的主题颜色 */
+.theme-text-success {
+  color: #10B981;
+}
+
+.light-theme .theme-text-success {
+  color: #059669;
+}
+
+.theme-text-error {
+  color: #EF4444;
+}
+
+.light-theme .theme-text-error {
+  color: #DC2626;
+}
+
+.theme-text-warning {
+  color: #F59E0B;
+}
+
+.light-theme .theme-text-warning {
+  color: #D97706;
+}
+
+.theme-bg-success {
+  background-color: rgba(16, 185, 129, 0.1);
+}
+
+.light-theme .theme-bg-success {
+  background-color: rgba(5, 150, 105, 0.1);
+}
+
+.theme-bg-error {
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+.light-theme .theme-bg-error {
+  background-color: rgba(220, 38, 38, 0.1);
+}
+
+.theme-bg-warning {
+  background-color: rgba(245, 158, 11, 0.1);
+}
+
+.light-theme .theme-bg-warning {
+  background-color: rgba(217, 119, 6, 0.1);
 }
 
 /* 平滑过渡 */

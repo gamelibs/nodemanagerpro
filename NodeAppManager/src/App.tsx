@@ -1,4 +1,3 @@
-import Sidebar from './components/Sidebar';
 import ProjectsPage from './components/ProjectsPage';
 import SettingsPage from './components/SettingsPage';
 import { AppProvider, useApp } from './store/AppContext';
@@ -33,21 +32,18 @@ function AppContent() {
   }, []);
 
   return (
-    <div className="flex h-screen bg-[#0F172A] light-theme:bg-gray-50 theme-bg-primary">
-      <Sidebar />
-      <main className="flex-1 overflow-auto">
-        {activeTab === 'settings' ? (
-          // 设置页面 - 独立页面
-          <SettingsPage />
-        ) : (
-          // 项目页面 - 独立页面
-          <ProjectsPage 
-            projects={projects}
-            isLoading={isLoading}
-            error={error}
-          />
-        )}
-      </main>
+    <div className="h-screen w-screen bg-[#0F172A] light-theme:bg-gray-50 theme-bg-primary overflow-hidden">
+      {activeTab === 'settings' ? (
+        // 设置页面 - 独立页面
+        <SettingsPage />
+      ) : (
+        // 新的项目管理布局
+        <ProjectsPage 
+          projects={projects}
+          isLoading={isLoading}
+          error={error}
+        />
+      )}
     </div>
   );
 }
