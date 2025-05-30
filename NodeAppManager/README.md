@@ -1,8 +1,30 @@
 # Node App Manager 🚀
 
+![Node.js](https://img.shields.io/badge/Node.js-43853D?style=for-the-badge&logo=node.js&logoColor=white)
+![Electron](https://img.shields.io/badge/Electron-191970?style=for-the-badge&logo=Electron&logoColor=white)
+![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
+![MIT License](https://img.shields.io/badge/License-MIT-yellow.svg)
+![Version](https://img.shields.io/badge/version-2.1.0-blue.svg)
+
 > 企业级 Node.js 项目管理桌面应用，基于 Electron + React + PM2 构建
 
 一款专为开发者设计的桌面应用，用于统一管理和监控多个 Node.js 项目。通过集成 PM2 进程管理器，提供项目启动/停止、实时日志查看、性能监控等企业级功能。
+
+## 📚 目录导航
+
+- [✨ 核心特性](#-核心特性)
+- [🚀 快速开始](#-快速开始)
+  - [环境要求](#环境要求)
+  - [安装依赖](#安装依赖)
+  - [启动应用](#启动应用)
+- [📖 详细文档](#-详细文档)
+- [💻 主要功能](#-主要功能)
+- [🛠️ 技术栈](#️-技术栈)
+- [🔧 开发](#-开发)
+- [🤝 贡献](#-贡献)
+- [📄 许可证](#-许可证)
+- [🔗 快速链接](#-快速链接)
 
 ## ✨ 核心特性
 
@@ -50,6 +72,8 @@ Ctrl + C
 ```
 
 ## 📖 详细文档
+
+📚 **[完整文档索引 - DOCS_INDEX.md](./DOCS_INDEX.md)** - 所有文档快速导航
 
 ### 核心文档
 - **[PROJECT_GUIDE.md](./PROJECT_GUIDE.md)** - 项目完整使用指南
@@ -129,46 +153,22 @@ MIT License
 
 **让 Node.js 项目管理变得简单高效！** 🎯
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## 📚 相关文档
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+- [更新日志](./CHANGELOG.md) - 版本更新记录
+- [功能完成报告](./FEATURE_COMPLETION_REPORT.md) - 开发进度总结
+- [架构说明](./ARCHITECTURE_EXPLANATION.md) - 技术架构详解
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## 🔗 快速链接
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+| 文档类型 | 文件名 | 描述 |
+|---------|-------|------|
+| 🏠 主要 | [README.md](./README.md) | 项目主页和快速开始 |
+| 📖 指南 | [PROJECT_GUIDE.md](./PROJECT_GUIDE.md) | 完整使用指南 |
+| 🌍 国际化 | [I18N_FEATURE_UPDATE.md](./I18N_FEATURE_UPDATE.md) | 多语言功能说明 |
+| 📊 日志 | [LOGGING_SYSTEM_GUIDE.md](./LOGGING_SYSTEM_GUIDE.md) | 日志系统设计 |
+| ⚙️ 服务 | [PM2_INTEGRATION_REPORT.md](./PM2_INTEGRATION_REPORT.md) | PM2集成报告 |
 
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
-```
+---
+
+**开源协议**: [MIT License](./LICENSE) | **版本**: v2.1.0 | **最后更新**: 2025年5月30日
