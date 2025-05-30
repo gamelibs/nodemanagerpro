@@ -350,6 +350,7 @@ const zh = {
       error: '错误',
       starting: '启动中',
       stopping: '停止中',
+      notRunning: '未运行',
     },
     type: {
       node: 'Node.js',
@@ -412,6 +413,11 @@ const zh = {
     projectStopped: '项目停止成功',
     settingsSaved: '设置保存成功',
     error: '操作失败',
+    deleteProjectError: '删除项目时发生意外错误',
+    openFolderError: '打开文件夹失败',
+    openEditorError: '打开编辑器失败',
+    openBrowserError: '打开浏览器失败',
+    unknownError: '未知错误',
   },
 };
 
@@ -767,6 +773,7 @@ const en = {
       error: 'Error',
       starting: 'Starting',
       stopping: 'Stopping',
+      notRunning: 'Not Running',
     },
     type: {
       node: 'Node.js',
@@ -829,6 +836,11 @@ const en = {
     projectStopped: 'Project stopped successfully',
     settingsSaved: 'Settings saved successfully',
     error: 'Operation failed',
+    deleteProjectError: 'Unexpected error occurred while deleting project',
+    openFolderError: 'Failed to open folder',
+    openEditorError: 'Failed to open editor',
+    openBrowserError: 'Failed to open browser',
+    unknownError: 'Unknown error',
   },
 };
 

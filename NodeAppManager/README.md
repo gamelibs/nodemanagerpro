@@ -12,6 +12,7 @@
 - 🎨 **现代化UI** - 基于 Tailwind CSS 的深色主题界面
 - ⚡ **热更新** - 开发模式支持实时代码更新
 - 🔧 **智能端口** - 自动检测和分配项目端口
+- 🌍 **国际化支持** - 完整的中英文双语界面 🆕
 
 ## 🚀 快速开始
 
@@ -52,7 +53,8 @@ Ctrl + C
 
 ### 核心文档
 - **[PROJECT_GUIDE.md](./PROJECT_GUIDE.md)** - 项目完整使用指南
-- **[LOGGING_SYSTEM_GUIDE.md](./LOGGING_SYSTEM_GUIDE.md)** - 日志系统设计文档 🆕
+- **[I18N_FEATURE_UPDATE.md](./I18N_FEATURE_UPDATE.md)** - 国际化功能更新文档 🆕
+- **[LOGGING_SYSTEM_GUIDE.md](./LOGGING_SYSTEM_GUIDE.md)** - 日志系统设计文档
 - **[PM2_INTEGRATION_REPORT.md](./PM2_INTEGRATION_REPORT.md)** - PM2集成报告
 - **[TEMPLATE_REDESIGN_COMPLETION.md](./TEMPLATE_REDESIGN_COMPLETION.md)** - 模板系统文档
 
@@ -88,6 +90,7 @@ Ctrl + C
 ### 界面导航
 - **Projects**: 查看和管理所有项目
 - **Settings**: 应用设置和系统信息
+- **语言切换**: 支持中文/English实时切换 🆕
 
 ## 🛠️ 技术栈
 

@@ -144,7 +144,7 @@ export default function ProjectsPage({
     } catch (error) {
       console.error('删除项目失败:', error);
       // 只在出现意外错误时显示本地 Toast
-      showToast('删除项目时发生意外错误', 'error');
+      showToast(t('toast.deleteProjectError'), 'error');
     }
   };
 
@@ -266,7 +266,7 @@ export default function ProjectsPage({
       if (result?.success) {
         showToast('已在文件夹中打开项目', 'success');
       } else {
-        showToast(`打开文件夹失败: ${result?.error || '未知错误'}`, 'error');
+        showToast(`${t('toast.openFolderError')}: ${result?.error || t('toast.unknownError')}`, 'error');
       }
     } catch (error) {
       console.error('打开文件夹失败:', error);
@@ -286,7 +286,7 @@ export default function ProjectsPage({
       if (result?.success) {
         showToast('已在编辑器中打开项目', 'success');
       } else {
-        showToast(`打开编辑器失败: ${result?.error || '未知错误'}`, 'error');
+        showToast(`${t('toast.openEditorError')}: ${result?.error || t('toast.unknownError')}`, 'error');
       }
     } catch (error) {
       console.error('打开编辑器失败:', error);
@@ -344,7 +344,7 @@ export default function ProjectsPage({
       if (result?.success) {
         showToast(`已在浏览器中打开: ${url}`, 'success');
       } else {
-        showToast(`打开浏览器失败: ${result?.error || '未知错误'}`, 'error');
+        showToast(`${t('toast.openBrowserError')}: ${result?.error || t('toast.unknownError')}`, 'error');
       }
     } catch (error) {
       console.error('打开浏览器失败:', error);
@@ -443,15 +443,15 @@ export default function ProjectsPage({
                                 ? 'bg-gray-100 text-gray-800 dark:bg-gray-800/50 dark:text-gray-300'
                                 : 'bg-red-100 text-red-800 dark:bg-red-800/20 dark:text-red-300'
                             }`}>
-                              {(pm2Status.status === 'online' || pm2Status.pm2_env?.status === 'online') ? '🟢 运行中' : 
-                               (pm2Status.status === 'stopped' || pm2Status.pm2_env?.status === 'stopped') ? '⚪ 已停止' : 
-                               (pm2Status.status === 'error' || pm2Status.pm2_env?.status === 'error') ? '🔴 错误' :
-                               (pm2Status.status === 'launching' || pm2Status.pm2_env?.status === 'launching') ? '🟡 启动中' :
-                               (pm2Status.status === 'stopping' || pm2Status.pm2_env?.status === 'stopping') ? '🟠 停止中' : '🔴 未知状态'}
+                              {(pm2Status.status === 'online' || pm2Status.pm2_env?.status === 'online') ? `🟢 ${t('project.status.running')}` : 
+                               (pm2Status.status === 'stopped' || pm2Status.pm2_env?.status === 'stopped') ? `⚪ ${t('project.status.stopped')}` : 
+                               (pm2Status.status === 'error' || pm2Status.pm2_env?.status === 'error') ? `🔴 ${t('project.status.error')}` :
+                               (pm2Status.status === 'launching' || pm2Status.pm2_env?.status === 'launching') ? `🟡 ${t('project.status.starting')}` :
+                               (pm2Status.status === 'stopping' || pm2Status.pm2_env?.status === 'stopping') ? `🟠 ${t('project.status.stopping')}` : `🔴 ${t('project.status.error')}`}
                             </span>
                           ) : (
                             <span className="px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-800/50 dark:text-gray-300">
-                              ⚫ 未运行
+                              ⚫ {t('project.status.notRunning')}
                             </span>
                           )}
                         </div>
@@ -631,7 +631,7 @@ export default function ProjectsPage({
         <div className="w-1/3 border-r theme-border theme-bg-secondary flex flex-col">
           {/* 项目列表头部 */}
           <div className="p-4 border-b theme-border">
-            <h2 className="text-lg font-semibold theme-text-primary">OOOOOOOOOOOOOO</h2>
+            <h2 className="text-lg font-semibold theme-text-primary">{t('projects.title')}</h2>
           </div>
 
           {/* 项目列表内容 */}
@@ -642,13 +642,13 @@ export default function ProjectsPage({
               </div>
             ) : error ? (
               <div className="p-4 text-center text-red-500">
-                <p>错误: {error}</p>
+                <p>{t('status.error')}: {error}</p>
               </div>
             ) : projects.length === 0 ? (
               <div className="p-4 text-center">
                 <div className="text-4xl mb-4">📁</div>
-                <p className="theme-text-muted text-sm">暂无项目</p>
-                <p className="theme-text-muted text-xs mt-1">点击上方按钮创建或导入项目</p>
+                <p className="theme-text-muted text-sm">{t('projects.noProjects')}</p>
+                <p className="theme-text-muted text-xs mt-1">{t('projects.noProjectsDesc')}</p>
               </div>
             ) : (
               <div className="space-y-2">
