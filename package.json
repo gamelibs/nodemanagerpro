@@ -1,0 +1,44 @@
+{
+  "name": "nodehub-pro",
+  "productName": "NodeHub Pro",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "dist/electron-main.cjs",
+  "scripts": {
+    "dev": "vite --port 9966",
+    "build": "vite build && npm run electron:compile",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "electron:dev": "concurrently -k \"npm run dev\" \"npm run electron:wait-and-start\"",
+    "electron:wait-and-start": "sleep 4 && npm run electron:compile && cross-env NODE_ENV=development electron ./dist/electron-main.cjs",
+    "electron:compile": "tsc -p tsconfig.electron.json && find ./dist/src -name '*.js' -exec bash -c 'mv \"$1\" \"${1%.js}.cjs\"' _ {} \\; && mv ./dist/electron-main.js ./dist/electron-main.cjs && ./fix-cjs-paths.sh",
+    "electron:build": "npm run build && npm run electron:start",
+    "electron:start": "electron ./dist/electron-main.cjs"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "pm2": "^5.3.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.25.0",
+    "@types/node": "^22.15.21",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@vitejs/plugin-react": "^4.0.0",
+    "autoprefixer": "^10.4.14",
+    "concurrently": "^8.0.1",
+    "cross-env": "^7.0.3",
+    "electron": "^24.3.0",
+    "eslint": "^8.40.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.1",
+    "postcss": "^8.4.23",
+    "tailwindcss": "^3.3.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.0.4",
+    "vite": "^4.3.5",
+    "wait-on": "^8.0.3"
+  }
+}
