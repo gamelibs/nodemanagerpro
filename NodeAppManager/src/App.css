@@ -53,18 +53,7 @@
   background: #181C23;
 }
 
-.sidebar {
-  width: 224px;
-  min-width: 224px;
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 1.5rem 0.5rem;
-  display: flex;
-  flex-direction: column;
-}
 
-.sidebar-icon {
-  font-size: 1.2rem;
-}
 
 .btn-primary {
   background: transparent;
