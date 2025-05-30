@@ -17,9 +17,10 @@ export default function ProjectsPage({
   isLoading, 
   error
 }: ProjectsPageProps) {
-  const { createProject, importProject, synchronizeProjectStatuses } = useProjects();
-  const { navigation } = useApp();
+  const { createProject, importProject, removeProject, synchronizeProjectStatuses } = useProjects();
+  const { navigation, i18n } = useApp();
   const { setActiveTab } = navigation;
+  const { t } = i18n;
   
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -129,6 +130,22 @@ export default function ProjectsPage({
   const handleSelectProject = (project: Project) => {
     console.log('👆 选择项目:', project.name, project.id);
     setSelectedProject(project);
+  };
+
+  // 删除项目
+  const handleDeleteProject = async () => {
+    if (!selectedProject) return;
+    
+    try {
+      await removeProject(selectedProject.id);
+      // 删除成功后清空选中状态
+      setSelectedProject(null);
+      // Toast 消息由 useProjects hook 中的 removeProject 函数负责显示
+    } catch (error) {
+      console.error('删除项目失败:', error);
+      // 只在出现意外错误时显示本地 Toast
+      showToast('删除项目时发生意外错误', 'error');
+    }
   };
 
   // 启动项目
@@ -335,24 +352,6 @@ export default function ProjectsPage({
     }
   };
 
-  // 渲染项目状态
-  const renderProjectStatus = (project: Project) => {
-    const statusConfig = {
-      running: { color: 'text-green-400', bg: 'bg-green-400/20', text: '运行中' },
-      stopped: { color: 'text-gray-400', bg: 'bg-gray-400/20', text: '已停止' },
-      error: { color: 'text-red-400', bg: 'bg-red-400/20', text: '错误' }
-    };
-    
-    const config = statusConfig[project.status] || statusConfig.stopped;
-    
-    return (
-      <div className={`flex items-center space-x-1 px-2 py-1 rounded-full ${config.bg}`}>
-        <div className={`w-2 h-2 rounded-full ${config.color.replace('text-', 'bg-')}`}></div>
-        <span className={`text-xs ${config.color}`}>{config.text}</span>
-      </div>
-    );
-  };
-
   // 渲染项目详情内容
   const renderProjectDetails = () => {
     if (!selectedProject) {
@@ -360,19 +359,19 @@ export default function ProjectsPage({
         <div className="flex items-center justify-center h-full w-full">
           <div className="text-center">
             <div className="text-6xl mb-4">📁</div>
-            <h3 className="text-xl font-semibold theme-text-primary mb-2">请选择管理的项目</h3>
-            <p className="theme-text-muted">从左侧项目列表中选择一个项目来查看详细信息</p>
+            <h3 className="text-xl font-semibold theme-text-primary mb-2">{t('projects.selectProject')}</h3>
+            <p className="theme-text-muted">{t('projects.selectProjectDesc')}</p>
           </div>
         </div>
       );
     }
 
     const tabs = [
-      { id: 'overview', label: '项目概览', icon: '📊' },
-      { id: 'config', label: '项目配置', icon: '⚙️' },
-      { id: 'dependencies', label: '依赖管理', icon: '📦' },
-      { id: 'logs', label: '日志查看', icon: '📝' },
-      { id: 'performance', label: '性能监控', icon: '📈' }
+      { id: 'overview', label: t('projects.tabs.overview'), icon: '📊' },
+      { id: 'config', label: t('projects.tabs.settings'), icon: '⚙️' },
+      { id: 'dependencies', label: t('projects.tabs.dependencies'), icon: '📦' },
+      { id: 'logs', label: t('projects.tabs.logs'), icon: '📝' },
+      { id: 'performance', label: t('projects.tabs.performance'), icon: '📈' }
     ];
 
     return (
@@ -592,25 +591,34 @@ export default function ProjectsPage({
     <div className="h-full flex flex-col">
       {/* 顶部标题栏 */}
       <div className="theme-bg-secondary border-b theme-border px-6 py-4 flex items-center justify-between">
-        <h1 className="text-xl font-bold theme-text-primary">专业的 Node.js 管理器</h1>
+        <h1 className="text-xl font-bold theme-text-primary">{t('appTitle')}</h1>
         <div className="flex items-center gap-4">
-          <span className="theme-text-muted">总项目数：{projects.length}</span>
+          <span className="theme-text-muted">{t('projects.totalProjects')}：{projects.length}</span>
           <button
             onClick={handleImportProject}
             className="btn-success px-4 py-2 rounded-lg text-sm transition-colors"
           >
-            导入项目
+            {t('projects.importProject')}
           </button>
           <button
             onClick={handleCreateProject}
             className="btn-primary px-4 py-2 rounded-lg text-sm transition-colors"
           >
-            创建项目
+            {t('projects.createProject')}
           </button>
+          {selectedProject && (
+            <button
+              onClick={handleDeleteProject}
+              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm transition-colors"
+              title={t('projects.deleteProject')}
+            >
+              {t('projects.deleteProject')}
+            </button>
+          )}
           <button 
             onClick={() => setActiveTab('settings')}
             className="theme-text-muted hover:theme-text-primary text-xl bg-transparent"
-            title="设置"
+            title={t('common.settings')}
           >
             ⚙️
           </button>
@@ -623,7 +631,7 @@ export default function ProjectsPage({
         <div className="w-1/3 border-r theme-border theme-bg-secondary flex flex-col">
           {/* 项目列表头部 */}
           <div className="p-4 border-b theme-border">
-            <h2 className="text-lg font-semibold theme-text-primary">项目列表</h2>
+            <h2 className="text-lg font-semibold theme-text-primary">OOOOOOOOOOOOOO</h2>
           </div>
 
           {/* 项目列表内容 */}
@@ -674,8 +682,8 @@ export default function ProjectsPage({
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
               <div className="text-6xl mb-4">📁</div>
-              <h3 className="text-xl font-semibold theme-text-primary mb-2">请选择管理的项目</h3>
-              <p className="theme-text-muted">从左侧项目列表中选择一个项目来查看详细信息</p>
+              <h3 className="text-xl font-semibold theme-text-primary mb-2">{t('projects.selectProject')}</h3>
+              <p className="theme-text-muted">{t('projects.selectProjectDesc')}</p>
             </div>
           </div>
         ) : (

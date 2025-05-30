@@ -72,13 +72,21 @@ export function useProjects() {
     const project = state.projects.find(p => p.id === projectId);
     if (!project) return;
 
-    // 确认删除
-    const confirmed = await showConfirmDialog(
+    // 第一次确认删除
+    const firstConfirmed = await showConfirmDialog(
       '移除项目',
       `确定要移除项目 "${project.name}" 吗？这不会删除项目文件，只会从列表中移除。`
     );
     
-    if (!confirmed) return;
+    if (!firstConfirmed) return;
+
+    // 第二次确认删除
+    const secondConfirmed = await showConfirmDialog(
+      '最终确认',
+      `再次确认：真的要移除项目 "${project.name}" 吗？此操作不可撤销。`
+    );
+    
+    if (!secondConfirmed) return;
 
     dispatch({ type: 'SET_LOADING', payload: true });
 

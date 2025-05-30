@@ -157,6 +157,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
   const [activeTab, setActiveTab] = useState<'settings' | 'projects'>('projects');
   const [currentSettings, setCurrentSettings] = useState<AppSettings | null>(null);
+  const [currentLanguage, setCurrentLanguage] = useState<'zh' | 'en'>('zh');
 
   // 应用初始化
   useEffect(() => {
@@ -174,6 +175,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         
         // 初始化国际化
         I18nService.setLanguage(settings.language);
+        setCurrentLanguage(settings.language);
       } catch (error) {
         console.error('Failed to initialize settings:', error);
         // 使用默认设置
@@ -181,6 +183,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setCurrentSettings(defaultSettings);
         applyTheme(defaultSettings.theme);
         I18nService.setLanguage(defaultSettings.language);
+        setCurrentLanguage(defaultSettings.language);
       }
     };
     
@@ -211,7 +214,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         applyTheme(value as 'dark' | 'light');
       }
       if (key === 'language') {
-        I18nService.setLanguage(value as 'zh' | 'en');
+        const newLang = value as 'zh' | 'en';
+        I18nService.setLanguage(newLang);
+        setCurrentLanguage(newLang);
       }
     } catch (error) {
       console.error('Failed to update setting:', error);
@@ -226,6 +231,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setCurrentSettings(defaultSettings);
       applyTheme(defaultSettings.theme);
       I18nService.setLanguage(defaultSettings.language);
+      setCurrentLanguage(defaultSettings.language);
     } catch (error) {
       console.error('Failed to reset settings:', error);
     }
@@ -245,7 +251,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
     i18n: {
       t: (key: string) => I18nService.t(key as any),
-      language: currentSettings?.language || 'zh'
+      language: currentLanguage
     }
   };
 

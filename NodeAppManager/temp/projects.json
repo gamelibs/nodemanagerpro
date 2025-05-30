@@ -1,12 +1,12 @@
 [
   {
-    "id": "1748415152141",
-    "name": "test",
-    "path": "/Users/vidar/ovo/test",
+    "id": "1748588863781",
+    "name": "test-test",
+    "path": "/Users/vidar/ovo/test-test",
     "type": "node",
     "status": "stopped",
     "port": 8000,
-    "lastOpened": "2025-05-28T06:52:32.141Z",
+    "lastOpened": "2025-05-30T07:07:43.781Z",
     "packageManager": "npm",
     "scripts": [
       {
@@ -35,83 +35,31 @@
     "template": "pure-api"
   },
   {
-    "id": "1748415225184",
-    "name": "test1",
-    "path": "/Users/vidar/ovo/test1",
+    "id": "1748588888409",
+    "name": "test",
+    "path": "test",
     "type": "node",
     "status": "stopped",
-    "port": 8001,
-    "lastOpened": "2025-05-28T06:53:45.184Z",
+    "port": 5000,
+    "lastOpened": "2025-05-30T07:08:08.409Z",
     "packageManager": "npm",
     "scripts": [
-      {
-        "name": "dev",
-        "command": "npm run dev",
-        "description": "启动开发服务器"
-      },
-      {
-        "name": "build",
-        "command": "npm run build",
-        "description": "构建项目"
-      },
       {
         "name": "start",
         "command": "npm start",
         "description": "启动项目"
-      },
-      {
-        "name": "test",
-        "command": "npm test",
-        "description": "运行测试"
       }
     ],
-    "description": "静态网站应用，适合构建纯前端页面",
-    "version": "1.0.0",
-    "template": "static-app"
+    "description": "导入的项目"
   },
   {
-    "id": "1748484224390",
+    "id": "1748588919727",
     "name": "test0",
-    "path": "/Users/vidar/ovo/test0",
-    "type": "node",
-    "status": "stopped",
-    "port": 8002,
-    "lastOpened": "2025-05-29T02:03:44.390Z",
-    "packageManager": "npm",
-    "scripts": [
-      {
-        "name": "start",
-        "command": "npm start",
-        "description": "启动生产服务器"
-      },
-      {
-        "name": "dev",
-        "command": "npm run dev",
-        "description": "启动开发服务器"
-      },
-      {
-        "name": "build",
-        "command": "npm run build",
-        "description": "构建项目"
-      },
-      {
-        "name": "test",
-        "command": "npm test",
-        "description": "运行测试"
-      }
-    ],
-    "description": "纯 API 后端服务，适合构建 RESTful API",
-    "version": "1.0.0",
-    "template": "pure-api"
-  },
-  {
-    "id": "1748584950749",
-    "name": "presdk2",
-    "path": "presdk2",
+    "path": "test0",
     "type": "node",
     "status": "stopped",
     "port": 5000,
-    "lastOpened": "2025-05-30T06:02:30.749Z",
+    "lastOpened": "2025-05-30T07:08:39.727Z",
     "packageManager": "npm",
     "scripts": [
       {

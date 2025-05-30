@@ -224,15 +224,18 @@ export default function SettingsPage() {
                 <button
                   onClick={() => updateSetting('projects', { 
                     ...current.projects, 
-                    autoInstallDeps: !current.projects.autoInstallDeps 
+                    creation: {
+                      ...current.projects.creation,
+                      autoInstallDeps: !current.projects.creation.autoInstallDeps 
+                    }
                   })}
                   className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ml-6 ${
-                    current.projects.autoInstallDeps ? 'btn-primary' : 'bg-gray-600 light-theme:bg-gray-300'
+                    current.projects.creation.autoInstallDeps ? 'btn-primary' : 'bg-gray-600 light-theme:bg-gray-300'
                   }`}
                 >
                   <span
                     className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
-                      current.projects.autoInstallDeps ? 'translate-x-6' : 'translate-x-1'
+                      current.projects.creation.autoInstallDeps ? 'translate-x-6' : 'translate-x-1'
                     }`}
                   />
                 </button>
@@ -246,15 +249,18 @@ export default function SettingsPage() {
                 <button
                   onClick={() => updateSetting('projects', { 
                     ...current.projects, 
-                    autoOpenBrowser: !current.projects.autoOpenBrowser 
+                    creation: {
+                      ...current.projects.creation,
+                      autoOpenBrowser: !current.projects.creation.autoOpenBrowser 
+                    }
                   })}
                   className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ml-6 ${
-                    current.projects.autoOpenBrowser ? 'btn-primary' : 'bg-gray-600 light-theme:bg-gray-300'
+                    current.projects.creation.autoOpenBrowser ? 'btn-primary' : 'bg-gray-600 light-theme:bg-gray-300'
                   }`}
                 >
                   <span
                     className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
-                      current.projects.autoOpenBrowser ? 'translate-x-6' : 'translate-x-1'
+                      current.projects.creation.autoOpenBrowser ? 'translate-x-6' : 'translate-x-1'
                     }`}
                   />
                 </button>
@@ -270,10 +276,13 @@ export default function SettingsPage() {
                     type="number"
                     min="1"
                     max="10"
-                    value={current.projects.maxConcurrentProjects}
+                    value={current.projects.runtime.maxConcurrentProjects}
                     onChange={(e) => updateSetting('projects', { 
                       ...current.projects, 
-                      maxConcurrentProjects: parseInt(e.target.value) || 1 
+                      runtime: {
+                        ...current.projects.runtime,
+                        maxConcurrentProjects: parseInt(e.target.value) || 1
+                      }
                     })}
                     className="w-20 px-3 py-1 theme-bg-primary theme-text-primary border theme-border rounded-lg text-center"
                   />
@@ -288,15 +297,18 @@ export default function SettingsPage() {
                 <button
                   onClick={() => updateSetting('projects', { 
                     ...current.projects, 
-                    gitIntegration: !current.projects.gitIntegration 
+                    git: {
+                      ...current.projects.git,
+                      enabled: !current.projects.git.enabled
+                    }
                   })}
                   className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ml-6 ${
-                    current.projects.gitIntegration ? 'btn-primary' : 'bg-gray-600 light-theme:bg-gray-300'
+                    current.projects.git.enabled ? 'btn-primary' : 'bg-gray-600 light-theme:bg-gray-300'
                   }`}
                 >
                   <span
                     className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
-                      current.projects.gitIntegration ? 'translate-x-6' : 'translate-x-1'
+                      current.projects.git.enabled ? 'translate-x-6' : 'translate-x-1'
                     }`}
                   />
                 </button>
@@ -322,16 +334,16 @@ export default function SettingsPage() {
                     ...current.projects, 
                     monitoring: {
                       ...current.projects.monitoring,
-                      enablePerformanceMonitoring: !current.projects.monitoring.enablePerformanceMonitoring
+                      enabled: !current.projects.monitoring.enabled
                     }
                   })}
                   className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ml-6 ${
-                    current.projects.monitoring.enablePerformanceMonitoring ? 'btn-primary' : 'bg-gray-600 light-theme:bg-gray-300'
+                    current.projects.monitoring.enabled ? 'btn-primary' : 'bg-gray-600 light-theme:bg-gray-300'
                   }`}
                 >
                   <span
                     className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
-                      current.projects.monitoring.enablePerformanceMonitoring ? 'translate-x-6' : 'translate-x-1'
+                      current.projects.monitoring.enabled ? 'translate-x-6' : 'translate-x-1'
                     }`}
                   />
                 </button>
