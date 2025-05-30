@@ -27,6 +27,8 @@ export default function ProjectsPage({
   const [activeProjectTab, setActiveProjectTab] = useState('overview'); // 项目详情标签页
   const [pm2Status, setPm2Status] = useState<PM2Process | null>(null); // PM2进程状态
   const [isLoadingPM2, setIsLoadingPM2] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string>('');
+  const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
   
   // 生成PM2进程名称的辅助函数
   const generateProcessName = (project: Project) => {
@@ -225,6 +227,111 @@ export default function ProjectsPage({
       console.log('🧪 PM2服务测试结果:', result);
     } catch (error) {
       console.error('🧪 PM2服务测试失败:', error);
+    }
+  };
+
+  // 显示toast消息
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    setToastMessage(message);
+    setToastType(type);
+    setTimeout(() => setToastMessage(''), 3000);
+  };
+
+  // 快速操作：在文件夹中打开
+  const handleOpenInFolder = async () => {
+    if (!selectedProject) {
+      showToast('请先选择一个项目', 'error');
+      return;
+    }
+
+    try {
+      const result = await window.electronAPI?.invoke('shell:openPath', selectedProject.path);
+      if (result?.success) {
+        showToast('已在文件夹中打开项目', 'success');
+      } else {
+        showToast(`打开文件夹失败: ${result?.error || '未知错误'}`, 'error');
+      }
+    } catch (error) {
+      console.error('打开文件夹失败:', error);
+      showToast('打开文件夹失败', 'error');
+    }
+  };
+
+  // 快速操作：在编辑器中打开
+  const handleOpenInEditor = async () => {
+    if (!selectedProject) {
+      showToast('请先选择一个项目', 'error');
+      return;
+    }
+
+    try {
+      const result = await window.electronAPI?.invoke('shell:openInEditor', selectedProject.path);
+      if (result?.success) {
+        showToast('已在编辑器中打开项目', 'success');
+      } else {
+        showToast(`打开编辑器失败: ${result?.error || '未知错误'}`, 'error');
+      }
+    } catch (error) {
+      console.error('打开编辑器失败:', error);
+      showToast('打开编辑器失败', 'error');
+    }
+  };
+
+  // 快速操作：在浏览器中打开
+  const handleOpenInBrowser = async () => {
+    if (!selectedProject) {
+      showToast('请先选择一个项目', 'error');
+      return;
+    }
+
+    // 检查项目是否正在运行 - 优先检查PM2状态，然后检查项目状态
+    const isRunning = pm2Status?.status === 'online' || selectedProject.status === 'running';
+    
+    if (!isRunning) {
+      // 如果状态显示未运行，尝试刷新PM2状态
+      await fetchPM2Status();
+      
+      // 给状态更新一点时间，然后再检查
+      setTimeout(async () => {
+        const updatedIsRunning = pm2Status?.status === 'online' || selectedProject.status === 'running';
+        
+        if (!updatedIsRunning) {
+          // 即使状态检查失败，也尝试打开浏览器（可能是状态同步问题）
+          showToast('状态检查失败，尝试强制打开浏览器...', 'info');
+          await tryOpenBrowser();
+        }
+      }, 100);
+      
+      // 立即尝试打开浏览器
+      await tryOpenBrowser();
+    } else {
+      await tryOpenBrowser();
+    }
+  };
+
+  // 尝试在浏览器中打开项目的辅助函数
+  const tryOpenBrowser = async () => {
+    try {
+      // 获取项目端口，优先使用PM2状态中的端口，然后使用项目端口
+      let port = pm2Status?.port || selectedProject?.port;
+      
+      // 如果没有端口信息，根据项目类型猜测常见端口
+      if (!port) {
+        const commonPorts = [3000, 5173, 8080, 4000, 3001, 5000];
+        port = commonPorts[0]; // 默认使用3000
+      }
+      
+      const url = `http://localhost:${port}`;
+      
+      const result = await window.electronAPI?.invoke('shell:openExternal', url);
+      if (result?.success) {
+        showToast(`已在浏览器中打开: ${url}`, 'success');
+      } else {
+        showToast(`打开浏览器失败: ${result?.error || '未知错误'}`, 'error');
+      }
+    } catch (error) {
+      console.error('打开浏览器失败:', error);
+      showToast('打开浏览器失败', 'error');
     }
   };
 
@@ -433,9 +540,9 @@ export default function ProjectsPage({
               <div className="theme-bg-secondary p-4 rounded-lg">
                 <h4 className="font-semibold theme-text-primary mb-3">快速操作</h4>
                 <div className="grid grid-cols-3 gap-3">
-                  <button className="p-3 btn-info rounded-lg text-sm">在文件夹中打开</button>
-                  <button className="p-3 btn-info rounded-lg text-sm">在编辑器中打开</button>
-                  <button className="p-3 btn-info rounded-lg text-sm">在浏览器中打开</button>
+                  <button className="p-3 btn-info rounded-lg text-sm" onClick={handleOpenInFolder}>在文件夹中打开</button>
+                  <button className="p-3 btn-info rounded-lg text-sm" onClick={handleOpenInEditor}>在编辑器中打开</button>
+                  <button className="p-3 btn-info rounded-lg text-sm" onClick={handleOpenInBrowser}>在浏览器中打开</button>
                 </div>
               </div>
             </div>
@@ -594,6 +701,19 @@ export default function ProjectsPage({
             console.log('Project updated:', updatedProject);
           }}
         />
+      )}
+
+      {/* Toast 消息 */}
+      {toastMessage && (
+        <div className="fixed bottom-4 right-4 z-50">
+          <div className={`px-4 py-3 rounded-lg shadow-lg transition-all duration-300 ${
+            toastType === 'success' ? 'bg-green-500 text-white' :
+            toastType === 'error' ? 'bg-red-500 text-white' :
+            'bg-blue-500 text-white'
+          }`}>
+            {toastMessage}
+          </div>
+        </div>
       )}
     </div>
   );

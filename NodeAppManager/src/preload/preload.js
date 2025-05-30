@@ -17,6 +17,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'fs:createProjectFromTemplate', // 添加创建项目模板频道
       'dialog:showOpenDialog', // 添加文件对话框频道
       'shell:openExternal', // 添加使用系统默认浏览器打开URL频道
+      'shell:openPath', // 添加在文件夹中打开频道
+      'shell:openInEditor', // 添加在编辑器中打开频道
       // 设置相关频道
       'settings:load',
       'settings:save',

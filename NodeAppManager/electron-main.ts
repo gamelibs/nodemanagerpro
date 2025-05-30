@@ -173,6 +173,121 @@ app.whenReady().then(() => {
       };
     }
   });
+
+  // 在文件夹中打开项目
+  ipcMain.handle('shell:openPath', async (_: any, path: string) => {
+    try {
+      await shell.openPath(path);
+      return { success: true };
+    } catch (error) {
+      console.error('打开文件夹失败:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : '打开文件夹失败' 
+      };
+    }
+  });
+
+  // 在默认编辑器中打开项目
+  ipcMain.handle('shell:openInEditor', async (_: any, path: string) => {
+    try {
+      const { spawn } = require('child_process');
+      const process = require('process');
+      
+      // 加载设置获取默认编辑器
+      let defaultEditor = 'vscode';
+      let customCommand = '';
+      
+      try {
+        const { loadSettingsFromMain } = require('./src/ipc/settingsIPC.cjs');
+        const settingsResult = await loadSettingsFromMain();
+        if (settingsResult.success && settingsResult.settings?.projects?.editor) {
+          defaultEditor = settingsResult.settings.projects.editor.defaultEditor || 'vscode';
+          customCommand = settingsResult.settings.projects.editor.customEditorCommand || '';
+        }
+      } catch (error) {
+        console.warn('读取编辑器设置失败，使用默认设置:', error);
+      }
+      
+      let command: string;
+      let args: string[];
+      
+      // 如果有自定义命令，优先使用
+      if (defaultEditor === 'custom' && customCommand) {
+        // 解析自定义命令
+        const parts = customCommand.split(' ');
+        command = parts[0];
+        args = [...parts.slice(1), path];
+      } else {
+        // 根据编辑器类型和平台设置命令
+        switch (defaultEditor) {
+          case 'webstorm':
+            if (process.platform === 'darwin') {
+              // macOS: 使用 -n 参数确保新建窗口
+              command = 'open';
+              args = ['-n', '-a', 'WebStorm', path];
+            } else {
+              // Windows/Linux: WebStorm 默认会在新窗口打开不同项目
+              command = 'webstorm';
+              args = [path];
+            }
+            break;
+          case 'sublime':
+            if (process.platform === 'darwin') {
+              // macOS: 使用 -n 参数确保新建窗口
+              command = 'open';
+              args = ['-n', '-a', 'Sublime Text', path];
+            } else {
+              // Windows/Linux: 使用 --new-window 参数
+              command = 'subl';
+              args = ['--new-window', path];
+            }
+            break;
+          case 'atom':
+            // Atom: 使用 --new-window 参数
+            command = 'atom';
+            args = ['--new-window', path];
+            break;
+          case 'vim':
+            // Vim: 在终端中打开新实例
+            if (process.platform === 'darwin') {
+              command = 'open';
+              args = ['-a', 'Terminal', path];
+            } else {
+              command = 'vim';
+              args = [path];
+            }
+            break;
+          case 'vscode':
+          default:
+            if (process.platform === 'darwin') {
+              // macOS: 使用 -n 参数确保新建窗口
+              command = 'open';
+              args = ['-n', '-a', 'Visual Studio Code', path];
+            } else {
+              // Windows/Linux: 使用 --new-window 参数确保新建窗口
+              command = 'code';
+              args = ['--new-window', path];
+            }
+            break;
+        }
+      }
+      
+      spawn(command, args, { 
+        detached: true,
+        stdio: 'ignore' 
+      }).unref();
+      
+      return { success: true };
+    } catch (error) {
+      console.error('打开编辑器失败:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : '打开编辑器失败' 
+      };
+    }
+  });
+
   LoggerService.info('Shell IPC 处理器已设置');
   
   createWindow();
