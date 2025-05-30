@@ -342,6 +342,29 @@
     border-color: #DC2626;
   }
 
+  /* 警告按钮样式 - 与创建项目按钮颜色一致 */
+  .btn-warning {
+    background: #6366F1;
+    color: white;
+    border: 1px solid #6366F1;
+  }
+
+  .btn-warning:hover {
+    background: #5855F7;
+    border-color: #5855F7;
+  }
+
+  .light-theme .btn-warning {
+    background: #6366F1;
+    color: white;
+    border: 1px solid #6366F1;
+  }
+
+  .light-theme .btn-warning:hover {
+    background: #5855F7;
+    border-color: #5855F7;
+  }
+
   /* 版本标签样式 */
   .version-badge {
     background: #F3F4F6;

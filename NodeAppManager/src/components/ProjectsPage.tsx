@@ -397,13 +397,22 @@ export default function ProjectsPage({
                         {/* 主要控制按钮 */}
                         <div className="flex space-x-2">
                           {(pm2Status?.status === 'online' || pm2Status?.pm2_env?.status === 'online') ? (
-                            <button 
-                              onClick={handleStopProject}
-                              className="flex-1 px-3 py-2 btn-remove rounded-lg text-sm"
-                              disabled={isLoadingPM2}
-                            >
-                              {isLoadingPM2 ? '停止中...' : '停止'}
-                            </button>
+                            <>
+                              <button 
+                                onClick={handleStopProject}
+                                className="flex-1 px-3 py-2 btn-remove rounded-lg text-sm"
+                                disabled={isLoadingPM2}
+                              >
+                                {isLoadingPM2 ? '停止中...' : '停止'}
+                              </button>
+                              <button 
+                                onClick={handleRestartProject}
+                                className="flex-1 px-3 py-2 btn-warning rounded-lg text-sm"
+                                disabled={isLoadingPM2}
+                              >
+                                {isLoadingPM2 ? '重启中...' : '重启'}
+                              </button>
+                            </>
                           ) : (
                             <button 
                               onClick={handleStartProject}
@@ -413,31 +422,6 @@ export default function ProjectsPage({
                               {isLoadingPM2 ? '启动中...' : '启动'}
                             </button>
                           )}
-                          
-                          <button 
-                            onClick={handleRestartProject}
-                            className="flex-1 px-3 py-2 btn-warning rounded-lg text-sm"
-                            disabled={isLoadingPM2}
-                          >
-                            {isLoadingPM2 ? '重启中...' : '重启'}
-                          </button>
-                        </div>
-                        
-                        {/* 辅助按钮 */}
-                        <div className="grid grid-cols-2 gap-2">
-                          <button
-                            onClick={() => setShowSettingsModal(true)}
-                            className="px-3 py-2 btn-secondary rounded-lg text-sm"
-                          >
-                            ⚙️ 项目设置
-                          </button>
-                          <button
-                            onClick={() => fetchPM2Status()}
-                            className="px-3 py-2 btn-info rounded-lg text-sm"
-                            disabled={isLoadingPM2}
-                          >
-                            🔄 刷新状态
-                          </button>
                         </div>
                       </div>
                     </div>
@@ -588,178 +572,7 @@ export default function ProjectsPage({
             </div>
           </div>
         ) : (
-          <>
-            {/* 标签页导航 */}
-            <div className="border-b theme-border px-6 py-4">
-              <div className="flex space-x-6">
-                <button
-                  onClick={() => setActiveProjectTab('overview')}
-                  className={`text-sm font-medium pb-2 border-b-2 transition-colors ${
-                    activeProjectTab === 'overview'
-                      ? 'theme-text-primary border-blue-400'
-                      : 'theme-text-muted border-transparent hover:theme-text-primary'
-                  }`}
-                >
-                  *项目概览
-                </button>
-                <button
-                  onClick={() => setActiveProjectTab('config')}
-                  className={`text-sm font-medium pb-2 border-b-2 transition-colors ${
-                    activeProjectTab === 'config'
-                      ? 'theme-text-primary border-blue-400'
-                      : 'theme-text-muted border-transparent hover:theme-text-primary'
-                  }`}
-                >
-                  项目配置
-                </button>
-                <button
-                  onClick={() => setActiveProjectTab('dependencies')}
-                  className={`text-sm font-medium pb-2 border-b-2 transition-colors ${
-                    activeProjectTab === 'dependencies'
-                      ? 'theme-text-primary border-blue-400'
-                      : 'theme-text-muted border-transparent hover:theme-text-primary'
-                  }`}
-                >
-                  依赖管理
-                </button>
-                <button
-                  onClick={() => setActiveProjectTab('logs')}
-                  className={`text-sm font-medium pb-2 border-b-2 transition-colors ${
-                    activeProjectTab === 'logs'
-                      ? 'theme-text-primary border-blue-400'
-                      : 'theme-text-muted border-transparent hover:theme-text-primary'
-                  }`}
-                >
-                  日志查看
-                </button>
-              </div>
-            </div>
-
-            {/* 内容区域 */}
-            <div className="flex-1 p-6">
-              {activeProjectTab === 'overview' && (
-                <div className="grid grid-cols-2 gap-6 h-full">
-                  {/* 左侧：基本信息 */}
-                  <div className="space-y-4">
-                    <div className="theme-bg-secondary p-4 rounded-lg">
-                      <h4 className="font-semibold theme-text-primary mb-3">基本信息</h4>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="theme-text-muted">项目名称:</span>
-                          <span className="theme-text-primary">{selectedProject.name}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="theme-text-muted">项目类型:</span>
-                          <span className="theme-text-primary">{selectedProject.type}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="theme-text-muted">项目路径:</span>
-                          <span className="theme-text-primary text-xs">{selectedProject.path}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* 快速打开面板 */}
-                    <div className="theme-bg-secondary p-4 rounded-lg">
-                      <h4 className="font-semibold theme-text-primary mb-3">快速打开面板</h4>
-                      <div className="grid grid-cols-2 gap-2">
-                        <button className="btn-secondary px-3 py-2 rounded text-xs">
-                          在VS Code中打开
-                        </button>
-                        <button className="btn-secondary px-3 py-2 rounded text-xs">
-                          在文件管理器中打开
-                        </button>
-                        <button className="btn-secondary px-3 py-2 rounded text-xs">
-                          在终端中打开
-                        </button>
-                        <button className="btn-secondary px-3 py-2 rounded text-xs">
-                          在浏览器中打开
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 右侧：性能监控信息 */}
-                  <div className="theme-bg-secondary p-4 rounded-lg">
-                    <h4 className="font-semibold theme-text-primary mb-3">性能监控信息</h4>
-                    <div className="space-y-3 text-sm">
-                      <div className="flex justify-between">
-                        <span className="theme-text-muted">运行状态:</span>
-                        {pm2Status ? (
-                          <span className={`px-2 py-1 rounded text-xs ${
-                            (pm2Status.status === 'online' || pm2Status.pm2_env?.status === 'online') 
-                              ? 'btn-success' 
-                              : 'btn-secondary'
-                          }`}>
-                            {(pm2Status.status === 'online' || pm2Status.pm2_env?.status === 'online') ? '🟢 运行中' : 
-                             (pm2Status.status === 'stopped' || pm2Status.pm2_env?.status === 'stopped') ? '⚪ 已停止' : 
-                             (pm2Status.status === 'error' || pm2Status.pm2_env?.status === 'error') ? '🔴 错误' :
-                             (pm2Status.status === 'launching' || pm2Status.pm2_env?.status === 'launching') ? '🟡 启动中' :
-                             (pm2Status.status === 'stopping' || pm2Status.pm2_env?.status === 'stopping') ? '🟠 停止中' : '🔴 未知状态'}
-                          </span>
-                        ) : (
-                          <span className="px-2 py-1 rounded text-xs bg-gray-100 text-gray-800 dark:bg-gray-800/50 dark:text-gray-300">
-                            ⚫ 未运行
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="theme-text-muted">CPU使用率:</span>
-                        <span className="theme-text-primary">{pm2Status?.monit?.cpu ? `${pm2Status.monit.cpu}%` : '--'}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="theme-text-muted">内存使用:</span>
-                        <span className="theme-text-primary">{pm2Status?.monit?.memory ? `${(pm2Status.monit.memory / 1024 / 1024).toFixed(1)}MB` : '--'}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="theme-text-muted">进程PID:</span>
-                        <span className="theme-text-primary">{pm2Status?.pid || '--'}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="theme-text-muted">运行时间:</span>
-                        <span className="theme-text-primary">{pm2Status?.pm2_env?.pm_uptime ? new Date(pm2Status.pm2_env.pm_uptime).toLocaleString() : '--'}</span>
-                      </div>
-                    </div>
-                    
-                    {/* 控制按钮 */}
-                    <div className="mt-4 pt-3 border-t theme-border">
-                      <div className="flex gap-3">
-                        {pm2Status && (pm2Status.status === 'online' || pm2Status.pm2_env?.status === 'online') ? (
-                          <>
-                            <button
-                              onClick={handleStopProject}
-                              className="btn-remove px-4 py-2 rounded-lg text-sm transition-colors"
-                              disabled={isLoadingPM2}
-                            >
-                              停止
-                            </button>
-                            <button
-                              onClick={handleRestartProject}
-                              className="btn-primary px-4 py-2 rounded-lg text-sm transition-colors"
-                              disabled={isLoadingPM2}
-                            >
-                              重启
-                            </button>
-                          </>
-                        ) : (
-                          <button
-                            onClick={handleStartProject}
-                            className="btn-success px-4 py-2 rounded-lg text-sm transition-colors"
-                            disabled={isLoadingPM2}
-                          >
-                            启动
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* 其他标签页内容保持原样 */}
-              {activeProjectTab !== 'overview' && renderProjectDetails()}
-            </div>
-          </>
+          renderProjectDetails()
         )}
         </div>
       </div>
