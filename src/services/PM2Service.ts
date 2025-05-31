@@ -40,8 +40,9 @@ export class PM2Service {
   /**
    * 生成 PM2 进程名称
    */
-  private static generateProcessName(project: { name: string; id: string }): string {
-    return `${project.name}-${project.id}`;
+  private static generateProcessName(project: Project): string {
+    // 优先使用保存的进程名称，否则生成标准格式
+    return project.pm2?.processName || `${project.name}-${project.id}`;
   }
 
   /**
@@ -100,6 +101,8 @@ export class PM2Service {
   static async startProject(project: Project): Promise<{
     success: boolean;
     processId?: number;
+    processName?: string;
+    pid?: number;
     error?: string;
   }> {
     try {
@@ -114,7 +117,9 @@ export class PM2Service {
         console.log(`🚀 项目 ${project.name} 启动成功，PM2 ID: ${result.processId}`);
         return {
           success: true,
-          processId: result.processId
+          processId: result.processId,
+          processName: config.name, // 返回PM2进程名称
+          pid: result.pid // 返回系统进程ID
         };
       } else {
         return {
@@ -133,7 +138,7 @@ export class PM2Service {
   /**
    * 停止项目
    */
-  static async stopProject(projectId: string): Promise<{
+  static async stopProject(project: Project): Promise<{
     success: boolean;
     error?: string;
   }> {
@@ -142,10 +147,12 @@ export class PM2Service {
         return { success: false, error: '不在 Electron 环境中' };
       }
 
-      const result = await window.electronAPI.invoke('pm2:stop', projectId);
+      // 优先使用保存的PM2进程名称，否则使用项目ID
+      const processIdentifier = project.pm2?.processName || project.id;
+      const result = await window.electronAPI.invoke('pm2:stop', processIdentifier);
       
       if (result.success) {
-        console.log(`⏹️ 项目 ${projectId} 停止成功`);
+        console.log(`⏹️ 项目 ${project.name} 停止成功`);
         return { success: true };
       } else {
         return {

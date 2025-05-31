@@ -121,9 +121,12 @@ export function setupPM2IPC() {
             });
           } else {
             console.log(`✅ PM2 启动成功: ${config.name}`);
+            const processInfo = proc && proc[0] ? proc[0] : null;
             resolve({ 
               success: true, 
-              processId: proc && proc[0] ? proc[0].pm_id : undefined
+              processId: processInfo ? processInfo.pm_id : undefined,
+              pid: processInfo ? processInfo.pid : undefined,
+              processName: config.name
             });
           }
         });
@@ -153,9 +156,12 @@ export function setupPM2IPC() {
             return;
           }
           
-          // 查找对应的进程
+          // 查找对应的进程 - 支持多种匹配方式
           const targetProcess = processes.find(proc => 
-            proc.name === projectId || proc.pm_id === projectId
+            proc.name === projectId || // 直接匹配进程名称
+            proc.pm_id === projectId || // 匹配PM2进程ID
+            proc.name.endsWith(`-${projectId}`) || // 匹配格式为 ${name}-${id} 的进程名（向后兼容）
+            proc.pm_id?.toString() === projectId // 匹配字符串格式的PM2进程ID
           );
           
           if (!targetProcess) {
@@ -166,9 +172,11 @@ export function setupPM2IPC() {
             return;
           }
           
-          console.log(`⏹️ 找到进程 ${projectId}，状态: ${targetProcess.pm2_env?.status}，开始停止...`);
+          console.log(`⏹️ 找到进程 ${targetProcess.name}，状态: ${targetProcess.pm2_env?.status}，开始停止...`);
           
-          pm2.stop(projectId, (err: any) => {
+          // 使用找到的进程名称或ID进行停止
+          const stopIdentifier = targetProcess.name || targetProcess.pm_id;
+          pm2.stop(stopIdentifier, (err: any) => {
             if (err) {
               console.error('❌ PM2 停止失败:', err);
               resolve({ 

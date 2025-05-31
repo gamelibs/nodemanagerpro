@@ -4,6 +4,10 @@ import App from './App.tsx'
 import './index.css'
 import { AppProvider } from './store/AppContext.tsx'
 import { ToastProvider } from './store/ToastContext.tsx'
+import { initI18n } from './services/i18n'
+
+// 初始化国际化系统
+initI18n('zh');
 
 // 🤖 自动日志监控系统
 function initAutoLogMonitoring() {

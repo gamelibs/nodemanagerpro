@@ -19,6 +19,12 @@ export interface Project {
   version?: string;
   template?: ProjectTemplate;
   frontendFramework?: FrontendFramework;
+  // PM2进程信息
+  pm2?: {
+    processName: string; // PM2进程名称，格式：${name}-${id}
+    processId?: number; // PM2进程ID（pm_id）
+    pid?: number; // 系统进程ID
+  };
 }
 
 export interface ProjectScript {

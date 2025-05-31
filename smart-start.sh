@@ -12,12 +12,12 @@
 #
 # 🚀 使用方法：
 #   从任何位置运行: ./smart-start.sh
-#   或者创建别名: alias nam='~/works/NodeAppManager/NodeAppManager/smart-start.sh'
+#   或者创建别名: alias nam='~/works/NodeAppManager/smart-start.sh'
 #
 # =============================================================================
 
 # 脚本配置
-PROJECT_ROOT="/Users/vidar/works/NodeAppManager/NodeAppManager"
+PROJECT_ROOT="/Users/vidar/works/NodeAppManager"
 SCRIPT_NAME="smart-start.sh"
 LOG_FILE="$PROJECT_ROOT/logs-monitor/smart-start.log"
 

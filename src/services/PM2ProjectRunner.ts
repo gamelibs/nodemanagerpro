@@ -42,11 +42,23 @@ export class PM2ProjectRunner {
       const result = await PM2Service.startProject(project);
 
       if (result.success) {
-        // 启动成功
+        // 启动成功，保存PM2进程信息
+        this.dispatch({
+          type: 'UPDATE_PROJECT',
+          payload: {
+            ...project,
+            pm2: {
+              processName: result.processName || `${project.name}-${project.id}`,
+              processId: result.processId,
+              pid: result.pid
+            }
+          }
+        });
+
         this.logs.addLog({
           projectId: project.id,
           level: 'success',
-          message: `✅ 项目启动成功 (PM2 ID: ${result.processId})`,
+          message: `✅ 项目启动成功 (PM2 ID: ${result.processId}, 进程名: ${result.processName})`,
           source: 'system'
         });
 
@@ -119,9 +131,18 @@ export class PM2ProjectRunner {
       await this.stopLogStream(project.id);
 
       // 使用 PM2 停止项目
-      const result = await PM2Service.stopProject(project.id);
+      const result = await PM2Service.stopProject(project);
 
       if (result.success) {
+        // 停止成功，清除PM2进程信息
+        this.dispatch({
+          type: 'UPDATE_PROJECT',
+          payload: {
+            ...project,
+            pm2: undefined
+          }
+        });
+
         this.logs.addLog({
           projectId: project.id,
           level: 'success',
@@ -213,7 +234,7 @@ export class PM2ProjectRunner {
   /**
    * 获取项目状态
    */
-  async getProjectStatus(projectId: string): Promise<{
+  async getProjectStatus(project: Project): Promise<{
     success: boolean;
     status?: 'online' | 'stopped' | 'error' | 'stopping' | 'launching';
     cpu?: number;
@@ -222,7 +243,7 @@ export class PM2ProjectRunner {
     restarts?: number;
   }> {
     try {
-      const result = await PM2Service.getProjectStatus(projectId);
+      const result = await PM2Service.getProjectStatus(project);
       
       if (result.success && result.status) {
         return {

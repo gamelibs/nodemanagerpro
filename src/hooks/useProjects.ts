@@ -380,16 +380,30 @@ export function useProjects() {
   };
 }
 
-// 工具函数（在真实应用中，这些会通过 Electron IPC 实现）
+// 工具函数（使用 Electron IPC 实现）
 async function showDirectoryPicker(): Promise<string | null> {
   try {
-    // 检查是否支持 File System Access API（Chrome 86+）
+    // 检查是否在 Electron 环境中
+    if (typeof window !== 'undefined' && (window as any).electronAPI) {
+      const result = await (window as any).electronAPI.showOpenDialog({
+        title: '选择项目文件夹',
+        buttonLabel: '选择',
+        properties: ['openDirectory']
+      });
+      
+      if (result && !result.canceled && result.filePaths && result.filePaths.length > 0) {
+        return result.filePaths[0];
+      }
+      return null;
+    }
+    
+    // 降级到Web API（仅用于开发环境）
     if ('showDirectoryPicker' in window) {
       const dirHandle = await (window as any).showDirectoryPicker();
       return dirHandle.name; // 返回文件夹名称，实际应用中会返回完整路径
     }
     
-    // 如果不支持，使用input元素模拟
+    // 如果都不支持，使用input元素模拟
     return new Promise((resolve) => {
       const input = document.createElement('input');
       input.type = 'file';
