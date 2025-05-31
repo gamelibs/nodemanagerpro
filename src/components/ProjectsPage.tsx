@@ -17,7 +17,7 @@ export default function ProjectsPage({
   isLoading, 
   error
 }: ProjectsPageProps) {
-  const { createProject, importProject, removeProject, synchronizeProjectStatuses } = useProjects();
+  const { createProject, importProject, removeProject, updateProject, synchronizeProjectStatuses } = useProjects();
   const { navigation, i18n } = useApp();
   const { setActiveTab } = navigation;
   const { t } = i18n;
@@ -33,6 +33,9 @@ export default function ProjectsPage({
   const [isLoadingPackage, setIsLoadingPackage] = useState(false);
   const [dependencyStatus, setDependencyStatus] = useState<{[key: string]: boolean}>({}); // 依赖包安装状态
   const [isCheckingDependencies, setIsCheckingDependencies] = useState(false);
+  const [projectPort, setProjectPort] = useState<number | null>(null); // 项目端口
+  const [isEditingPort, setIsEditingPort] = useState(false); // 是否正在编辑端口
+  const [tempPort, setTempPort] = useState<string>(''); // 临时端口输入值
   const [toastMessage, setToastMessage] = useState<string>('');
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
   
@@ -234,6 +237,223 @@ export default function ProjectsPage({
     }
   };
 
+  // 检查是否有关键依赖包未安装
+  const hasUninstalledDependencies = () => {
+    if (!packageInfo || !packageInfo.dependencies) return false;
+    
+    // 如果还在检查依赖状态，返回 false（不禁用）
+    if (isCheckingDependencies) return false;
+    
+    // 如果依赖状态还没检查完，返回 false
+    if (Object.keys(dependencyStatus).length === 0) return false;
+    
+    // 检查生产依赖是否有未安装的包
+    const productionDeps = Object.keys(packageInfo.dependencies);
+    return productionDeps.some(dep => dependencyStatus[dep] === false);
+  };
+
+  // 从项目配置文件读取端口
+  const readProjectPort = async () => {
+    if (!selectedProject) return null;
+
+    try {
+      // 尝试从 package.json 的 scripts 中读取端口
+      if (packageInfo && packageInfo.scripts) {
+        const devScript = packageInfo.scripts.dev || packageInfo.scripts.start;
+        if (devScript) {
+          const portMatch = devScript.match(/--port[=\s]+(\d+)/);
+          if (portMatch) {
+            return parseInt(portMatch[1]);
+          }
+        }
+      }
+
+      // 尝试从 vite.config.js/ts 读取端口
+      const viteConfigPath = `${selectedProject.path}/vite.config.ts`;
+      const viteConfigJsPath = `${selectedProject.path}/vite.config.js`;
+      
+      let configContent = null;
+      try {
+        const result = await window.electronAPI?.invoke('fs:readFile', viteConfigPath);
+        if (result?.success) {
+          configContent = result.content;
+        }
+      } catch (e) {
+        try {
+          const result = await window.electronAPI?.invoke('fs:readFile', viteConfigJsPath);
+          if (result?.success) {
+            configContent = result.content;
+          }
+        } catch (e2) {
+          // 继续尝试其他配置文件
+        }
+      }
+
+      if (configContent) {
+        const portMatch = configContent.match(/port:\s*(\d+)/);
+        if (portMatch) {
+          return parseInt(portMatch[1]);
+        }
+      }
+
+      // 尝试从 .env 文件读取端口
+      const envPath = `${selectedProject.path}/.env`;
+      try {
+        const result = await window.electronAPI?.invoke('fs:readFile', envPath);
+        if (result?.success) {
+          const portMatch = result.content.match(/PORT\s*=\s*(\d+)/);
+          if (portMatch) {
+            return parseInt(portMatch[1]);
+          }
+        }
+      } catch (e) {
+        // .env 文件不存在或读取失败
+      }
+
+      // 返回项目记录中的端口或默认端口
+      return selectedProject.port || 3000;
+    } catch (error) {
+      console.error('读取项目端口失败:', error);
+      return selectedProject.port || 3000;
+    }
+  };
+
+  // 保存端口到项目配置文件
+  const saveProjectPort = async (newPort: number) => {
+    if (!selectedProject) return false;
+
+    try {
+      let saved = false;
+
+      // 1. 尝试更新 vite.config.ts/js
+      const viteConfigPath = `${selectedProject.path}/vite.config.ts`;
+      const viteConfigJsPath = `${selectedProject.path}/vite.config.js`;
+      
+      let configPath = null;
+      let configContent = null;
+      
+      try {
+        const result = await window.electronAPI?.invoke('fs:readFile', viteConfigPath);
+        if (result?.success) {
+          configPath = viteConfigPath;
+          configContent = result.content;
+        }
+      } catch (e) {
+        try {
+          const result = await window.electronAPI?.invoke('fs:readFile', viteConfigJsPath);
+          if (result?.success) {
+            configPath = viteConfigJsPath;
+            configContent = result.content;
+          }
+        } catch (e2) {
+          // 继续尝试其他文件
+        }
+      }
+
+      if (configPath && configContent) {
+        // 更新 vite 配置文件中的端口
+        let updatedContent = configContent;
+        
+        if (configContent.includes('port:')) {
+          // 替换现有的端口配置
+          updatedContent = configContent.replace(/port:\s*\d+/, `port: ${newPort}`);
+        } else if (configContent.includes('server:')) {
+          // 在 server 配置中添加端口
+          updatedContent = configContent.replace(
+            /server:\s*{/,
+            `server: {\n    port: ${newPort},`
+          );
+        } else {
+          // 添加完整的 server 配置
+          updatedContent = configContent.replace(
+            /export default defineConfig\({/,
+            `export default defineConfig({\n  server: {\n    port: ${newPort}\n  },`
+          );
+        }
+
+        const writeResult = await window.electronAPI?.invoke('fs:writeFile', configPath, updatedContent);
+        if (writeResult?.success) {
+          saved = true;
+          console.log('✅ 已更新 vite 配置文件端口');
+        }
+      }
+
+      // 2. 尝试更新 .env 文件
+      const envPath = `${selectedProject.path}/.env`;
+      try {
+        const result = await window.electronAPI?.invoke('fs:readFile', envPath);
+        if (result?.success) {
+          let envContent = result.content;
+          if (envContent.includes('PORT=')) {
+            envContent = envContent.replace(/PORT\s*=\s*\d+/, `PORT=${newPort}`);
+          } else {
+            envContent += `\nPORT=${newPort}\n`;
+          }
+          
+          const writeResult = await window.electronAPI?.invoke('fs:writeFile', envPath, envContent);
+          if (writeResult?.success) {
+            saved = true;
+            console.log('✅ 已更新 .env 文件端口');
+          }
+        } else {
+          // 创建新的 .env 文件
+          const envContent = `PORT=${newPort}\n`;
+          const writeResult = await window.electronAPI?.invoke('fs:writeFile', envPath, envContent);
+          if (writeResult?.success) {
+            saved = true;
+            console.log('✅ 已创建 .env 文件并设置端口');
+          }
+        }
+      } catch (e) {
+        // .env 文件操作失败，继续尝试其他方式
+      }
+
+      // 3. 更新应用中的项目记录
+      if (saved) {
+        try {
+          await updateProject(selectedProject.id, { port: newPort });
+          console.log('✅ 已更新项目记录中的端口');
+        } catch (e) {
+          console.error('更新项目记录失败:', e);
+        }
+      }
+
+      return saved;
+    } catch (error) {
+      console.error('保存项目端口失败:', error);
+      return false;
+    }
+  };
+
+  // 处理端口编辑
+  const handlePortEdit = async () => {
+    setIsEditingPort(true);
+    const currentPort = await readProjectPort();
+    setTempPort(currentPort?.toString() || '3000');
+  };
+
+  const handlePortSave = async () => {
+    const newPort = parseInt(tempPort);
+    if (isNaN(newPort) || newPort < 1 || newPort > 65535) {
+      showToast('端口号无效，请输入 1-65535 之间的数字', 'error');
+      return;
+    }
+
+    const success = await saveProjectPort(newPort);
+    if (success) {
+      setProjectPort(newPort);
+      setIsEditingPort(false);
+      showToast('端口设置已保存到项目配置文件', 'success');
+    } else {
+      showToast('保存端口设置失败', 'error');
+    }
+  };
+
+  const handlePortCancel = () => {
+    setIsEditingPort(false);
+    setTempPort('');
+  };
+
   // 当选中项目时获取PM2状态和日志
   useEffect(() => {
     if (selectedProject) {
@@ -241,10 +461,28 @@ export default function ProjectsPage({
       fetchPM2Logs();
       fetchPackageInfo();
       checkDependencyInstallation();
+      
+      // 读取项目端口并同步到项目记录
+      const loadProjectPort = async () => {
+        const port = await readProjectPort();
+        setProjectPort(port);
+        
+        // 如果读取到的端口与项目记录中的端口不同，则更新项目记录
+        if (port && port !== selectedProject.port) {
+          try {
+            await updateProject(selectedProject.id, { port });
+            console.log(`✅ 已同步项目端口到记录: ${port}`);
+          } catch (error) {
+            console.error('同步项目端口失败:', error);
+          }
+        }
+      };
+      loadProjectPort();
     } else {
       setPm2Status(null);
       setPm2Logs([]);
       setPackageInfo(null);
+      setProjectPort(null);
     }
   }, [selectedProject]);
 
@@ -565,6 +803,51 @@ export default function ProjectsPage({
                                 <span className="theme-text-primary text-xs">{packageInfo.main}</span>
                               </div>
                             )}
+                            
+                            {/* 端口编辑功能 */}
+                            <div className="flex justify-between items-center">
+                              <span className="theme-text-muted text-xs">项目端口:</span>
+                              {isEditingPort ? (
+                                <div className="flex items-center gap-1">
+                                  <input
+                                    type="number"
+                                    value={tempPort}
+                                    onChange={(e) => setTempPort(e.target.value)}
+                                    className="w-16 px-1 py-0.5 text-xs border rounded theme-bg-primary theme-text-primary theme-border focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                    min="1"
+                                    max="65535"
+                                    autoFocus
+                                  />
+                                  <button
+                                    onClick={handlePortSave}
+                                    className="text-green-600 hover:text-green-800 text-xs"
+                                    title="保存端口"
+                                  >
+                                    ✓
+                                  </button>
+                                  <button
+                                    onClick={handlePortCancel}
+                                    className="text-red-600 hover:text-red-800 text-xs"
+                                    title="取消"
+                                  >
+                                    ✗
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1">
+                                  <span className="theme-text-primary text-xs">
+                                    {projectPort || selectedProject?.port || 3000}
+                                  </span>
+                                  <button
+                                    onClick={handlePortEdit}
+                                    className="text-blue-600 hover:text-blue-800 text-xs opacity-70 hover:opacity-100"
+                                    title="编辑端口（将修改项目配置文件）"
+                                  >
+                                    ✏️
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                           </>
                         ) : (
                           <div className="text-xs theme-text-muted italic">
@@ -578,6 +861,19 @@ export default function ProjectsPage({
                     {packageInfo && (packageInfo.dependencies || packageInfo.devDependencies) && (
                           <div className="mt-3 pt-2 border-t theme-border">
                             <div className="font-medium theme-text-primary mb-1 text-xs">依赖包信息:</div>
+                            
+                            {/* 依赖缺失警告 */}
+                            {hasUninstalledDependencies() && (
+                              <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded px-2 py-1 mb-2">
+                                <div className="flex items-center gap-1">
+                                  <span className="text-orange-600">⚠</span>
+                                  <span className="text-xs text-orange-700 dark:text-orange-300">
+                                    检测到未安装的依赖包，项目可能无法正常启动
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+                            
                             <div className="space-y-1">
                               {packageInfo.dependencies && (
                                 <div className="flex justify-between items-center">
@@ -752,13 +1048,31 @@ export default function ProjectsPage({
                           ) : (
                             <button 
                               onClick={handleStartProject}
-                              className="flex-1 px-3 py-2 btn-success rounded-lg text-sm"
-                              disabled={isLoadingPM2}
+                              className={`flex-1 px-3 py-2 rounded-lg text-sm ${
+                                hasUninstalledDependencies() 
+                                  ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
+                                  : 'btn-success'
+                              }`}
+                              disabled={isLoadingPM2 || hasUninstalledDependencies()}
+                              title={hasUninstalledDependencies() ? '存在未安装的必要依赖包，无法启动项目' : ''}
                             >
-                              {isLoadingPM2 ? '启动中...' : '启动'}
+                              {isLoadingPM2 ? '启动中...' : (hasUninstalledDependencies() ? '依赖缺失' : '启动')}
                             </button>
                           )}
                         </div>
+                        
+                        {/* 依赖安装提示 */}
+                        {hasUninstalledDependencies() && (
+                          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded px-2 py-1">
+                            <div className="text-xs text-blue-700 dark:text-blue-300">
+                              <div className="font-medium mb-1">💡 安装依赖包：</div>
+                              <div className="font-mono text-xs bg-gray-100 dark:bg-gray-800 px-1 rounded">
+                                {selectedProject?.packageManager === 'yarn' ? 'yarn install' : 
+                                 selectedProject?.packageManager === 'pnpm' ? 'pnpm install' : 'npm install'}
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}

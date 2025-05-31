@@ -30,6 +30,7 @@ export function setupFileSystemIPC() {
     ipcMain.removeHandler('project:installSpecificPackages');
     ipcMain.removeHandler('project:createPackageJson');
     ipcMain.removeHandler('fs:readFile');
+    ipcMain.removeHandler('fs:writeFile');
   } catch (error) {
     // 忽略移除不存在处理器的错误
   }
@@ -422,6 +423,32 @@ export function setupFileSystemIPC() {
       return { 
         success: false, 
         error: error instanceof Error ? error.message : '读取文件失败' 
+      };
+    }
+  });
+
+  // 写入文件内容
+  ipcMain.handle('fs:writeFile', async (_, filePath: string, content: string) => {
+    console.log('📡 收到 fs:writeFile IPC调用:', filePath);
+    try {
+      // 确保目录存在
+      const dir = path.dirname(filePath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+
+      // 写入文件内容
+      fs.writeFileSync(filePath, content, 'utf-8');
+      console.log('📡 fs:writeFile 成功写入文件:', filePath);
+      
+      return { 
+        success: true 
+      };
+    } catch (error) {
+      console.error('📡 fs:writeFile 失败:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : '写入文件失败' 
       };
     }
   });
