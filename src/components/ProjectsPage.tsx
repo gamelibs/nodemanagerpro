@@ -273,6 +273,74 @@ export default function ProjectsPage({
     return hasUninstalled;
   };
 
+  // 检查项目是否可以启动
+  // 检查项目是否正在运行（优先使用实时PM2状态）
+  const isProjectRunning = () => {
+    // 优先检查实时PM2状态
+    if (pm2Status) {
+      return pm2Status.status === 'online' || pm2Status.pm2_env?.status === 'online';
+    }
+    // 如果没有PM2状态，回退到历史状态（但这应该很少发生）
+    return selectedProject?.status === 'running';
+  };
+
+  const canStartProject = () => {
+    // 没有 package.json 文件无法启动
+    if (!packageInfo) {
+      return false;
+    }
+    
+    // 已经在运行中无法启动
+    if (isProjectRunning()) {
+      return false;
+    }
+    
+    // 有未安装的依赖包无法启动
+    if (hasUninstalledDependencies()) {
+      return false;
+    }
+    
+    return true;
+  };
+
+  // 获取启动按钮的状态文本
+  const getStartButtonText = () => {
+    if (isLoadingPM2) {
+      return '检查状态...';
+    }
+    
+    if (isProjectRunning()) {
+      return '正在运行';
+    }
+    
+    if (!packageInfo) {
+      return '配置缺失';
+    }
+    
+    if (hasUninstalledDependencies()) {
+      return '依赖缺失';
+    }
+    
+    return '启动';
+  };
+
+  // 获取启动按钮的提示文本
+  const getStartButtonTitle = () => {
+    if (isProjectRunning()) {
+      return '项目正在运行中，请先停止项目再启动';
+    }
+    
+    if (!packageInfo) {
+      return '缺少 package.json 文件，无法启动项目';
+    }
+    
+    if (hasUninstalledDependencies()) {
+      return '存在未安装的必要依赖包，无法启动项目';
+    }
+    
+    return '';
+  };
+
   // 从项目配置文件读取端口
   const readProjectPort = async () => {
     if (!selectedProject) return null;
@@ -576,9 +644,35 @@ export default function ProjectsPage({
     setShowCreateModal(false);
   };
 
-  const handleSelectProject = (project: Project) => {
+  const handleSelectProject = async (project: Project) => {
     console.log('👆 选择项目:', project.name, project.id);
     setSelectedProject(project);
+    
+    // 清空之前的状态，显示加载状态
+    setPm2Status(null);
+    setPackageInfo(null);
+    setDependencyStatus({});
+    setProjectPort(null);
+    
+    // 立即获取项目的最新实时数据
+    console.log('🔄 获取项目最新数据...');
+    
+    // 并行获取所有信息
+    const promises = [
+      fetchPM2Status(),      // 获取PM2实时运行状态
+      fetchPackageInfo(),    // 获取package.json信息
+      readProjectPort()      // 读取项目端口配置
+    ];
+    
+    // 等待基础信息加载完成后再检查依赖
+    Promise.all(promises).then(() => {
+      // 在package.json加载完成后检查依赖状态
+      if (packageInfo) {
+        checkDependencyInstallation();
+      }
+    }).catch(error => {
+      console.error('获取项目信息失败:', error);
+    });
   };
 
   // 删除项目
@@ -597,6 +691,119 @@ export default function ProjectsPage({
     }
   };
 
+  // 获取项目实际会使用的端口（从项目配置文件读取，用于冲突检测）
+  const getProjectActualPort = async (project: Project) => {
+    try {
+      console.log('🔍 检测项目实际端口配置...');
+      
+      // 1. 尝试读取项目的.env文件
+      try {
+        const envContent = await window.electronAPI?.invoke('fs:readFile', `${project.path}/.env`);
+        if (envContent) {
+          const portMatch = envContent.match(/PORT\s*=\s*(\d+)/);
+          if (portMatch) {
+            const envPort = parseInt(portMatch[1]);
+            console.log(`📄 从.env文件读取到端口: ${envPort}`);
+            return envPort;
+          }
+        }
+      } catch (envError) {
+        console.log('📄 未找到.env文件，继续检查其他配置');
+      }
+      
+      // 2. 尝试读取package.json中的配置
+      if (packageInfo) {
+        // 检查scripts中是否有端口信息
+        if (packageInfo.scripts) {
+          const scripts = Object.values(packageInfo.scripts).join(' ');
+          const portMatch = scripts.match(/--port[=\s]+(\d+)|-p[=\s]+(\d+)|PORT[=\s]+(\d+)/i);
+          if (portMatch) {
+            const scriptPort = parseInt(portMatch[1] || portMatch[2] || portMatch[3]);
+            console.log(`📦 从package.json scripts读取到端口: ${scriptPort}`);
+            return scriptPort;
+          }
+        }
+      }
+      
+      // 3. 尝试读取vite.config.js/ts文件
+      try {
+        const possibleConfigFiles = [
+          `${project.path}/vite.config.ts`,
+          `${project.path}/vite.config.js`
+        ];
+        
+        for (const configFile of possibleConfigFiles) {
+          try {
+            const configContent = await window.electronAPI?.invoke('fs:readFile', configFile);
+            if (configContent) {
+              const portMatch = configContent.match(/port:\s*(\d+)/);
+              if (portMatch) {
+                const vitePort = parseInt(portMatch[1]);
+                console.log(`⚡ 从vite配置文件读取到端口: ${vitePort}`);
+                return vitePort;
+              }
+            }
+          } catch (fileError) {
+            // 继续检查下一个文件
+          }
+        }
+      } catch (viteError) {
+        console.log('⚡ 无法读取vite配置文件');
+      }
+      
+      // 4. 尝试读取项目主文件（简单的模式匹配）
+      try {
+        const mainFile = packageInfo?.main || 'index.js';
+        const possibleFiles = [
+          `${project.path}/${mainFile}`,
+          `${project.path}/src/app.js`,
+          `${project.path}/src/index.js`,
+          `${project.path}/src/server.js`,
+          `${project.path}/app.js`,
+          `${project.path}/index.js`,
+          `${project.path}/server.js`
+        ];
+        
+        for (const filePath of possibleFiles) {
+          try {
+            const fileContent = await window.electronAPI?.invoke('fs:readFile', filePath);
+            if (fileContent) {
+              // 查找端口定义模式
+              const portPatterns = [
+                /PORT\s*=\s*process\.env\.PORT\s*\|\|\s*(\d+)/,
+                /port\s*=\s*process\.env\.PORT\s*\|\|\s*(\d+)/,
+                /\.listen\s*\(\s*(\d+)/,
+                /PORT\s*=\s*(\d+)/,
+                /port\s*=\s*(\d+)/
+              ];
+              
+              for (const pattern of portPatterns) {
+                const match = fileContent.match(pattern);
+                if (match) {
+                  const codePort = parseInt(match[1]);
+                  console.log(`💻 从代码文件 ${filePath} 读取到端口: ${codePort}`);
+                  return codePort;
+                }
+              }
+            }
+          } catch (fileError) {
+            // 继续检查下一个文件
+          }
+        }
+      } catch (codeError) {
+        console.log('💻 无法读取代码文件检测端口');
+      }
+      
+      // 5. 如果都没找到，使用常见的默认端口
+      console.log('🔧 使用默认端口检测（常见Node.js端口）');
+      return 3000; // Node.js项目最常用的默认端口
+      
+    } catch (error) {
+      console.error('获取项目端口配置失败:', error);
+      return 3000;
+    }
+  };
+
   // 启动项目
   const handleStartProject = async () => {
     if (!selectedProject) return;
@@ -605,19 +812,36 @@ export default function ProjectsPage({
       setIsLoadingPM2(true);
       console.log('🚀 开始启动项目:', selectedProject.name);
       
+      // 获取项目实际端口配置
+      const projectPortToCheck = await getProjectActualPort(selectedProject);
+      console.log('🔍 检查端口可用性:', projectPortToCheck);
+      
+      const portCheckResult = await window.electronAPI?.invoke('port:check', projectPortToCheck);
+      if (!portCheckResult?.available) {
+        const errorMsg = `端口 ${projectPortToCheck} 已被占用${portCheckResult.occupiedBy ? `（被 ${portCheckResult.occupiedBy} 占用）` : ''}，无法启动项目`;
+        console.error('❌ 端口冲突:', errorMsg);
+        showToast(errorMsg, 'error');
+        return;
+      }
+      
+      console.log('✅ 端口可用，继续启动项目...');
+      
       const result = await PM2Service.startProject(selectedProject);
       console.log('启动结果:', result);
       
       if (result.success) {
         console.log('✅ 项目启动成功，刷新PM2状态...');
+        showToast(`项目 ${selectedProject.name} 启动成功`, 'success');
         // 启动成功后立即刷新状态和日志
         await fetchPM2Status();
         await fetchPM2Logs();
       } else {
         console.error('❌ 项目启动失败:', result.error);
+        showToast(`项目启动失败: ${result.error}`, 'error');
       }
     } catch (error) {
       console.error('启动项目失败:', error);
+      showToast('启动项目失败，请查看日志', 'error');
     } finally {
       setIsLoadingPM2(false);
     }
@@ -958,8 +1182,23 @@ export default function ProjectsPage({
                             </div>
                           </>
                         ) : (
-                          <div className="text-xs theme-text-muted italic">
-                            未找到 package.json 文件
+                          <div className="space-y-2">
+                            <div className="text-xs theme-text-muted italic">
+                              未找到 package.json 文件
+                            </div>
+                            
+                            {/* 非Node.js项目警告 */}
+                            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded px-2 py-1">
+                              <div className="flex items-center gap-1">
+                                <span className="text-amber-600">⚠</span>
+                                <span className="text-xs text-amber-700 dark:text-amber-300">
+                                  此项目缺少 package.json 配置文件，可能不是 Node.js 项目或配置不完整
+                                </span>
+                              </div>
+                              <div className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                                PM2 无法启动没有 package.json 的项目
+                              </div>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -1170,14 +1409,14 @@ export default function ProjectsPage({
                             <button 
                               onClick={handleStartProject}
                               className={`flex-1 px-3 py-2 rounded-lg text-sm ${
-                                hasUninstalledDependencies() 
+                                !canStartProject() 
                                   ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
                                   : 'btn-success'
                               }`}
-                              disabled={isLoadingPM2 || hasUninstalledDependencies()}
-                              title={hasUninstalledDependencies() ? '存在未安装的必要依赖包，无法启动项目' : ''}
+                              disabled={isLoadingPM2 || !canStartProject()}
+                              title={getStartButtonTitle()}
                             >
-                              {isLoadingPM2 ? '启动中...' : (hasUninstalledDependencies() ? '依赖缺失' : '启动')}
+                              {getStartButtonText()}
                             </button>
                           )}
                         </div>
@@ -1311,17 +1550,33 @@ export default function ProjectsPage({
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           <div className="font-medium theme-text-primary truncate">{project.name}</div>
-                          {/* 运行状态指示器 */}
+                          {/* 运行状态指示器 - 仅显示历史状态作为参考 */}
                           <div 
                             className={`status-dot w-2 h-2 rounded-full ${
-                              project.status === 'running' ? 'running bg-green-500 animate-pulse' :
-                              project.status === 'stopped' ? 'bg-gray-400' :
-                              project.status === 'error' ? 'error bg-red-500' : 'bg-gray-400'
+                              project.id === selectedProject?.id && pm2Status ? (
+                                // 如果是选中的项目且有实时状态，显示实时状态
+                                (pm2Status.status === 'online' || pm2Status.pm2_env?.status === 'online') ? 'running bg-green-500 animate-pulse' :
+                                (pm2Status.status === 'stopped' || pm2Status.pm2_env?.status === 'stopped') ? 'bg-gray-400' :
+                                'error bg-red-500'
+                              ) : (
+                                // 否则显示历史状态
+                                project.status === 'running' ? 'running bg-green-500 animate-pulse' :
+                                project.status === 'stopped' ? 'bg-gray-400' :
+                                project.status === 'error' ? 'error bg-red-500' : 'bg-gray-400'
+                              )
                             }`}
                             title={`状态: ${
-                              project.status === 'running' ? '运行中' :
-                              project.status === 'stopped' ? '已停止' :
-                              project.status === 'error' ? '错误' : '未知'
+                              project.id === selectedProject?.id && pm2Status ? (
+                                // 实时状态标题
+                                (pm2Status.status === 'online' || pm2Status.pm2_env?.status === 'online') ? '运行中（实时）' :
+                                (pm2Status.status === 'stopped' || pm2Status.pm2_env?.status === 'stopped') ? '已停止（实时）' :
+                                '错误（实时）'
+                              ) : (
+                                // 历史状态标题
+                                project.status === 'running' ? '运行中（历史）' :
+                                project.status === 'stopped' ? '已停止（历史）' :
+                                project.status === 'error' ? '错误（历史）' : '未知（历史）'
+                              )
                             }`}
                           ></div>
                         </div>
@@ -1347,15 +1602,33 @@ export default function ProjectsPage({
                               {project.packageManager || 'npm'}
                             </span>
                             <span className={`project-info-badge px-2 py-0.5 rounded text-xs font-medium ${
-                              project.status === 'running' 
-                                ? 'bg-green-100 text-green-800 dark:bg-green-800/20 dark:text-green-300'
-                                : project.status === 'stopped' 
-                                ? 'bg-gray-100 text-gray-800 dark:bg-gray-800/50 dark:text-gray-300'
-                                : 'bg-red-100 text-red-800 dark:bg-red-800/20 dark:text-red-300'
+                              project.id === selectedProject?.id && pm2Status ? (
+                                // 选中项目显示实时状态样式
+                                (pm2Status.status === 'online' || pm2Status.pm2_env?.status === 'online')
+                                  ? 'bg-green-100 text-green-800 dark:bg-green-800/20 dark:text-green-300'
+                                  : (pm2Status.status === 'stopped' || pm2Status.pm2_env?.status === 'stopped')
+                                  ? 'bg-gray-100 text-gray-800 dark:bg-gray-800/50 dark:text-gray-300'
+                                  : 'bg-red-100 text-red-800 dark:bg-red-800/20 dark:text-red-300'
+                              ) : (
+                                // 非选中项目显示历史状态样式
+                                project.status === 'running' 
+                                  ? 'bg-green-100 text-green-800 dark:bg-green-800/20 dark:text-green-300'
+                                  : project.status === 'stopped' 
+                                  ? 'bg-gray-100 text-gray-800 dark:bg-gray-800/50 dark:text-gray-300'
+                                  : 'bg-red-100 text-red-800 dark:bg-red-800/20 dark:text-red-300'
+                              )
                             }`}>
-                              {project.status === 'running' ? '运行中' :
-                               project.status === 'stopped' ? '已停止' :
-                               project.status === 'error' ? '错误' : '未知'}
+                              {project.id === selectedProject?.id && pm2Status ? (
+                                // 选中项目显示实时状态文字
+                                (pm2Status.status === 'online' || pm2Status.pm2_env?.status === 'online') ? '运行中 ●' :
+                                (pm2Status.status === 'stopped' || pm2Status.pm2_env?.status === 'stopped') ? '已停止 ●' :
+                                '错误 ●'
+                              ) : (
+                                // 非选中项目显示历史状态文字
+                                project.status === 'running' ? '运行中' :
+                                project.status === 'stopped' ? '已停止' :
+                                project.status === 'error' ? '错误' : '未知'
+                              )}
                             </span>
                           </div>
                           

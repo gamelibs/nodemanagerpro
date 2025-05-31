@@ -284,7 +284,9 @@ export function useProjects() {
       
       for (const project of state.projects) {
         try {
-          const result = await window.electronAPI?.invoke('pm2:describe', project.id);
+          // 使用正确的进程名称格式 ${project.name}-${project.id}
+          const processName = `${project.name}-${project.id}`;
+          const result = await window.electronAPI?.invoke('pm2:describe', processName);
           
           if (result?.success && result.status) {
             // PM2 进程存在且运行
@@ -293,7 +295,7 @@ export function useProjects() {
             
             if (pm2Status === 'online') {
               projectStatus = 'running';
-            } else if (pm2Status === 'error') {
+            } else if (pm2Status === 'error' || pm2Status === 'errored') {
               projectStatus = 'error';
             }
             

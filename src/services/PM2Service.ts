@@ -469,9 +469,9 @@ export class PM2Service {
       name: `${project.name}-${project.id}`, // 使用名称+ID的组合，便于识别
       script: startScript?.command || 'npm start',
       cwd: project.path,
+      // 不设置 PORT 环境变量，让项目使用自己的配置（.env文件、代码中的默认值等）
       env: {
-        NODE_ENV: 'development',
-        PORT: project.port?.toString() || '8000'
+        NODE_ENV: 'development'
       },
       // PM2 配置选项
       exec_mode: 'fork',
