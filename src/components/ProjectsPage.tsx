@@ -36,6 +36,7 @@ export default function ProjectsPage({
   const [projectPort, setProjectPort] = useState<number | null>(null); // 项目端口
   const [isEditingPort, setIsEditingPort] = useState(false); // 是否正在编辑端口
   const [tempPort, setTempPort] = useState<string>(''); // 临时端口输入值
+  const [isInstallingDependencies, setIsInstallingDependencies] = useState(false); // 是否正在安装依赖
   const [toastMessage, setToastMessage] = useState<string>('');
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
   
@@ -161,7 +162,10 @@ export default function ProjectsPage({
 
   // 读取项目的 package.json 文件
   const fetchPackageInfo = async () => {
+    console.log('📡 fetchPackageInfo 开始:', { selectedProject: selectedProject?.name });
+    
     if (!selectedProject) {
+      console.log('📡 fetchPackageInfo: 无选中项目，设置 packageInfo 为 null');
       setPackageInfo(null);
       return;
     }
@@ -169,25 +173,21 @@ export default function ProjectsPage({
     setIsLoadingPackage(true);
     try {
       const packagePath = `${selectedProject.path}/package.json`;
+      console.log('📡 尝试读取:', packagePath);
       
       // 使用 Electron API 读取文件
       const result = await window.electronAPI?.invoke('fs:readFile', packagePath);
       
       if (result?.success && result.content) {
         const packageData = JSON.parse(result.content);
+        console.log('📦 成功读取并设置 package.json:', packageData.name, packageData.version);
         setPackageInfo(packageData);
-        console.log('📦 成功读取 package.json:', packageData.name, packageData.version);
-        
-        // 读取成功后检查依赖安装状态
-        setTimeout(() => {
-          checkDependencyInstallation();
-        }, 100);
       } else {
         console.log('❌ 无法读取 package.json:', result?.error);
         setPackageInfo(null);
       }
     } catch (error) {
-      console.error('读取 package.json 失败:', error);
+      console.error('📡 fetchPackageInfo 读取失败:', error);
       setPackageInfo(null);
     } finally {
       setIsLoadingPackage(false);
@@ -196,7 +196,10 @@ export default function ProjectsPage({
 
   // 检查依赖包安装状态
   const checkDependencyInstallation = async () => {
+    console.log('🔍 开始检查依赖安装状态', { selectedProject: selectedProject?.name, packageInfo: !!packageInfo });
+    
     if (!selectedProject || !packageInfo) {
+      console.log('🔍 跳过检查: 缺少项目或 packageInfo');
       setDependencyStatus({});
       return;
     }
@@ -208,7 +211,10 @@ export default function ProjectsPage({
         ...packageInfo.devDependencies
       };
 
+      console.log('🔍 要检查的依赖包:', Object.keys(allDependencies));
+
       if (Object.keys(allDependencies).length === 0) {
+        console.log('🔍 无依赖包需要检查');
         setDependencyStatus({});
         return;
       }
@@ -239,17 +245,32 @@ export default function ProjectsPage({
 
   // 检查是否有关键依赖包未安装
   const hasUninstalledDependencies = () => {
-    if (!packageInfo || !packageInfo.dependencies) return false;
+    if (!packageInfo || !packageInfo.dependencies) {
+      console.log('🔍 hasUninstalledDependencies: 无 packageInfo 或 dependencies');
+      return false;
+    }
     
     // 如果还在检查依赖状态，返回 false（不禁用）
-    if (isCheckingDependencies) return false;
+    if (isCheckingDependencies) {
+      console.log('🔍 hasUninstalledDependencies: 正在检查依赖状态');
+      return false;
+    }
     
     // 如果依赖状态还没检查完，返回 false
-    if (Object.keys(dependencyStatus).length === 0) return false;
+    if (Object.keys(dependencyStatus).length === 0) {
+      console.log('🔍 hasUninstalledDependencies: 依赖状态为空');
+      return false;
+    }
     
     // 检查生产依赖是否有未安装的包
     const productionDeps = Object.keys(packageInfo.dependencies);
-    return productionDeps.some(dep => dependencyStatus[dep] === false);
+    const hasUninstalled = productionDeps.some(dep => dependencyStatus[dep] === false);
+    console.log('🔍 hasUninstalledDependencies: 检查结果', {
+      productionDeps,
+      dependencyStatus,
+      hasUninstalled
+    });
+    return hasUninstalled;
   };
 
   // 从项目配置文件读取端口
@@ -454,13 +475,55 @@ export default function ProjectsPage({
     setTempPort('');
   };
 
+  // 安装项目依赖
+  const handleInstallDependencies = async () => {
+    if (!selectedProject) {
+      showToast('请先选择一个项目', 'error');
+      return;
+    }
+
+    if (!packageInfo) {
+      showToast('未找到 package.json 文件', 'error');
+      return;
+    }
+
+    setIsInstallingDependencies(true);
+    showToast('正在安装依赖包...', 'info');
+
+    try {
+      console.log(`🔧 开始安装依赖: ${selectedProject.path}`);
+      
+      // 使用现有的 IPC 调用
+      const result = await window.electronAPI?.invoke('project:installDependencies', selectedProject.path);
+
+      if (result?.success) {
+        showToast('依赖安装成功！', 'success');
+        console.log('✅ 依赖安装成功:', result.data);
+        // 给文件系统一些时间完成操作，然后重新检查依赖状态
+        setTimeout(async () => {
+          console.log('🔄 重新检查依赖安装状态...');
+          await checkDependencyInstallation();
+        }, 2000); // 增加到2秒延迟
+      } else {
+        console.error('❌ 依赖安装失败:', result?.error);
+        showToast(`依赖安装失败: ${result?.error || '未知错误'}`, 'error');
+      }
+    } catch (error) {
+      console.error('安装依赖失败:', error);
+      showToast('安装依赖失败，请检查网络连接', 'error');
+    } finally {
+      setIsInstallingDependencies(false);
+    }
+  };
+
   // 当选中项目时获取PM2状态和日志
   useEffect(() => {
+    console.log('🔄 selectedProject useEffect 触发:', { selectedProject: selectedProject?.name });
+    
     if (selectedProject) {
       fetchPM2Status();
       fetchPM2Logs();
       fetchPackageInfo();
-      checkDependencyInstallation();
       
       // 读取项目端口并同步到项目记录
       const loadProjectPort = async () => {
@@ -479,18 +542,23 @@ export default function ProjectsPage({
       };
       loadProjectPort();
     } else {
+      console.log('🔄 清除所有项目状态 - selectedProject 为空');
       setPm2Status(null);
       setPm2Logs([]);
       setPackageInfo(null);
       setProjectPort(null);
+      setDependencyStatus({}); // 清除依赖状态
+      setIsCheckingDependencies(false); // 重置检查状态
     }
   }, [selectedProject]);
 
   // 当 packageInfo 更新时检查依赖安装状态
   useEffect(() => {
+    console.log('🔍 packageInfo useEffect 触发:', { packageInfo: !!packageInfo, packageInfoData: packageInfo?.name });
     if (packageInfo) {
       checkDependencyInstallation();
     } else {
+      console.log('🔍 清除依赖状态 - packageInfo 为空');
       setDependencyStatus({});
     }
   }, [packageInfo]);
@@ -760,7 +828,16 @@ export default function ProjectsPage({
                   <h4 className="font-semibold theme-text-primary mb-2">基本信息</h4>
                   <div className="space-y-2 text-sm">
                     <div>
-                      <span className="theme-text-muted">项目描述:</span>
+                      <div className="flex items-center justify-between">
+                        <span className="theme-text-muted">项目描述:</span>
+                        <button
+                          onClick={handleOpenInEditor}
+                          className="text-blue-600 hover:text-blue-800 text-xs opacity-70 hover:opacity-100 flex items-center gap-1"
+                          title="在编辑器中打开项目"
+                        >
+                          ✏️ 编辑器
+                        </button>
+                      </div>
                       <span className="theme-text-primary">
                         {isLoadingPackage ? '读取中...' : (packageInfo?.description || '暂无描述')}
                       </span>
@@ -770,11 +847,20 @@ export default function ProjectsPage({
                     <div className="mt-3 pt-2 border-t theme-border">
                       <div className="font-medium theme-text-primary mb-1 text-xs">项目详情:</div>
                       <div className="space-y-1">
-                        <div className="flex justify-between">
+                        <div className="flex justify-between items-center">
                           <span className="theme-text-muted text-xs">项目路径:</span>
-                          <span className="theme-text-primary text-xs max-w-40 truncate" title={selectedProject.path}>
-                            {selectedProject.path}
-                          </span>
+                          <div className="flex items-center gap-1">
+                            <span className="theme-text-primary text-xs max-w-32 truncate" title={selectedProject.path}>
+                              {selectedProject.path}
+                            </span>
+                            <button
+                              onClick={handleOpenInFolder}
+                              className="text-blue-600 hover:text-blue-800 text-xs opacity-70 hover:opacity-100"
+                              title="在文件夹中打开"
+                            >
+                              📂
+                            </button>
+                          </div>
                         </div>
                         <div className="flex justify-between">
                           <span className="theme-text-muted text-xs">项目类型:</span>
@@ -806,7 +892,28 @@ export default function ProjectsPage({
                             
                             {/* 端口编辑功能 */}
                             <div className="flex justify-between items-center">
-                              <span className="theme-text-muted text-xs">项目端口:</span>
+                              <div className="flex items-center gap-2">
+                                <span className="theme-text-muted text-xs">项目地址:</span>
+                                <a
+                                  href={`http://localhost:${projectPort || selectedProject?.port || 3000}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    handleOpenInBrowser();
+                                  }}
+                                  className="text-xs text-blue-600 hover:text-blue-800 underline cursor-pointer"
+                                  title="在浏览器中打开"
+                                >
+                                  http://localhost:{projectPort || selectedProject?.port || 3000}
+                                </a>
+                                <button
+                                  onClick={handleOpenInBrowser}
+                                  className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                  title="在浏览器中打开"
+                                >
+                                </button>
+                              </div>
                               {isEditingPort ? (
                                 <div className="flex items-center gap-1">
                                   <input
@@ -835,6 +942,7 @@ export default function ProjectsPage({
                                 </div>
                               ) : (
                                 <div className="flex items-center gap-1">
+                                  <span className="theme-text-muted text-xs">端口:</span>
                                   <span className="theme-text-primary text-xs">
                                     {projectPort || selectedProject?.port || 3000}
                                   </span>
@@ -862,14 +970,35 @@ export default function ProjectsPage({
                           <div className="mt-3 pt-2 border-t theme-border">
                             <div className="font-medium theme-text-primary mb-1 text-xs">依赖包信息:</div>
                             
-                            {/* 依赖缺失警告 */}
+                            {/* 依赖缺失警告和安装按钮 */}
                             {hasUninstalledDependencies() && (
                               <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded px-2 py-1 mb-2">
-                                <div className="flex items-center gap-1">
-                                  <span className="text-orange-600">⚠</span>
-                                  <span className="text-xs text-orange-700 dark:text-orange-300">
-                                    检测到未安装的依赖包，项目可能无法正常启动
-                                  </span>
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-orange-600">⚠</span>
+                                    <span className="text-xs text-orange-700 dark:text-orange-300">
+                                      检测到未安装的依赖包，项目可能无法正常启动
+                                    </span>
+                                  </div>
+                                  <button
+                                    onClick={handleInstallDependencies}
+                                    disabled={isInstallingDependencies}
+                                    className={`px-2 py-1 text-xs rounded transition-colors ${
+                                      isInstallingDependencies
+                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                        : 'bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-800/20 dark:text-blue-300 dark:hover:bg-blue-800/40'
+                                    }`}
+                                    title={`使用 ${selectedProject?.packageManager || 'npm'} 安装依赖`}
+                                  >
+                                    {isInstallingDependencies ? (
+                                      <div className="flex items-center gap-1">
+                                        <div className="animate-spin rounded-full h-2 w-2 border-b border-current"></div>
+                                        安装中...
+                                      </div>
+                                    ) : (
+                                      '📦 安装依赖'
+                                    )}
+                                  </button>
                                 </div>
                               </div>
                             )}
@@ -939,14 +1068,6 @@ export default function ProjectsPage({
                         )}
                   </div>
                   
-                  {/* 快速操作按钮 */}
-                  <div className="mt-4 pt-3 border-t theme-border">
-                    <div className="grid grid-cols-3 gap-2">
-                      <button className="px-3 py-2 btn-info rounded text-xs" onClick={handleOpenInFolder}>📂 文件夹</button>
-                      <button className="px-3 py-2 btn-info rounded text-xs" onClick={handleOpenInEditor}>✏️ 编辑器</button>
-                      <button className="px-3 py-2 btn-info rounded text-xs" onClick={handleOpenInBrowser}>🌐 浏览器</button>
-                    </div>
-                  </div>
                 </div>
                 
                 <div className="theme-bg-secondary p-4 rounded-lg">
@@ -1060,19 +1181,6 @@ export default function ProjectsPage({
                             </button>
                           )}
                         </div>
-                        
-                        {/* 依赖安装提示 */}
-                        {hasUninstalledDependencies() && (
-                          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded px-2 py-1">
-                            <div className="text-xs text-blue-700 dark:text-blue-300">
-                              <div className="font-medium mb-1">💡 安装依赖包：</div>
-                              <div className="font-mono text-xs bg-gray-100 dark:bg-gray-800 px-1 rounded">
-                                {selectedProject?.packageManager === 'yarn' ? 'yarn install' : 
-                                 selectedProject?.packageManager === 'pnpm' ? 'pnpm install' : 'npm install'}
-                              </div>
-                            </div>
-                          </div>
-                        )}
                       </div>
                     </div>
                   )}
