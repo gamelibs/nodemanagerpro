@@ -25,7 +25,6 @@ export default function ProjectsPage({
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [activeProjectTab, setActiveProjectTab] = useState('overview'); // 项目详情标签页
   const [pm2Status, setPm2Status] = useState<PM2Process | null>(null); // PM2进程状态
   const [isLoadingPM2, setIsLoadingPM2] = useState(false);
   const [pm2Logs, setPm2Logs] = useState<string[]>([]); // PM2日志
@@ -153,16 +152,16 @@ export default function ProjectsPage({
     }
   };
 
-  // 当选中项目或切换到概览标签时获取PM2状态和日志
+  // 当选中项目时获取PM2状态和日志
   useEffect(() => {
-    if (selectedProject && activeProjectTab === 'overview') {
+    if (selectedProject) {
       fetchPM2Status();
       fetchPM2Logs();
-    } else if (!selectedProject) {
+    } else {
       setPm2Status(null);
       setPm2Logs([]);
     }
-  }, [selectedProject, activeProjectTab]);
+  }, [selectedProject]);
 
   const handleCreateProject = () => {
     setShowCreateModal(true);
@@ -419,38 +418,19 @@ export default function ProjectsPage({
       );
     }
 
-    const tabs = [
-      { id: 'overview', label: t('projects.tabs.overview'), icon: '📊' },
-      { id: 'dependencies', label: t('projects.tabs.dependencies'), icon: '📦' },
-      { id: 'logs', label: t('projects.tabs.logs'), icon: '📝' }
-    ];
-
     return (
       <div className="flex flex-col h-full">
-        {/* 项目详情头部 - 标签页 */}
-        <div className="p-6 border-b theme-border">
-          <div className="flex space-x-1">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveProjectTab(tab.id)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                  activeProjectTab === tab.id 
-                    ? 'btn-primary' 
-                    : 'theme-text-muted hover:theme-text-primary'
-                }`}
-              >
-                <span className="mr-2">{tab.icon}</span>
-                {activeProjectTab === tab.id && '*'}{tab.label}
-              </button>
-            ))}
-          </div>
+        {/* 项目详情头部 - 只显示概览 */}
+        <div className="px-6 py-3 border-b theme-border">
+          <h3 className="text-lg font-semibold theme-text-primary flex items-center">
+            <span className="mr-2">📊</span>
+            概览
+          </h3>
         </div>
 
         {/* 项目详情内容 */}
         <div className="flex-1 p-6 overflow-auto">
-          {activeProjectTab === 'overview' && (
-            <div className="space-y-6">
+          <div className="space-y-6">
               <div className="grid grid-cols-2 gap-6">
                 <div className="theme-bg-secondary p-4 rounded-lg">
                   <h4 className="font-semibold theme-text-primary mb-2">基本信息</h4>
@@ -635,25 +615,6 @@ export default function ProjectsPage({
                 </div>
               )}
             </div>
-          )}
-
-          {activeProjectTab === 'dependencies' && (
-            <div className="space-y-6">
-              <div className="theme-bg-secondary p-4 rounded-lg">
-                <h4 className="font-semibold theme-text-primary mb-3">依赖管理</h4>
-                <p className="theme-text-muted text-sm">依赖管理功能即将推出...</p>
-              </div>
-            </div>
-          )}
-
-          {activeProjectTab === 'logs' && (
-            <div className="space-y-6">
-              <div className="theme-bg-secondary p-4 rounded-lg">
-                <h4 className="font-semibold theme-text-primary mb-3">日志查看</h4>
-                <p className="theme-text-muted text-sm">日志查看功能即将推出...</p>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     );
