@@ -135,6 +135,64 @@ export default function ProjectsPage({
     }
   };
 
+  // 为指定项目获取PM2状态（不依赖selectedProject state）
+  const fetchPM2StatusForProject = async (project: Project) => {
+    setIsLoadingPM2(true);
+    try {
+      console.log('🔍 正在获取项目PM2状态:', project.name);
+      const result = await PM2Service.listAllProcesses();
+      if (result.success && result.processes) {
+        console.log('📋 PM2进程列表:', result.processes);
+        
+        // 生成期望的进程名称
+        const expectedProcessName = generateProcessName(project);
+        console.log('🎯 期望的进程名称:', expectedProcessName);
+        
+        // 更严格的匹配逻辑：优先匹配进程名称，然后匹配路径
+        const projectProcess = result.processes.find(
+          (proc: PM2Process) => {
+            // 先检查进程名称是否完全匹配
+            if (proc.name === expectedProcessName) {
+              return true;
+            }
+            // 再检查路径是否匹配
+            if (proc.pm2_env && proc.pm2_env.pm_cwd === project.path) {
+              return true;
+            }
+            // 最后检查名称是否部分匹配（兼容旧版本）
+            if (proc.name && (
+              proc.name === project.name || 
+              proc.name.includes(project.name) ||
+              project.name.includes(proc.name)
+            )) {
+              return true;
+            }
+            return false;
+          }
+        );
+        
+        if (projectProcess) {
+          console.log('✅ 找到匹配的PM2进程:', projectProcess);
+        } else {
+          console.log('❌ 未找到匹配的PM2进程');
+        }
+        
+        setPm2Status(projectProcess || null);
+        return projectProcess;
+      } else {
+        console.log('❌ 获取PM2进程列表失败:', result.error);
+        setPm2Status(null);
+        return null;
+      }
+    } catch (error) {
+      console.error('获取PM2状态失败:', error);
+      setPm2Status(null);
+      return null;
+    } finally {
+      setIsLoadingPM2(false);
+    }
+  };
+
   // 获取PM2日志
   const fetchPM2Logs = async () => {
     if (!selectedProject) {
@@ -194,6 +252,37 @@ export default function ProjectsPage({
     }
   };
 
+  // 为指定项目获取package.json信息（不依赖selectedProject state）
+  const fetchPackageInfoForProject = async (project: Project) => {
+    console.log('📡 fetchPackageInfoForProject 开始:', { project: project.name });
+    
+    setIsLoadingPackage(true);
+    try {
+      const packagePath = `${project.path}/package.json`;
+      console.log('📡 尝试读取:', packagePath);
+      
+      // 使用 Electron API 读取文件
+      const result = await window.electronAPI?.invoke('fs:readFile', packagePath);
+      
+      if (result?.success && result.content) {
+        const packageData = JSON.parse(result.content);
+        console.log('📦 成功读取并设置 package.json:', packageData.name, packageData.version);
+        setPackageInfo(packageData);
+        return packageData;
+      } else {
+        console.log('❌ 无法读取 package.json:', result?.error);
+        setPackageInfo(null);
+        return null;
+      }
+    } catch (error) {
+      console.error('📡 fetchPackageInfoForProject 读取失败:', error);
+      setPackageInfo(null);
+      return null;
+    } finally {
+      setIsLoadingPackage(false);
+    }
+  };
+
   // 检查依赖包安装状态
   const checkDependencyInstallation = async () => {
     console.log('🔍 开始检查依赖安装状态', { selectedProject: selectedProject?.name, packageInfo: !!packageInfo });
@@ -220,6 +309,55 @@ export default function ProjectsPage({
       }
 
       const nodeModulesPath = `${selectedProject.path}/node_modules`;
+      const status: {[key: string]: boolean} = {};
+
+      // 检查每个依赖包是否安装
+      for (const [depName] of Object.entries(allDependencies)) {
+        try {
+          const depPath = `${nodeModulesPath}/${depName}/package.json`;
+          const result = await window.electronAPI?.invoke('fs:readFile', depPath);
+          status[depName] = result?.success === true;
+        } catch (error) {
+          status[depName] = false;
+        }
+      }
+
+      setDependencyStatus(status);
+      console.log('📦 依赖包安装状态检查完成:', status);
+    } catch (error) {
+      console.error('检查依赖包安装状态失败:', error);
+      setDependencyStatus({});
+    } finally {
+      setIsCheckingDependencies(false);
+    }
+  };
+
+  // 为指定项目检查依赖包安装状态（不依赖selectedProject state）
+  const checkDependencyInstallationForProject = async (project: Project, packageData: any) => {
+    console.log('🔍 开始检查依赖安装状态', { project: project.name, packageData: !!packageData });
+    
+    if (!project || !packageData) {
+      console.log('🔍 跳过检查: 缺少项目或 packageData');
+      setDependencyStatus({});
+      return;
+    }
+
+    setIsCheckingDependencies(true);
+    try {
+      const allDependencies = {
+        ...packageData.dependencies,
+        ...packageData.devDependencies
+      };
+
+      console.log('🔍 要检查的依赖包:', Object.keys(allDependencies));
+
+      if (Object.keys(allDependencies).length === 0) {
+        console.log('🔍 无依赖包需要检查');
+        setDependencyStatus({});
+        return;
+      }
+
+      const nodeModulesPath = `${project.path}/node_modules`;
       const status: {[key: string]: boolean} = {};
 
       // 检查每个依赖包是否安装
@@ -404,6 +542,67 @@ export default function ProjectsPage({
     } catch (error) {
       console.error('读取项目端口失败:', error);
       return selectedProject.port || 3000;
+    }
+  };
+
+  // 为指定项目读取端口配置（不依赖selectedProject state）
+  const readProjectPortForProject = async (project: Project) => {
+    try {
+      // 尝试从 .env 文件读取端口
+      const envPath = `${project.path}/.env`;
+      try {
+        const result = await window.electronAPI?.invoke('fs:readFile', envPath);
+        if (result?.success) {
+          const portMatch = result.content.match(/PORT\s*=\s*(\d+)/);
+          if (portMatch) {
+            const port = parseInt(portMatch[1]);
+            setProjectPort(port);
+            return port;
+          }
+        }
+      } catch (e) {
+        // .env 文件不存在或读取失败
+      }
+
+      // 尝试从 vite.config.js/ts 读取端口
+      const viteConfigPath = `${project.path}/vite.config.ts`;
+      const viteConfigJsPath = `${project.path}/vite.config.js`;
+      
+      let configContent = null;
+      try {
+        const result = await window.electronAPI?.invoke('fs:readFile', viteConfigPath);
+        if (result?.success) {
+          configContent = result.content;
+        }
+      } catch (e) {
+        try {
+          const result = await window.electronAPI?.invoke('fs:readFile', viteConfigJsPath);
+          if (result?.success) {
+            configContent = result.content;
+          }
+        } catch (e2) {
+          // 继续尝试其他配置文件
+        }
+      }
+
+      if (configContent) {
+        const portMatch = configContent.match(/port:\s*(\d+)/);
+        if (portMatch) {
+          const port = parseInt(portMatch[1]);
+          setProjectPort(port);
+          return port;
+        }
+      }
+
+      // 返回项目记录中的端口或默认端口
+      const port = project.port || 3000;
+      setProjectPort(port);
+      return port;
+    } catch (error) {
+      console.error('读取项目端口失败:', error);
+      const port = project.port || 3000;
+      setProjectPort(port);
+      return port;
     }
   };
 
@@ -657,18 +856,20 @@ export default function ProjectsPage({
     // 立即获取项目的最新实时数据
     console.log('🔄 获取项目最新数据...');
     
-    // 并行获取所有信息
+    // 立即获取PM2状态（传入项目参数，不依赖state）
+    await fetchPM2StatusForProject(project);
+    
+    // 并行获取其他信息
     const promises = [
-      fetchPM2Status(),      // 获取PM2实时运行状态
-      fetchPackageInfo(),    // 获取package.json信息
-      readProjectPort()      // 读取项目端口配置
+      fetchPackageInfoForProject(project),    // 获取package.json信息
+      readProjectPortForProject(project)      // 读取项目端口配置
     ];
     
     // 等待基础信息加载完成后再检查依赖
-    Promise.all(promises).then(() => {
+    Promise.all(promises).then(([packageData]) => {
       // 在package.json加载完成后检查依赖状态
-      if (packageInfo) {
-        checkDependencyInstallation();
+      if (packageData) {
+        checkDependencyInstallationForProject(project, packageData);
       }
     }).catch(error => {
       console.error('获取项目信息失败:', error);
