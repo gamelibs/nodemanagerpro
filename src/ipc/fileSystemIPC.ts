@@ -29,6 +29,7 @@ export function setupFileSystemIPC() {
     ipcMain.removeHandler('project:installDependencies');
     ipcMain.removeHandler('project:installSpecificPackages');
     ipcMain.removeHandler('project:createPackageJson');
+    ipcMain.removeHandler('fs:readFile');
   } catch (error) {
     // 忽略移除不存在处理器的错误
   }
@@ -392,6 +393,35 @@ export function setupFileSystemIPC() {
       return { 
         success: false, 
         error: error instanceof Error ? error.message : '创建 package.json 失败' 
+      };
+    }
+  });
+
+  // 读取文件内容
+  ipcMain.handle('fs:readFile', async (_, filePath: string) => {
+    console.log('📡 收到 fs:readFile IPC调用:', filePath);
+    try {
+      // 检查文件是否存在
+      if (!fs.existsSync(filePath)) {
+        return { 
+          success: false, 
+          error: '文件不存在' 
+        };
+      }
+
+      // 读取文件内容
+      const content = fs.readFileSync(filePath, 'utf-8');
+      console.log('📡 fs:readFile 成功读取文件:', filePath);
+      
+      return { 
+        success: true, 
+        content: content 
+      };
+    } catch (error) {
+      console.error('📡 fs:readFile 失败:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : '读取文件失败' 
       };
     }
   });

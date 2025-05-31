@@ -29,6 +29,8 @@ export default function ProjectsPage({
   const [isLoadingPM2, setIsLoadingPM2] = useState(false);
   const [pm2Logs, setPm2Logs] = useState<string[]>([]); // PM2日志
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+  const [packageInfo, setPackageInfo] = useState<any>(null); // package.json 信息
+  const [isLoadingPackage, setIsLoadingPackage] = useState(false);
   const [toastMessage, setToastMessage] = useState<string>('');
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
   
@@ -152,14 +154,46 @@ export default function ProjectsPage({
     }
   };
 
+  // 读取项目的 package.json 文件
+  const fetchPackageInfo = async () => {
+    if (!selectedProject) {
+      setPackageInfo(null);
+      return;
+    }
+
+    setIsLoadingPackage(true);
+    try {
+      const packagePath = `${selectedProject.path}/package.json`;
+      
+      // 使用 Electron API 读取文件
+      const result = await window.electronAPI?.invoke('fs:readFile', packagePath);
+      
+      if (result?.success && result.content) {
+        const packageData = JSON.parse(result.content);
+        setPackageInfo(packageData);
+        console.log('📦 成功读取 package.json:', packageData.name, packageData.version);
+      } else {
+        console.log('❌ 无法读取 package.json:', result?.error);
+        setPackageInfo(null);
+      }
+    } catch (error) {
+      console.error('读取 package.json 失败:', error);
+      setPackageInfo(null);
+    } finally {
+      setIsLoadingPackage(false);
+    }
+  };
+
   // 当选中项目时获取PM2状态和日志
   useEffect(() => {
     if (selectedProject) {
       fetchPM2Status();
       fetchPM2Logs();
+      fetchPackageInfo();
     } else {
       setPm2Status(null);
       setPm2Logs([]);
+      setPackageInfo(null);
     }
   }, [selectedProject]);
 
@@ -435,22 +469,100 @@ export default function ProjectsPage({
                 <div className="theme-bg-secondary p-4 rounded-lg">
                   <h4 className="font-semibold theme-text-primary mb-2">基本信息</h4>
                   <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="theme-text-muted">项目路径:</span>
-                      <span className="theme-text-primary">{selectedProject.path}</span>
+                    <div>
+                      <span className="theme-text-muted">项目描述:</span>
+                      <span className="theme-text-primary">
+                        {isLoadingPackage ? '读取中...' : (packageInfo?.description || '暂无描述')}
+                      </span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="theme-text-muted">项目类型:</span>
-                      <span className="theme-text-primary">{selectedProject.type}</span>
+                    
+                    {/* 项目详细信息 - 移动到这里 */}
+                    <div className="mt-3 pt-2 border-t theme-border">
+                      <div className="font-medium theme-text-primary mb-1 text-xs">项目详情:</div>
+                      <div className="space-y-1">
+                        <div className="flex justify-between">
+                          <span className="theme-text-muted text-xs">项目路径:</span>
+                          <span className="theme-text-primary text-xs max-w-40 truncate" title={selectedProject.path}>
+                            {selectedProject.path}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="theme-text-muted text-xs">项目类型:</span>
+                          <span className="theme-text-primary text-xs">{selectedProject.type}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="theme-text-muted text-xs">包管理器:</span>
+                          <span className="theme-text-primary text-xs">{selectedProject.packageManager}</span>
+                        </div>
+                        {isLoadingPackage ? (
+                          <div className="flex items-center justify-center py-2">
+                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-500"></div>
+                            <span className="ml-2 text-xs theme-text-muted">读取包信息...</span>
+                          </div>
+                        ) : packageInfo ? (
+                          <>
+                            {packageInfo.version && (
+                              <div className="flex justify-between">
+                                <span className="theme-text-muted text-xs">项目版本:</span>
+                                <span className="theme-text-primary text-xs">{packageInfo.version}</span>
+                              </div>
+                            )}
+                            {packageInfo.main && (
+                              <div className="flex justify-between">
+                                <span className="theme-text-muted text-xs">入口文件:</span>
+                                <span className="theme-text-primary text-xs">{packageInfo.main}</span>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div className="text-xs theme-text-muted italic">
+                            未找到 package.json 文件
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="theme-text-muted">端口:</span>
-                      <span className="theme-text-primary">{selectedProject.port || '未分配'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="theme-text-muted">包管理器:</span>
-                      <span className="theme-text-primary">{selectedProject.packageManager}</span>
-                    </div>
+                    
+                    {/* 依赖包信息 */}
+                    {packageInfo && (packageInfo.dependencies || packageInfo.devDependencies) && (
+                          <div className="mt-3 pt-2 border-t theme-border">
+                            <div className="font-medium theme-text-primary mb-1 text-xs">依赖包信息:</div>
+                            <div className="space-y-1">
+                              {packageInfo.dependencies && (
+                                <div className="flex justify-between">
+                                  <span className="theme-text-muted text-xs">生产依赖:</span>
+                                  <span className="theme-text-primary text-xs">
+                                    {Object.keys(packageInfo.dependencies).length} 个
+                                  </span>
+                                </div>
+                              )}
+                              {packageInfo.devDependencies && (
+                                <div className="flex justify-between">
+                                  <span className="theme-text-muted text-xs">开发依赖:</span>
+                                  <span className="theme-text-primary text-xs">
+                                    {Object.keys(packageInfo.devDependencies).length} 个
+                                  </span>
+                                </div>
+                              )}
+                              {packageInfo.dependencies && (
+                                <div className="mt-2">
+                                  <div className="text-xs theme-text-muted mb-1">主要依赖:</div>
+                                  <div className="flex flex-wrap gap-1">
+                                    {Object.entries(packageInfo.dependencies).slice(0, 6).map(([pkg, version]) => (
+                                      <span key={pkg} className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-800/20 text-blue-800 dark:text-blue-300 text-xs rounded">
+                                        {pkg}@{(version as string).replace('^', '').replace('~', '')}
+                                      </span>
+                                    ))}
+                                    {Object.keys(packageInfo.dependencies).length > 6 && (
+                                      <span className="text-xs theme-text-muted">
+                                        +{Object.keys(packageInfo.dependencies).length - 6}...
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
                   </div>
                   
                   {/* 快速操作按钮 */}
