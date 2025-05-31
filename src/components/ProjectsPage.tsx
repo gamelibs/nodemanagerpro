@@ -28,6 +28,8 @@ export default function ProjectsPage({
   const [activeProjectTab, setActiveProjectTab] = useState('overview'); // 项目详情标签页
   const [pm2Status, setPm2Status] = useState<PM2Process | null>(null); // PM2进程状态
   const [isLoadingPM2, setIsLoadingPM2] = useState(false);
+  const [pm2Logs, setPm2Logs] = useState<string[]>([]); // PM2日志
+  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
   const [toastMessage, setToastMessage] = useState<string>('');
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
   
@@ -44,6 +46,27 @@ export default function ProjectsPage({
     // 测试PM2服务
     testPM2Service();
   }, [projects.length, synchronizeProjectStatuses]);
+
+  // 批量同步所有项目的状态
+  const syncAllProjectsStatus = async () => {
+    try {
+      console.log('🔄 开始同步所有项目状态...');
+      const result = await PM2Service.listAllProcesses();
+      if (result.success && result.processes) {
+        console.log('📋 获取到PM2进程列表:', result.processes.length, '个进程');
+        await synchronizeProjectStatuses();
+      }
+    } catch (error) {
+      console.error('❌ 同步项目状态失败:', error);
+    }
+  };
+
+  // 在组件加载和项目列表变化时同步状态
+  useEffect(() => {
+    if (projects.length > 0) {
+      syncAllProjectsStatus();
+    }
+  }, [projects.length]);
 
   // 获取选中项目的PM2状态（仅在切换到概览标签时触发）
   const fetchPM2Status = async () => {
@@ -105,12 +128,39 @@ export default function ProjectsPage({
     }
   };
 
-  // 当选中项目或切换到概览标签时获取PM2状态
+  // 获取PM2日志
+  const fetchPM2Logs = async () => {
+    if (!selectedProject) {
+      setPm2Logs([]);
+      return;
+    }
+
+    setIsLoadingLogs(true);
+    try {
+      const processName = generateProcessName(selectedProject);
+      const result = await PM2Service.getRecentLogs(processName, 15);
+      
+      if (result.success && result.logs) {
+        setPm2Logs(result.logs);
+      } else {
+        setPm2Logs([]);
+      }
+    } catch (error) {
+      console.error('获取PM2日志失败:', error);
+      setPm2Logs([]);
+    } finally {
+      setIsLoadingLogs(false);
+    }
+  };
+
+  // 当选中项目或切换到概览标签时获取PM2状态和日志
   useEffect(() => {
     if (selectedProject && activeProjectTab === 'overview') {
       fetchPM2Status();
+      fetchPM2Logs();
     } else if (!selectedProject) {
       setPm2Status(null);
+      setPm2Logs([]);
     }
   }, [selectedProject, activeProjectTab]);
 
@@ -161,8 +211,9 @@ export default function ProjectsPage({
       
       if (result.success) {
         console.log('✅ 项目启动成功，刷新PM2状态...');
-        // 启动成功后立即刷新状态
+        // 启动成功后立即刷新状态和日志
         await fetchPM2Status();
+        await fetchPM2Logs();
       } else {
         console.error('❌ 项目启动失败:', result.error);
       }
@@ -184,13 +235,14 @@ export default function ProjectsPage({
       const processName = generateProcessName(selectedProject);
       console.log('⏹️ 开始停止项目:', selectedProject.name, '进程名:', processName);
       
-      const result = await PM2Service.stopProject(processName);
+      const result = await PM2Service.stopProject(selectedProject);
       console.log('停止结果:', result);
       
       if (result.success) {
         console.log('✅ 项目停止成功，刷新PM2状态...');
-        // 停止成功后立即刷新状态
+        // 停止成功后立即刷新状态和日志
         await fetchPM2Status();
+        await fetchPM2Logs();
       } else {
         console.error('❌ 项目停止失败:', result.error);
       }
@@ -217,8 +269,9 @@ export default function ProjectsPage({
       
       if (result.success) {
         console.log('✅ 项目重启成功，刷新PM2状态...');
-        // 重启成功后立即刷新状态
+        // 重启成功后立即刷新状态和日志
         await fetchPM2Status();
+        await fetchPM2Logs();
       } else {
         console.error('❌ 项目重启失败:', result.error);
       }
@@ -368,10 +421,8 @@ export default function ProjectsPage({
 
     const tabs = [
       { id: 'overview', label: t('projects.tabs.overview'), icon: '📊' },
-      { id: 'config', label: t('projects.tabs.settings'), icon: '⚙️' },
       { id: 'dependencies', label: t('projects.tabs.dependencies'), icon: '📦' },
-      { id: 'logs', label: t('projects.tabs.logs'), icon: '📝' },
-      { id: 'performance', label: t('projects.tabs.performance'), icon: '📈' }
+      { id: 'logs', label: t('projects.tabs.logs'), icon: '📝' }
     ];
 
     return (
@@ -421,6 +472,15 @@ export default function ProjectsPage({
                       <span className="theme-text-primary">{selectedProject.packageManager}</span>
                     </div>
                   </div>
+                  
+                  {/* 快速操作按钮 */}
+                  <div className="mt-4 pt-3 border-t theme-border">
+                    <div className="grid grid-cols-3 gap-2">
+                      <button className="px-3 py-2 btn-info rounded text-xs" onClick={handleOpenInFolder}>📂 文件夹</button>
+                      <button className="px-3 py-2 btn-info rounded text-xs" onClick={handleOpenInEditor}>✏️ 编辑器</button>
+                      <button className="px-3 py-2 btn-info rounded text-xs" onClick={handleOpenInBrowser}>🌐 浏览器</button>
+                    </div>
+                  </div>
                 </div>
                 
                 <div className="theme-bg-secondary p-4 rounded-lg">
@@ -445,7 +505,7 @@ export default function ProjectsPage({
                             }`}>
                               {(pm2Status.status === 'online' || pm2Status.pm2_env?.status === 'online') ? `🟢 ${t('project.status.running')}` : 
                                (pm2Status.status === 'stopped' || pm2Status.pm2_env?.status === 'stopped') ? `⚪ ${t('project.status.stopped')}` : 
-                               (pm2Status.status === 'error' || pm2Status.pm2_env?.status === 'error') ? `🔴 ${t('project.status.error')}` :
+                               (pm2Status.status === 'error' || pm2Status.status === 'errored' || pm2Status.pm2_env?.status === 'error' || pm2Status.pm2_env?.status === 'errored') ? `🔴 ${t('project.status.error')}` :
                                (pm2Status.status === 'launching' || pm2Status.pm2_env?.status === 'launching') ? `🟡 ${t('project.status.starting')}` :
                                (pm2Status.status === 'stopping' || pm2Status.pm2_env?.status === 'stopping') ? `🟠 ${t('project.status.stopping')}` : `🔴 ${t('project.status.error')}`}
                             </span>
@@ -534,25 +594,46 @@ export default function ProjectsPage({
                   )}
                 </div>
               </div>
-              
-              {/* 快速操作 */}
-              <div className="theme-bg-secondary p-4 rounded-lg">
-                <h4 className="font-semibold theme-text-primary mb-3">快速操作</h4>
-                <div className="grid grid-cols-3 gap-3">
-                  <button className="p-3 btn-info rounded-lg text-sm" onClick={handleOpenInFolder}>在文件夹中打开</button>
-                  <button className="p-3 btn-info rounded-lg text-sm" onClick={handleOpenInEditor}>在编辑器中打开</button>
-                  <button className="p-3 btn-info rounded-lg text-sm" onClick={handleOpenInBrowser}>在浏览器中打开</button>
-                </div>
-              </div>
-            </div>
-          )}
 
-          {activeProjectTab === 'config' && (
-            <div className="space-y-6">
-              <div className="theme-bg-secondary p-4 rounded-lg">
-                <h4 className="font-semibold theme-text-primary mb-3">项目配置</h4>
-                <p className="theme-text-muted text-sm">项目配置功能即将推出...</p>
-              </div>
+              {/* PM2启动日志 */}
+              {selectedProject && (
+                <div className="theme-bg-secondary p-4 rounded-lg">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-semibold theme-text-primary">最近日志</h4>
+                    <button 
+                      onClick={fetchPM2Logs}
+                      className="text-xs px-2 py-1 btn-info rounded"
+                      disabled={isLoadingLogs}
+                    >
+                      {isLoadingLogs ? '刷新中...' : '刷新'}
+                    </button>
+                  </div>
+                  
+                  {isLoadingLogs ? (
+                    <div className="flex items-center justify-center py-4">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                      <span className="ml-2 text-xs theme-text-muted">加载日志中...</span>
+                    </div>
+                  ) : pm2Logs.length > 0 ? (
+                    <div className="bg-black text-green-400 p-3 rounded text-xs font-mono max-h-64 overflow-y-auto">
+                      {pm2Logs.map((log, index) => (
+                        <div key={index} className="mb-1 leading-relaxed">
+                          {log}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="bg-gray-100 dark:bg-gray-800 p-3 rounded text-xs theme-text-muted text-center">
+                      暂无日志数据
+                      {pm2Status && (pm2Status.status === 'errored' || pm2Status.pm2_env?.status === 'errored') && (
+                        <div className="mt-2 text-red-500">
+                          进程状态为 "errored"，请检查项目依赖和配置
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -570,15 +651,6 @@ export default function ProjectsPage({
               <div className="theme-bg-secondary p-4 rounded-lg">
                 <h4 className="font-semibold theme-text-primary mb-3">日志查看</h4>
                 <p className="theme-text-muted text-sm">日志查看功能即将推出...</p>
-              </div>
-            </div>
-          )}
-
-          {activeProjectTab === 'performance' && (
-            <div className="space-y-6">
-              <div className="theme-bg-secondary p-4 rounded-lg">
-                <h4 className="font-semibold theme-text-primary mb-3">性能监控</h4>
-                <p className="theme-text-muted text-sm">性能监控功能即将推出...</p>
               </div>
             </div>
           )}
@@ -628,10 +700,10 @@ export default function ProjectsPage({
       {/* 主要内容区域 */}
       <div className="flex-1 flex">
         {/* 左侧项目列表 */}
-        <div className="w-1/3 border-r theme-border theme-bg-secondary flex flex-col">
+        <div className="w-1/4 border-r theme-border theme-bg-secondary flex flex-col">
           {/* 项目列表头部 */}
-          <div className="p-4 border-b theme-border">
-            <h2 className="text-lg font-semibold theme-text-primary">{t('projects.title')}</h2>
+          <div className="p-3 border-b theme-border">
+            <h2 className="text-base font-semibold theme-text-primary">{t('projects.title')}</h2>
           </div>
 
           {/* 项目列表内容 */}
@@ -651,24 +723,83 @@ export default function ProjectsPage({
                 <p className="theme-text-muted text-xs mt-1">{t('projects.noProjectsDesc')}</p>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {projects.map((project) => (
                   <div
                     key={project.id}
                     onClick={() => handleSelectProject(project)}
-                    className={`px-4 py-3 cursor-pointer transition-all flex items-center justify-between ${
+                    className={`project-item px-4 py-3 cursor-pointer transition-all border-l-4 ${
                       selectedProject?.id === project.id
-                        ? 'theme-bg-primary'
-                        : 'theme-text-muted hover:theme-bg-hover'
+                        ? 'selected theme-bg-primary border-blue-500'
+                        : 'theme-text-muted hover:theme-bg-hover border-transparent hover:border-gray-300'
                     }`}
                   >
-                    <div>
-                      <div className="font-medium theme-text-primary">{project.name}</div>
-                      <div className="text-xs theme-text-muted">{project.type}</div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="font-medium theme-text-primary truncate">{project.name}</div>
+                          {/* 运行状态指示器 */}
+                          <div 
+                            className={`status-dot w-2 h-2 rounded-full ${
+                              project.status === 'running' ? 'running bg-green-500 animate-pulse' :
+                              project.status === 'stopped' ? 'bg-gray-400' :
+                              project.status === 'error' ? 'error bg-red-500' : 'bg-gray-400'
+                            }`}
+                            title={`状态: ${
+                              project.status === 'running' ? '运行中' :
+                              project.status === 'stopped' ? '已停止' :
+                              project.status === 'error' ? '错误' : '未知'
+                            }`}
+                          ></div>
+                        </div>
+                        
+                        {/* 项目信息行 */}
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="theme-text-muted flex items-center gap-1">
+                              <span>📂</span>
+                              {project.type}
+                            </span>
+                            {project.port && (
+                              <span className="theme-text-accent flex items-center gap-1">
+                                <span>🌐</span>
+                                :{project.port}
+                              </span>
+                            )}
+                          </div>
+                          
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="theme-text-muted flex items-center gap-1">
+                              <span>📦</span>
+                              {project.packageManager || 'npm'}
+                            </span>
+                            <span className={`project-info-badge px-2 py-0.5 rounded text-xs font-medium ${
+                              project.status === 'running' 
+                                ? 'bg-green-100 text-green-800 dark:bg-green-800/20 dark:text-green-300'
+                                : project.status === 'stopped' 
+                                ? 'bg-gray-100 text-gray-800 dark:bg-gray-800/50 dark:text-gray-300'
+                                : 'bg-red-100 text-red-800 dark:bg-red-800/20 dark:text-red-300'
+                            }`}>
+                              {project.status === 'running' ? '运行中' :
+                               project.status === 'stopped' ? '已停止' :
+                               project.status === 'error' ? '错误' : '未知'}
+                            </span>
+                          </div>
+                          
+                          {/* 最后开启时间 */}
+                          {project.lastOpened && (
+                            <div className="text-xs theme-text-muted flex items-center gap-1 mt-1">
+                              <span>🕒</span>
+                              <span>上次: {new Date(project.lastOpened).toLocaleDateString()}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {selectedProject?.id === project.id && (
+                        <span className="theme-text-primary font-bold ml-2">→</span>
+                      )}
                     </div>
-                    {selectedProject?.id === project.id && (
-                      <span className="theme-text-primary font-bold">→</span>
-                    )}
                   </div>
                 ))}
               </div>

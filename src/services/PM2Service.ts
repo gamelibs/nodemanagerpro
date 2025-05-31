@@ -5,7 +5,7 @@ export interface PM2Process {
   pid: number;
   name: string;
   pm_id: number;
-  status?: 'online' | 'stopped' | 'error' | 'stopping' | 'launching';
+  status?: 'online' | 'stopped' | 'error' | 'errored' | 'stopping' | 'launching';
   cpu?: number;
   memory?: number;
   uptime?: number;
@@ -369,6 +369,48 @@ export class PM2Service {
         return {
           success: true,
           logs: result.logs || []
+        };
+      } else {
+        return {
+          success: false,
+          error: result.error || '获取日志失败'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : '获取日志时发生错误'
+      };
+    }
+  }
+
+  /**
+   * 获取项目最近日志（用于快速显示）
+   */
+  static async getRecentLogs(
+    projectId: string,
+    lines: number = 20
+  ): Promise<{
+    success: boolean;
+    logs?: string[];
+    error?: string;
+  }> {
+    try {
+      if (!window.electronAPI) {
+        return { success: false, error: '不在 Electron 环境中' };
+      }
+
+      const result = await window.electronAPI.invoke('pm2:logs', projectId, lines);
+      
+      if (result.success && result.logs) {
+        // 将日志转换为简单的字符串数组，便于显示
+        const logMessages = result.logs.map((log: any) => 
+          `${log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : ''} ${log.message}`
+        ).filter((msg: string) => msg.trim());
+        
+        return {
+          success: true,
+          logs: logMessages
         };
       } else {
         return {
