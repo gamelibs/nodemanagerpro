@@ -31,6 +31,8 @@ export default function ProjectsPage({
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
   const [packageInfo, setPackageInfo] = useState<any>(null); // package.json 信息
   const [isLoadingPackage, setIsLoadingPackage] = useState(false);
+  const [dependencyStatus, setDependencyStatus] = useState<{[key: string]: boolean}>({}); // 依赖包安装状态
+  const [isCheckingDependencies, setIsCheckingDependencies] = useState(false);
   const [toastMessage, setToastMessage] = useState<string>('');
   const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
   
@@ -172,6 +174,11 @@ export default function ProjectsPage({
         const packageData = JSON.parse(result.content);
         setPackageInfo(packageData);
         console.log('📦 成功读取 package.json:', packageData.name, packageData.version);
+        
+        // 读取成功后检查依赖安装状态
+        setTimeout(() => {
+          checkDependencyInstallation();
+        }, 100);
       } else {
         console.log('❌ 无法读取 package.json:', result?.error);
         setPackageInfo(null);
@@ -184,18 +191,71 @@ export default function ProjectsPage({
     }
   };
 
+  // 检查依赖包安装状态
+  const checkDependencyInstallation = async () => {
+    if (!selectedProject || !packageInfo) {
+      setDependencyStatus({});
+      return;
+    }
+
+    setIsCheckingDependencies(true);
+    try {
+      const allDependencies = {
+        ...packageInfo.dependencies,
+        ...packageInfo.devDependencies
+      };
+
+      if (Object.keys(allDependencies).length === 0) {
+        setDependencyStatus({});
+        return;
+      }
+
+      const nodeModulesPath = `${selectedProject.path}/node_modules`;
+      const status: {[key: string]: boolean} = {};
+
+      // 检查每个依赖包是否安装
+      for (const [depName] of Object.entries(allDependencies)) {
+        try {
+          const depPath = `${nodeModulesPath}/${depName}/package.json`;
+          const result = await window.electronAPI?.invoke('fs:readFile', depPath);
+          status[depName] = result?.success === true;
+        } catch (error) {
+          status[depName] = false;
+        }
+      }
+
+      setDependencyStatus(status);
+      console.log('📦 依赖包安装状态检查完成:', status);
+    } catch (error) {
+      console.error('检查依赖包安装状态失败:', error);
+      setDependencyStatus({});
+    } finally {
+      setIsCheckingDependencies(false);
+    }
+  };
+
   // 当选中项目时获取PM2状态和日志
   useEffect(() => {
     if (selectedProject) {
       fetchPM2Status();
       fetchPM2Logs();
       fetchPackageInfo();
+      checkDependencyInstallation();
     } else {
       setPm2Status(null);
       setPm2Logs([]);
       setPackageInfo(null);
     }
   }, [selectedProject]);
+
+  // 当 packageInfo 更新时检查依赖安装状态
+  useEffect(() => {
+    if (packageInfo) {
+      checkDependencyInstallation();
+    } else {
+      setDependencyStatus({});
+    }
+  }, [packageInfo]);
 
   const handleCreateProject = () => {
     setShowCreateModal(true);
@@ -454,14 +514,6 @@ export default function ProjectsPage({
 
     return (
       <div className="flex flex-col h-full">
-        {/* 项目详情头部 - 只显示概览 */}
-        <div className="px-6 py-3 border-b theme-border">
-          <h3 className="text-lg font-semibold theme-text-primary flex items-center">
-            <span className="mr-2">📊</span>
-            概览
-          </h3>
-        </div>
-
         {/* 项目详情内容 */}
         <div className="flex-1 p-6 overflow-auto">
           <div className="space-y-6">
@@ -528,11 +580,24 @@ export default function ProjectsPage({
                             <div className="font-medium theme-text-primary mb-1 text-xs">依赖包信息:</div>
                             <div className="space-y-1">
                               {packageInfo.dependencies && (
-                                <div className="flex justify-between">
+                                <div className="flex justify-between items-center">
                                   <span className="theme-text-muted text-xs">生产依赖:</span>
-                                  <span className="theme-text-primary text-xs">
-                                    {Object.keys(packageInfo.dependencies).length} 个
-                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="theme-text-primary text-xs">
+                                      {Object.keys(packageInfo.dependencies).length} 个
+                                    </span>
+                                    {isCheckingDependencies ? (
+                                      <div className="animate-spin rounded-full h-2 w-2 border-b border-blue-500"></div>
+                                    ) : Object.keys(dependencyStatus).length > 0 && (
+                                      <span className="text-xs">
+                                        {Object.values(dependencyStatus).filter(Boolean).length === Object.keys(packageInfo.dependencies).length ? (
+                                          <span className="text-green-600">✓</span>
+                                        ) : (
+                                          <span className="text-orange-600">⚠</span>
+                                        )}
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
                               )}
                               {packageInfo.devDependencies && (
@@ -547,11 +612,24 @@ export default function ProjectsPage({
                                 <div className="mt-2">
                                   <div className="text-xs theme-text-muted mb-1">主要依赖:</div>
                                   <div className="flex flex-wrap gap-1">
-                                    {Object.entries(packageInfo.dependencies).slice(0, 6).map(([pkg, version]) => (
-                                      <span key={pkg} className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-800/20 text-blue-800 dark:text-blue-300 text-xs rounded">
-                                        {pkg}@{(version as string).replace('^', '').replace('~', '')}
-                                      </span>
-                                    ))}
+                                    {Object.entries(packageInfo.dependencies).slice(0, 6).map(([pkg, version]) => {
+                                      const isInstalled = dependencyStatus[pkg];
+                                      const statusIcon = isCheckingDependencies ? '?' : (isInstalled ? '✓' : '✗');
+                                      const statusColor = isCheckingDependencies ? 'text-gray-500' : (isInstalled ? 'text-green-600' : 'text-red-600');
+                                      
+                                      return (
+                                        <span 
+                                          key={pkg} 
+                                          className={`px-1.5 py-0.5 bg-blue-100 dark:bg-blue-800/20 text-blue-800 dark:text-blue-300 text-xs rounded flex items-center gap-1 ${
+                                            !isInstalled && !isCheckingDependencies ? 'opacity-60' : ''
+                                          }`}
+                                          title={`${pkg}@${(version as string).replace('^', '').replace('~', '')} - ${isCheckingDependencies ? '检查中...' : (isInstalled ? '已安装' : '未安装')}`}
+                                        >
+                                          {pkg}@{(version as string).replace('^', '').replace('~', '')}
+                                          <span className={`text-xs ${statusColor}`}>{statusIcon}</span>
+                                        </span>
+                                      );
+                                    })}
                                     {Object.keys(packageInfo.dependencies).length > 6 && (
                                       <span className="text-xs theme-text-muted">
                                         +{Object.keys(packageInfo.dependencies).length - 6}...
