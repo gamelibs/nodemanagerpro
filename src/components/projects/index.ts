@@ -9,7 +9,6 @@ export { ProjectList } from './ProjectList';
 export { ProjectDetails } from './ProjectDetails';
 export { ProjectActions } from './ProjectActions';
 export { DependencyStatus } from './DependencyStatus';
-export { ProjectLogs } from './ProjectLogs';
 export { Toast } from './Toast';
 export { ToastContainer } from './ToastContainer';
 

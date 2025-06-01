@@ -10,7 +10,6 @@ export interface Project {
   name: string;
   path: string;
   type: 'node' | 'react' | 'vue' | 'electron' | 'other' | 'pure-api' | 'static-app' | 'full-stack';
-  status: 'stopped' | 'running' | 'error';
   port?: number;
   lastOpened: Date;
   packageManager: 'npm' | 'yarn' | 'pnpm';
@@ -71,7 +70,6 @@ export type AppAction =
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_ERROR'; payload: string | null }
   | { type: 'SET_ACTIVE_PROJECT'; payload: Project | null }
-  | { type: 'UPDATE_PROJECT_STATUS'; payload: { id: string; status: Project['status'] } }
   | { type: 'START_LOG_SESSION'; payload: { projectId: string; projectName: string } }
   | { type: 'END_LOG_SESSION'; payload: string }
   | { type: 'ADD_LOG'; payload: ProjectLog }

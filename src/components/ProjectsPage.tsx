@@ -173,7 +173,7 @@ export default function ProjectsPage({
     }
 
     // 检查项目是否正在运行
-    const isRunning = pm2Status?.status === 'online' || selectedProject.status === 'running';
+    const isRunning = pm2Status?.status === 'online';
     
     if (!isRunning) {
       // 如果项目未运行，给出提示但仍然尝试打开

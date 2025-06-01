@@ -1,6 +1,4 @@
 import { useApp } from '../store/AppContext';
-import HotReloadTest from './HotReloadTest';
-import StorageDebugInfo from './StorageDebugInfo';
 
 export default function SettingsPage() {
   const { settings, i18n, navigation } = useApp();
@@ -470,24 +468,13 @@ export default function SettingsPage() {
               <p className="text-sm theme-text-muted mb-6">{t('settings.debugTools.description')}</p>
               
               <div className="space-y-6">
-                {/* 热重载测试 */}
+                {/* 调试工具已移除 - 如需添加新的调试工具，请在此处添加 */}
                 <div className="border theme-border rounded-lg p-4">
                   <h3 className="text-lg font-medium theme-text-primary mb-2 flex items-center space-x-2">
-                    <span>🔥</span>
-                    <span>{t('settings.debugTools.hotReload')}</span>
+                    <span>�</span>
+                    <span>{t('settings.debugTools.title')}</span>
                   </h3>
-                  <p className="text-sm theme-text-muted mb-4">{t('settings.debugTools.hotReloadDesc')}</p>
-                  <HotReloadTest />
-                </div>
-
-                {/* 存储调试信息 */}
-                <div className="border theme-border rounded-lg p-4">
-                  <h3 className="text-lg font-medium theme-text-primary mb-2 flex items-center space-x-2">
-                    <span>📊</span>
-                    <span>{t('settings.debugTools.storageInfo')}</span>
-                  </h3>
-                  <p className="text-sm theme-text-muted mb-4">{t('settings.debugTools.storageInfoDesc')}</p>
-                  <StorageDebugInfo />
+                  <p className="text-sm theme-text-muted">调试工具功能已整合到项目详情页面中。</p>
                 </div>
               </div>
             </div>

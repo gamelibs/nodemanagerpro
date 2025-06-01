@@ -1,9 +1,9 @@
 import { createContext, useContext } from 'react';
 import type { ReactNode } from 'react';
-import { useToast, ToastContainer } from '../components/Toast';
+import { useToast, ToastContainer } from '../components/projects';
 
 interface ToastContextType {
-  showToast: (title: string, message: string, type?: 'success' | 'error' | 'info', duration?: number) => void;
+  showToast: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
@@ -13,19 +13,19 @@ interface ToastProviderProps {
 }
 
 export function ToastProvider({ children }: ToastProviderProps) {
-  const { messages, showToast, closeToast } = useToast();
+  const { toasts, showToast, hideToast } = useToast();
 
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      <ToastContainer messages={messages} onClose={closeToast} />
+      <ToastContainer toasts={toasts} onHideToast={hideToast} />
     </ToastContext.Provider>
   );
 }
 
 export function useToastContext() {
   const context = useContext(ToastContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useToastContext must be used within a ToastProvider');
   }
   return context;
