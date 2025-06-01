@@ -13,6 +13,7 @@
 ### 功能文档
 | 文档 | 描述 | 状态 |
 |------|------|------|
+| [UI_REFACTOR_BETA0.1.0.md](./UI_REFACTOR_BETA0.1.0.md) | 主界面重构完成报告 | 🆕 新增 |
 | [I18N_FEATURE_UPDATE.md](./I18N_FEATURE_UPDATE.md) | 国际化功能说明文档 | 🆕 新增 |
 | [LOGGING_SYSTEM_GUIDE.md](./LOGGING_SYSTEM_GUIDE.md) | 日志系统设计文档 | ✅ 完成 |
 | [PM2_INTEGRATION_REPORT.md](./PM2_INTEGRATION_REPORT.md) | PM2集成报告 | ✅ 完成 |
@@ -34,8 +35,9 @@
 
 1. **首次使用**: 阅读 [README.md](./README.md)
 2. **详细了解**: 查看 [PROJECT_GUIDE.md](./PROJECT_GUIDE.md)
-3. **语言功能**: 参考 [I18N_FEATURE_UPDATE.md](./I18N_FEATURE_UPDATE.md)
-4. **开发贡献**: 查看 [FEATURE_COMPLETION_REPORT.md](./FEATURE_COMPLETION_REPORT.md)
+3. **重构更新**: 参考 [UI_REFACTOR_BETA0.1.0.md](./UI_REFACTOR_BETA0.1.0.md) 🆕
+4. **语言功能**: 参考 [I18N_FEATURE_UPDATE.md](./I18N_FEATURE_UPDATE.md)
+5. **开发贡献**: 查看 [FEATURE_COMPLETION_REPORT.md](./FEATURE_COMPLETION_REPORT.md)
 
 ## 🔗 外部链接
 
@@ -53,4 +55,4 @@
 
 ---
 
-**项目版本**: v2.1.0 | **协议**: MIT License
+**项目版本**: beta0.1.0 | **协议**: MIT License

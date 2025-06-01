@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Node App Manager 2.1.1 测试脚本
+# Node App Manager beta0.1.0 测试脚本
 # 测试修复后的功能
 
 echo "🚀 Node App Manager 2.1.1 功能测试"

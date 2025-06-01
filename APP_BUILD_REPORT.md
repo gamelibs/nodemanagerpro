@@ -1,7 +1,12 @@
-# 📦 Node App Manager 应用打包报告
+# 📦 Node | 包名 | 平台 | 大小 | 类型 | 状态 |
+|------|------|------|------|------|
+| `Node App Manager-beta0.1.0.dmg` | Intel (x64) | 构建中 | DMG 安装包 | 🔄 待构建 |
+| `Node App Manager-beta0.1.0-mac.zip` | Intel (x64) | 构建中 | ZIP 便携版 | 🔄 待构建 |
+| `Node App Manager-beta0.1.0-arm64.dmg` | Apple Silicon (ARM64) | 构建中 | DMG 安装包 | 🔄 待构建 |
+| `Node App Manager-beta0.1.0-arm64-mac.zip` | Apple Silicon (ARM64) | 构建中 | ZIP 便携版 | 🔄 待构建 |nager 应用打包报告
 
 > 生成时间：2025年5月30日
-> 版本：v2.1.0
+> 版本：beta0.1.0
 > 平台支持：macOS ✅ | Windows ⚠️
 
 ## 🎉 打包成功概览
@@ -24,22 +29,22 @@ Windows 版本打包过程中遇到网络超时问题，主要是下载 NSIS 打
 ### macOS 用户
 
 #### Intel Mac 用户：
-1. **推荐**：下载 `Node App Manager-2.1.0.dmg`
+1. **推荐**：下载 `Node App Manager-beta0.1.0.dmg`
    - 双击 DMG 文件
    - 拖拽应用到 Applications 文件夹
    - 在启动台中找到并运行
 
-2. **便携版**：下载 `Node App Manager-2.1.0-mac.zip`
+2. **便携版**：下载 `Node App Manager-beta0.1.0-mac.zip`
    - 解压缩 ZIP 文件
    - 直接运行 `.app` 文件
 
 #### Apple Silicon Mac 用户：
-1. **推荐**：下载 `Node App Manager-2.1.0-arm64.dmg`
+1. **推荐**：下载 `Node App Manager-beta0.1.0-arm64.dmg`
    - 双击 DMG 文件
    - 拖拽应用到 Applications 文件夹
    - 在启动台中找到并运行
 
-2. **便携版**：下载 `Node App Manager-2.1.0-arm64-mac.zip`
+2. **便携版**：下载 `Node App Manager-beta0.1.0-arm64-mac.zip`
    - 解压缩 ZIP 文件
    - 直接运行 `.app` 文件
 

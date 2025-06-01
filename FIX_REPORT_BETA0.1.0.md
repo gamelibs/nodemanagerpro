@@ -1,4 +1,4 @@
-# Node App Manager 2.1.1 问题修复报告
+# Node App Manager beta0.1.0 问题修复报告
 
 ## 修复的问题
 
@@ -48,7 +48,7 @@ initI18n('zh');
   - 添加了系统使用权限描述
 
 ### 5. 📦 应用版本更新
-**修复**: 将版本号从 `0.1.0-beta` 更新为 `2.1.1`
+**修复**: 将版本号统一更新为 `beta0.1.0`
 
 ## 技术改进详情
 
@@ -119,7 +119,7 @@ ipcMain.handle('shell:openInEditor', async (event: any, path: string) => {
 
 ## 构建信息
 
-- **构建版本**: 2.1.1
+- **构建版本**: beta0.1.0
 - **构建时间**: 2025年5月30日
 - **支持架构**: x64, ARM64
 - **输出格式**: DMG, ZIP

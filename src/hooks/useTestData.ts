@@ -55,7 +55,7 @@ export function useTestData() {
           { name: 'dev', command: 'pnpm dev', description: '启动开发服务器' }
         ],
         description: 'Vue 3 管理后台',
-        version: '2.1.0',
+        version: 'beta0.1.0',
         template: 'vite-express',
         frontendFramework: 'vue'
       }

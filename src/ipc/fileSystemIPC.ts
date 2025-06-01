@@ -103,18 +103,7 @@ export function setupFileSystemIPC() {
     }
   });
 
-  // 更新项目状态
-  ipcMain.handle('fs:updateProjectStatus', async (_, projectId: string, status: Project['status']) => {
-    try {
-      await FileSystemService.updateProjectStatus(projectId, status);
-      return { success: true, data: { projectId, status } };
-    } catch (error) {
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : '更新项目状态失败' 
-      };
-    }
-  });
+  // 项目状态更新已不再需要，因为状态通过PM2实时获取
 
   // 获取数据目录信息（调试用）
   ipcMain.handle('fs:getDataInfo', async () => {

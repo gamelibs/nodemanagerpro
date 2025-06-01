@@ -19,6 +19,7 @@ interface ProjectDetailsProps {
   onOpenInBrowser: () => void;
   onPortEdit: (port: number) => void;
   onInstallDependencies: () => void;
+  onInstallSingleDependency: (packageName: string) => void;
   onStartProject: () => void;
   onStopProject: () => void;
   onRestartProject: () => void;
@@ -43,6 +44,7 @@ export function ProjectDetails({
   onOpenInBrowser,
   onPortEdit,
   onInstallDependencies,
+  onInstallSingleDependency,
   onStartProject,
   onStopProject,
   onRestartProject,
@@ -316,107 +318,7 @@ export function ProjectDetails({
             </div>
           </div>
           
-          {/* 依赖包信息 */}
-          {packageInfo && (packageInfo.dependencies || packageInfo.devDependencies) && (
-            <div className="mt-3 pt-2 border-t theme-border">
-              <div className="font-medium theme-text-primary mb-1 text-xs">依赖包信息:</div>
-              
-              {/* 依赖缺失警告和安装按钮 */}
-              {hasUninstalledDependencies() && (
-                <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded px-2 py-1 mb-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1">
-                      <span className="text-orange-600">⚠</span>
-                      <span className="text-xs text-orange-700 dark:text-orange-300">
-                        检测到未安装的依赖包，项目可能无法正常启动
-                      </span>
-                    </div>
-                    <button
-                      onClick={onInstallDependencies}
-                      disabled={isInstallingDependencies}
-                      className={`px-2 py-1 text-xs rounded transition-colors ${
-                        isInstallingDependencies
-                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                          : 'bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-800/20 dark:text-blue-300 dark:hover:bg-blue-800/40'
-                      }`}
-                      title={`使用 ${project?.packageManager || 'npm'} 安装依赖`}
-                    >
-                      {isInstallingDependencies ? (
-                        <div className="flex items-center gap-1">
-                          <div className="animate-spin rounded-full h-2 w-2 border-b border-current"></div>
-                          安装中...
-                        </div>
-                      ) : (
-                        '📦 安装依赖'
-                      )}
-                    </button>
-                  </div>
-                </div>
-              )}
-              
-              <div className="space-y-1">
-                {packageInfo.dependencies && (
-                  <div className="flex justify-between items-center">
-                    <span className="theme-text-muted text-xs">生产依赖:</span>
-                    <div className="flex items-center gap-2">
-                      <span className="theme-text-primary text-xs">
-                        {Object.keys(packageInfo.dependencies).length} 个
-                      </span>
-                      {isCheckingDependencies ? (
-                        <div className="animate-spin rounded-full h-2 w-2 border-b border-blue-500"></div>
-                      ) : Object.keys(dependencyStatus).length > 0 && (
-                        <span className="text-xs">
-                          {Object.values(dependencyStatus).filter(Boolean).length === Object.keys(packageInfo.dependencies).length ? (
-                            <span className="text-green-600">✓</span>
-                          ) : (
-                            <span className="text-orange-600">⚠</span>
-                          )}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
-                {packageInfo.devDependencies && (
-                  <div className="flex justify-between">
-                    <span className="theme-text-muted text-xs">开发依赖:</span>
-                    <span className="theme-text-primary text-xs">
-                      {Object.keys(packageInfo.devDependencies).length} 个
-                    </span>
-                  </div>
-                )}
-                {packageInfo.dependencies && (
-                  <div className="mt-2">
-                    <div className="text-xs theme-text-muted mb-1">主要依赖:</div>
-                    <div className="flex flex-wrap gap-1">
-                      {Object.entries(packageInfo.dependencies).slice(0, 6).map(([pkg, version]) => {
-                        const isInstalled = dependencyStatus[pkg];
-                        const statusIcon = isCheckingDependencies ? '?' : (isInstalled ? '✓' : '✗');
-                        const statusColor = isCheckingDependencies ? 'text-gray-500' : (isInstalled ? 'text-green-600' : 'text-red-600');
-                        
-                        return (
-                          <span 
-                            key={pkg} 
-                            className={`px-1.5 py-0.5 bg-blue-100 dark:bg-blue-800/20 text-blue-800 dark:text-blue-300 text-xs rounded flex items-center gap-1 ${
-                              !isInstalled && !isCheckingDependencies ? 'opacity-60' : ''
-                            }`}
-                            title={`${pkg}@${(version as string).replace('^', '').replace('~', '')} - ${isCheckingDependencies ? '检查中...' : (isInstalled ? '已安装' : '未安装')}`}
-                          >
-                            {pkg}@{(version as string).replace('^', '').replace('~', '')}
-                            <span className={`text-xs ${statusColor}`}>{statusIcon}</span>
-                          </span>
-                        );
-                      })}
-                      {Object.keys(packageInfo.dependencies).length > 6 && (
-                        <span className="text-xs theme-text-muted">
-                          +{Object.keys(packageInfo.dependencies).length - 6}...
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+
         </div>
       </div>
       
@@ -535,6 +437,93 @@ export function ProjectDetails({
         </div>
       </div>
       </div>
+      
+      {/* 依赖包信息 - 独立在两栏下面，与日志并列 */}
+      {packageInfo && (packageInfo.dependencies || packageInfo.devDependencies) && (
+        <div className="theme-bg-secondary p-4 rounded-lg">
+          <h4 className="font-semibold theme-text-primary mb-3">依赖包信息</h4>
+          
+          {/* 依赖缺失警告和安装按钮 */}
+          {hasUninstalledDependencies() && (
+            <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded px-3 py-2 mb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-orange-600">⚠</span>
+                  <span className="text-sm text-orange-700 dark:text-orange-300">
+                    检测到未安装的依赖包，项目可能无法正常启动
+                  </span>
+                </div>
+                <button
+                  onClick={onInstallDependencies}
+                  disabled={isInstallingDependencies}
+                  className={`px-3 py-1.5 text-sm rounded transition-colors ${
+                    isInstallingDependencies
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : 'bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-800/20 dark:text-blue-300 dark:hover:bg-blue-800/40'
+                  }`}
+                  title={`使用 ${project?.packageManager || 'npm'} 安装依赖`}
+                >
+                  {isInstallingDependencies ? (
+                    <div className="flex items-center gap-2">
+                      <div className="animate-spin rounded-full h-3 w-3 border-b border-current"></div>
+                      安装中...
+                    </div>
+                  ) : (
+                    '📦 安装依赖'
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+          
+          <div className="space-y-3">
+            {/* 所有依赖包列表 */}
+            <div className="flex flex-wrap gap-2">
+              {(() => {
+                // 合并所有依赖包（生产依赖 + 开发依赖）
+                const allDependencies = {
+                  ...packageInfo.dependencies,
+                  ...packageInfo.devDependencies
+                };
+                
+                return Object.entries(allDependencies).map(([pkg, version]) => {
+                  const isInstalled = dependencyStatus[pkg];
+                  const statusIcon = isCheckingDependencies ? '?' : (isInstalled ? '✓' : '✗');
+                  const statusColor = isCheckingDependencies ? 'text-gray-500' : (isInstalled ? 'text-green-600' : 'text-red-600');
+                  
+                  return (
+                    <div 
+                      key={pkg} 
+                      className={`px-2 py-1 bg-blue-100 dark:bg-blue-800/20 text-blue-800 dark:text-blue-300 text-xs rounded flex items-center gap-1.5 ${
+                        !isInstalled && !isCheckingDependencies ? 'opacity-60' : ''
+                      }`}
+                      title={`${pkg}@${(version as string).replace('^', '').replace('~', '')} - ${isCheckingDependencies ? '检查中...' : (isInstalled ? '已安装' : '未安装')}`}
+                    >
+                      <span>{pkg}@{(version as string).replace('^', '').replace('~', '')}</span>
+                      <span className={`text-xs ${statusColor}`}>{statusIcon}</span>
+                      {/* 只为未安装的依赖包显示安装按钮 */}
+                      {!isInstalled && !isCheckingDependencies && (
+                        <button
+                          onClick={() => onInstallSingleDependency(pkg)}
+                          disabled={isInstallingDependencies}
+                          className={`ml-1 px-1.5 py-0.5 text-xs rounded transition-colors ${
+                            isInstallingDependencies
+                              ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                              : 'bg-green-500 text-white hover:bg-green-600'
+                          }`}
+                          title={`安装 ${pkg}`}
+                        >
+                          {isInstallingDependencies ? '...' : '安装'}
+                        </button>
+                      )}
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* PM2日志 - 独立在两栏下面 */}
       <div className="theme-bg-secondary p-4 rounded-lg">

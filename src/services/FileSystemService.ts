@@ -182,23 +182,7 @@ export class FileSystemService {
     console.log(`📝 更新项目信息: ${projectId}`, updates);
   }
 
-  /**
-   * 更新项目状态
-   */
-  static async updateProjectStatus(projectId: string, status: Project['status']): Promise<void> {
-    const projects = await this.loadProjects();
-    const projectIndex = projects.findIndex(p => p.id === projectId);
-    
-    if (projectIndex === -1) {
-      throw new Error(`项目 ID ${projectId} 不存在`);
-    }
-    
-    projects[projectIndex].status = status;
-    projects[projectIndex].lastOpened = new Date();
-    
-    await this.saveProjects(projects);
-    console.log(`📝 更新项目状态: ${projectId} -> ${status}`);
-  }
+  // 项目状态更新已不再需要，因为状态通过PM2实时获取
 
   /**
    * 获取数据目录信息（用于调试）

@@ -1,14 +1,13 @@
 import { useState, useEffect } from 'react';
 import ProjectSettingsModal from './ProjectSettingsModal';
 import type { Project } from '../types';
+import { useToastContext } from '../store/ToastContext';
 
 // 导入项目模块
 import {
   ProjectHeader,
   ProjectList,
   ProjectDetails,
-  ToastContainer,
-  useToast,
   useProjectData,
   useProjectOperations
 } from './projects';
@@ -28,8 +27,8 @@ export default function ProjectsPage({
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 
-  // Toast提示系统
-  const { toasts, showToast, hideToast } = useToast();
+  // Toast提示系统 - 使用全局的 ToastContext
+  const { showToast } = useToastContext();
 
   // 项目数据管理
   const {
@@ -124,6 +123,36 @@ export default function ProjectsPage({
         // 重新检查依赖状态
         checkDependencies(selectedProject, packageInfo);
       }
+    }
+  };
+
+  const handleInstallSingleDependency = async (packageName: string) => {
+    if (!selectedProject) {
+      showToast('请先选择一个项目', 'error');
+      return;
+    }
+
+    try {
+      showToast(`正在安装 ${packageName}...`, 'info');
+      
+      // 使用专门的安装特定包的IPC频道
+      const result = await window.electronAPI?.invoke('project:installSpecificPackages', 
+        selectedProject.path, 
+        [packageName]
+      );
+
+      if (result?.success) {
+        showToast(`${packageName} 安装成功`, 'success');
+        // 重新检查依赖状态
+        if (packageInfo) {
+          checkDependencies(selectedProject, packageInfo);
+        }
+      } else {
+        showToast(`${packageName} 安装失败: ${result?.error || '未知错误'}`, 'error');
+      }
+    } catch (error) {
+      console.error(`安装 ${packageName} 失败:`, error);
+      showToast(`安装 ${packageName} 失败`, 'error');
     }
   };
 
@@ -279,6 +308,7 @@ export default function ProjectsPage({
                     console.log('Port edit requested:', port);
                   }}
                   onInstallDependencies={handleInstallDependencies}
+                  onInstallSingleDependency={handleInstallSingleDependency}
                   onStartProject={handleStartProject}
                   onStopProject={handleStopProject}
                   onRestartProject={handleRestartProject}
@@ -301,12 +331,6 @@ export default function ProjectsPage({
           </div>
         </div>
       </div>
-
-      {/* Toast提示系统 */}
-      <ToastContainer
-        toasts={toasts}
-        onHideToast={hideToast}
-      />
 
       {/* 项目设置模态框 - 由ProjectsPage管理，因为需要selectedProject */}
       {selectedProject && (

@@ -5,7 +5,7 @@
 ![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
 ![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
 ![MIT License](https://img.shields.io/badge/License-MIT-yellow.svg)
-![Version](https://img.shields.io/badge/version-2.1.0-blue.svg)
+![Version](https://img.shields.io/badge/version-beta0.1.0-blue.svg)
 
 > 企业级 Node.js 项目管理桌面应用，基于 Electron + React + PM2 构建
 
@@ -28,19 +28,20 @@
 
 ## ✨ 核心特性
 
-- 🚀 **项目管理** - 导入、创建、启动、停止 Node.js 项目
-- 📊 **实时监控** - PM2 集成，支持进程守护和自动重启  
-- 📋 **日志管理** - 实时日志显示和历史日志查看
-- 🎨 **现代化UI** - 基于 Tailwind CSS 的深色主题界面
+- 🚀 **项目管理** - 导入、创建、启动、停止 Node.js 项目，完整的运行状态控制
+- 📊 **实时监控** - PM2 集成，支持进程守护和自动重启，真实端口检测
+- 📋 **统一日志** - 项目详情页集成实时日志显示，支持日志刷新和查看
+- 📦 **智能依赖** - 选择性安装项目依赖，支持单个包独立安装管理
+- 🎨 **现代化UI** - 基于 Tailwind CSS 的深色主题界面，优化布局设计
 - ⚡ **热更新** - 开发模式支持实时代码更新
-- 🔧 **智能端口** - 自动检测和分配项目端口
+- 🔧 **智能端口** - 自动检测和分配项目端口，移除假数据填充
 - 🌍 **国际化支持** - 完整的中英文双语界面 🆕
 
 ## � 应用下载
 
 ### 🍎 macOS 版本 ✅
-- **Intel Mac**：`Node App Manager-2.1.0.dmg` (96.6 MB)
-- **Apple Silicon**：`Node App Manager-2.1.0-arm64.dmg` (92.9 MB)
+- **Intel Mac**：`Node App Manager-beta0.1.0.dmg` (构建中)
+- **Apple Silicon**：`Node App Manager-beta0.1.0-arm64.dmg` (构建中)
 - **便携版**：提供 ZIP 格式免安装版本
 
 ### 🪟 Windows 版本 ⚠️
@@ -116,16 +117,21 @@ Ctrl + C
 ### 项目管理
 - **导入项目**: 选择包含 `package.json` 的 Node.js 项目
 - **创建项目**: 基于模板快速创建新项目
-- **启动/停止**: 一键控制项目运行状态
-- **实时监控**: 绿色/灰色状态指示器
+- **运行控制**: 启动/停止/重启项目，支持PM2进程管理
+- **状态监控**: 实时显示项目运行状态和端口信息
 
-### 日志查看
-- **实时日志**: 左侧栏显示项目输出
-- **快速访问**: 点击日志中的 URL 直接打开浏览器
-- **PM2 集成**: 完整的进程管理和监控
+### 依赖管理 🆕
+- **智能检测**: 自动检测项目依赖安装状态
+- **选择性安装**: 为每个未安装的依赖包提供独立安装按钮
+- **实时更新**: 安装后自动刷新依赖状态显示
+
+### 项目详情页 🆕
+- **统一界面**: 基本信息、运行状态、依赖包信息在一个页面展示
+- **实时日志**: 集成PM2日志显示，支持手动刷新
+- **便捷操作**: 快速访问文件夹、编辑器、浏览器打开
 
 ### 界面导航
-- **Projects**: 查看和管理所有项目
+- **Projects**: 查看和管理所有项目，优化的项目列表显示
 - **Settings**: 应用设置和系统信息
 - **语言切换**: 支持中文/English实时切换 🆕
 
@@ -184,4 +190,4 @@ MIT License
 
 ---
 
-**开源协议**: [MIT License](./LICENSE) | **版本**: v2.1.0 | **最后更新**: 2025年5月30日
+**开源协议**: [MIT License](./LICENSE) | **版本**: beta0.1.0 | **最后更新**: 2025年6月1日
