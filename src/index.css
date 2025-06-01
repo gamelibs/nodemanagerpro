@@ -545,6 +545,19 @@ h1 {
   color: var(--accent-color);
 }
 
+/* 主题边框和悬停状态 */
+.theme-border-hover:hover {
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.light-theme .theme-border-hover:hover {
+  border-color: rgba(59, 130, 246, 0.2);
+}
+
+.theme-border-accent {
+  border-color: var(--accent-color);
+}
+
 /* 状态相关的主题颜色 */
 .theme-text-success {
   color: #10B981;

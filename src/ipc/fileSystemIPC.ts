@@ -31,6 +31,8 @@ export function setupFileSystemIPC() {
     ipcMain.removeHandler('project:createPackageJson');
     ipcMain.removeHandler('fs:readFile');
     ipcMain.removeHandler('fs:writeFile');
+    ipcMain.removeHandler('project:detectConfig');
+    ipcMain.removeHandler('project:detectMultipleConfigs');
   } catch (error) {
     // 忽略移除不存在处理器的错误
   }
@@ -90,11 +92,18 @@ export function setupFileSystemIPC() {
     }
   });
 
-  // 更新项目信息
+  // 更新项目信息（仅核心字段）
   ipcMain.handle('fs:updateProject', async (_, projectId: string, updates: Partial<Project>) => {
     try {
-      await FileSystemService.updateProject(projectId, updates);
-      return { success: true, data: { projectId, updates } };
+      // 过滤只允许更新核心字段
+      const coreUpdates = {
+        ...(updates.name && { name: updates.name }),
+        ...(updates.path && { path: updates.path }),
+        ...(updates.lastOpened && { lastOpened: updates.lastOpened })
+      };
+      
+      await FileSystemService.updateProject(projectId, coreUpdates);
+      return { success: true, data: { projectId, updates: coreUpdates } };
     } catch (error) {
       return { 
         success: false, 
@@ -438,6 +447,85 @@ export function setupFileSystemIPC() {
       return { 
         success: false, 
         error: error instanceof Error ? error.message : '写入文件失败' 
+      };
+    }
+  });
+
+  // 项目配置检测 - 单个项目
+  ipcMain.handle('project:detectConfig', async (_, coreProject) => {
+    try {
+      console.log(`📡 收到 project:detectConfig IPC调用: ${coreProject.name}`);
+      
+      // 调试信息：打印当前目录
+      console.log('当前 __dirname:', __dirname);
+      
+      // 尝试不同的路径解析方式
+      try {
+        // 尝试 require.resolve 来找到正确的路径
+        const modulePath = require.resolve('../services/ProjectConfigService.cjs');
+        console.log('找到模块路径:', modulePath);
+        const { ProjectConfigService } = require(modulePath);
+        const fullProject = await ProjectConfigService.detectProjectConfig(coreProject);
+        
+        console.log(`📡 project:detectConfig 成功返回: ${coreProject.name}`);
+        return { success: true, data: fullProject };
+      } catch (resolveError: any) {
+        console.warn('无法通过 require.resolve 找到模块，尝试替代方案:', resolveError.message);
+        
+        // 备用方案：使用绝对路径从 dist 目录
+        const path = require('path');
+        const distPath = path.join(process.cwd(), 'dist', 'src', 'services', 'ProjectConfigService.cjs');
+        console.log('尝试绝对路径:', distPath);
+        
+        const { ProjectConfigService } = require(distPath);
+        const fullProject = await ProjectConfigService.detectProjectConfig(coreProject);
+        
+        console.log(`📡 project:detectConfig 成功返回: ${coreProject.name}`);
+        return { success: true, data: fullProject };
+      }
+    } catch (error) {
+      console.error('📡 project:detectConfig 失败:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : '检测项目配置失败' 
+      };
+    }
+  });
+
+  // 项目配置检测 - 批量
+  ipcMain.handle('project:detectMultipleConfigs', async (_, coreProjects) => {
+    try {
+      console.log(`📡 收到 project:detectMultipleConfigs IPC调用: ${coreProjects.length} 个项目`);
+      
+      // 尝试不同的路径解析方式
+      try {
+        // 尝试 require.resolve 来找到正确的路径
+        const modulePath = require.resolve('../services/ProjectConfigService.cjs');
+        console.log('找到模块路径:', modulePath);
+        const { ProjectConfigService } = require(modulePath);
+        const fullProjects = await ProjectConfigService.detectMultipleProjectConfigs(coreProjects);
+        
+        console.log(`📡 project:detectMultipleConfigs 成功返回: ${fullProjects.length} 个项目`);
+        return { success: true, data: fullProjects };
+      } catch (resolveError: any) {
+        console.warn('无法通过 require.resolve 找到模块，尝试替代方案:', resolveError.message);
+        
+        // 备用方案：使用绝对路径从 dist 目录
+        const path = require('path');
+        const distPath = path.join(process.cwd(), 'dist', 'src', 'services', 'ProjectConfigService.cjs');
+        console.log('尝试绝对路径:', distPath);
+        
+        const { ProjectConfigService } = require(distPath);
+        const fullProjects = await ProjectConfigService.detectMultipleProjectConfigs(coreProjects);
+        
+        console.log(`📡 project:detectMultipleConfigs 成功返回: ${fullProjects.length} 个项目`);
+        return { success: true, data: fullProjects };
+      }
+    } catch (error) {
+      console.error('📡 project:detectMultipleConfigs 失败:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : '批量检测项目配置失败' 
       };
     }
   });

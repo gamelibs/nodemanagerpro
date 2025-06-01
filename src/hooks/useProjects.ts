@@ -12,13 +12,14 @@ export function useProjects() {
   const { startLogSession, endLogSession, addLog } = useLogs();
   const { startProject: runnerStartProject, stopProject: runnerStopProject } = usePM2ProjectRunner();
 
-  // 加载所有项目
+  // 加载所有项目（带动态配置检测）
   const loadProjects = useCallback(async () => {
     dispatch({ type: 'SET_LOADING', payload: true });
     dispatch({ type: 'SET_ERROR', payload: null });
 
     try {
-      const result = await ProjectService.getAllProjects();
+      // 使用带有动态配置检测的方法
+      const result = await ProjectService.getAllProjectsWithConfig();
       
       if (result.success && result.data) {
         dispatch({ type: 'SET_PROJECTS', payload: result.data });

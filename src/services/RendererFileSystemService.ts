@@ -1,5 +1,5 @@
 // 渲染进程中的文件系统服务（通过IPC与主进程通信）
-import type { Project, FileSystemResult } from '../types';
+import type { Project, CoreProject, FileSystemResult } from '../types';
 
 // 声明Electron API类型
 declare global {
@@ -64,9 +64,9 @@ export class RendererFileSystemService {
   }
 
   /**
-   * 保存项目列表
+   * 保存项目列表（仅保存核心信息）
    */
-  static async saveProjects(projects: Project[]): Promise<FileSystemResult> {
+  static async saveProjects(projects: CoreProject[]): Promise<FileSystemResult> {
     if (!this.isElectron()) {
       console.warn('⚠️ 不在Electron环境中，跳过保存');
       return { success: false, error: '不在Electron环境中' };
@@ -86,7 +86,7 @@ export class RendererFileSystemService {
   /**
    * 添加项目
    */
-  static async addProject(project: Project): Promise<FileSystemResult> {
+  static async addProject(project: CoreProject): Promise<FileSystemResult> {
     if (!this.isElectron()) {
       console.warn('⚠️ 不在Electron环境中，跳过添加');
       return { success: false, error: '不在Electron环境中' };

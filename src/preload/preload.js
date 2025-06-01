@@ -54,6 +54,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'project:installDependencies',
       'project:installSpecificPackages',
       'project:createPackageJson',
+      // 项目配置检测频道
+      'project:detectConfig',
+      'project:detectMultipleConfigs',
     ];
     
     if (allowedChannels.includes(channel)) {

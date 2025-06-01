@@ -33,12 +33,66 @@ export const ProjectList: React.FC<ProjectListProps> = ({
     await removeProject(project.id);
   };
 
+  // 获取项目状态指示器
+  const getStatusIndicator = (project: Project) => {
+    // 优先显示实时PM2状态（仅当项目被选中时）
+    const isSelected = selectedProject?.id === project.id;
+    const hasRealTimeStatus = isSelected && pm2Status;
+    
+    if (hasRealTimeStatus) {
+      const isOnline = pm2Status.status === 'online' || pm2Status.pm2_env?.status === 'online';
+      const isStopped = pm2Status.status === 'stopped' || pm2Status.pm2_env?.status === 'stopped';
+      const isError = pm2Status.status === 'error' || pm2Status.status === 'errored' || pm2Status.pm2_env?.status === 'error' || pm2Status.pm2_env?.status === 'errored';
+      
+      if (isOnline) {
+        return <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" title="运行中"></span>;
+      } else if (isStopped) {
+        return <span className="w-2 h-2 rounded-full bg-gray-400" title="已停止"></span>;
+      } else if (isError) {
+        return <span className="w-2 h-2 rounded-full bg-red-500" title="错误"></span>;
+      } else {
+        return <span className="w-2 h-2 rounded-full bg-yellow-500" title="状态未知"></span>;
+      }
+    }
+    
+    // 显示项目自带的状态（来自导入时的验证结果或启动操作结果）
+    if (project.status === 'running') {
+      return <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" title="运行中"></span>;
+    } else if (project.status === 'stopped') {
+      return <span className="w-2 h-2 rounded-full bg-gray-400" title="已停止"></span>;
+    } else if (project.status === 'error') {
+      return <span className="w-2 h-2 rounded-full bg-red-500" title="错误"></span>;
+    } else {
+      // 默认状态
+      return <span className="w-2 h-2 rounded-full bg-gray-300" title="未知状态"></span>;
+    }
+  };
+
+  // 格式化时间显示
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+    
+    if (diffInHours < 24) {
+      return date.toLocaleTimeString('zh-CN', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } else {
+      return date.toLocaleDateString('zh-CN', {
+        month: '2-digit',
+        day: '2-digit'
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-          <p className="text-gray-600">{t('projects.list.loading')}</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+          <p className="theme-text-muted">{t('projects.list.loading')}</p>
         </div>
       </div>
     );
@@ -48,8 +102,8 @@ export const ProjectList: React.FC<ProjectListProps> = ({
     return (
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-600 mb-2">{t('projects.list.loadError')}</p>
-          <p className="text-gray-600 text-sm">{error}</p>
+          <p className="theme-text-error mb-2">{t('projects.list.loadError')}</p>
+          <p className="theme-text-muted text-sm">{error}</p>
         </div>
       </div>
     );
@@ -66,109 +120,65 @@ export const ProjectList: React.FC<ProjectListProps> = ({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {projects.map((project) => (
         <div
           key={project.id}
           onClick={() => onSelectProject(project)}
-          className={`group project-item px-4 py-3 cursor-pointer transition-all border-l-4 ${
+          className={`group px-4 py-3 cursor-pointer transition-all duration-200 rounded-lg border project-card ${
             selectedProject?.id === project.id
-              ? 'selected theme-bg-primary border-blue-500'
-              : 'theme-text-muted hover:theme-bg-hover border-transparent hover:border-gray-300'
+              ? 'theme-bg-accent border-blue-500' 
+              : 'theme-bg-secondary theme-border hover:border-gray-400'
           }`}
         >
-          <div className="relative">
-            {/* 项目内容 */}
-            <div className="flex-1">
-              <div className="flex items-center justify-between mb-1">
-                {/* 左侧：项目名称和状态 */}
-                <div className="flex items-center gap-2">
-                  <div className="font-medium theme-text-primary truncate">{project.name}</div>
-                  {/* 运行状态指示器 - 仅显示实时PM2状态 */}
-                  {selectedProject?.id === project.id && pm2Status && (
-                    <div 
-                      className={`status-dot w-2 h-2 rounded-full ${
-                        (pm2Status.status === 'online' || pm2Status.pm2_env?.status === 'online') ? 'running bg-green-500 animate-pulse' :
-                        (pm2Status.status === 'stopped' || pm2Status.pm2_env?.status === 'stopped') ? 'bg-gray-400' :
-                        'error bg-red-500'
-                      }`}
-                      title={`实时状态: ${
-                        (pm2Status.status === 'online' || pm2Status.pm2_env?.status === 'online') ? '运行中' :
-                        (pm2Status.status === 'stopped' || pm2Status.pm2_env?.status === 'stopped') ? '已停止' :
-                        '错误状态'
-                      }`}
-                    ></div>
-                  )}
-                </div>
-                
-                {/* 右侧：删除按钮 */}
-                <button
-                  onClick={(e) => handleDeleteProject(e, project)}
-                  className="opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity duration-200 p-1 rounded text-red-500 hover:text-red-600 hover:bg-red-50"
-                  title={t('projects.deleteProject')}
-                >
-                  🗑️
-                </button>
+          <div className="flex items-center justify-between">
+            {/* 项目名称和状态 */}
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              {/* 状态指示器 */}
+              <div className="status-indicator">
+                {getStatusIndicator(project)}
               </div>
               
-              {/* 项目信息行 */}
-              <div className="space-y-1">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="theme-text-muted flex items-center gap-1">
-                    <span>📂</span>
-                    {project.type}
-                  </span>
-                  {project.port && (
-                    <span className="theme-text-accent flex items-center gap-1">
-                      <span>🌐</span>
-                      :{project.port}
-                    </span>
-                  )}
-                </div>
-                
-                <div className="flex items-center justify-between text-xs">
-                  <span className="theme-text-muted flex items-center gap-1">
-                    <span>📦</span>
-                    {project.packageManager || 'npm'}
-                  </span>
-                  {/* 状态标签 - 仅显示实时PM2状态 */}
-                  {selectedProject?.id === project.id && pm2Status && (
-                    <span className={`project-info-badge px-2 py-0.5 rounded text-xs font-medium ${
-                      (pm2Status.status === 'online' || pm2Status.pm2_env?.status === 'online')
-                        ? 'bg-green-100 text-green-800 dark:bg-green-800/20 dark:text-green-300'
-                        : (pm2Status.status === 'stopped' || pm2Status.pm2_env?.status === 'stopped')
-                        ? 'bg-gray-100 text-gray-800 dark:bg-gray-800/50 dark:text-gray-300'
-                        : 'bg-red-100 text-red-800 dark:bg-red-800/20 dark:text-red-300'
-                    }`}>
-                      {(pm2Status.status === 'online' || pm2Status.pm2_env?.status === 'online') ? '运行中 ●' :
-                       (pm2Status.status === 'stopped' || pm2Status.pm2_env?.status === 'stopped') ? '已停止 ●' :
-                       '错误 ●'}
-                    </span>
-                  )}
-                </div>
-                
-                {/* 最后开启时间 */}
-                {project.lastOpened && (
-                  <div className="text-xs theme-text-muted flex items-center gap-1 mt-1">
-                    <span>🕒</span>
-                    <span>{new Date(project.lastOpened).toLocaleDateString('zh-CN', {
-                      year: 'numeric',
-                      month: '2-digit', 
-                      day: '2-digit'
-                    }).replace(/\//g, '-')} {new Date(project.lastOpened).toLocaleTimeString('zh-CN', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      second: '2-digit',
-                      hour12: false
-                    })}</span>
-                  </div>
-                )}
+              {/* 项目名称 */}
+              <div className="font-medium theme-text-primary truncate">
+                {project.name}
               </div>
             </div>
             
-            {/* 选中指示器 */}
-            {selectedProject?.id === project.id && (
-              <span className="theme-text-primary font-bold ml-2">→</span>
+            {/* 删除按钮 */}
+            <button
+              onClick={(e) => handleDeleteProject(e, project)}
+              className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 rounded theme-text-error hover:theme-bg-error"
+              title={t('projects.deleteProject')}
+            >
+              🗑️
+            </button>
+          </div>
+          
+          {/* 项目信息 */}
+          <div className="mt-2 flex items-center gap-4 text-xs theme-text-muted">
+            {/* 项目类型 */}
+            {project.type && (
+              <span className="flex items-center gap-1">
+                <span>📂</span>
+                <span>{project.type}</span>
+              </span>
+            )}
+            
+            {/* 端口信息 */}
+            {project.port && (
+              <span className="flex items-center gap-1">
+                <span>🌐</span>
+                <span>:{project.port}</span>
+              </span>
+            )}
+            
+            {/* 最后开启时间 */}
+            {project.lastOpened && (
+              <span className="flex items-center gap-1 ml-auto">
+                <span>🕒</span>
+                <span>{formatTime(project.lastOpened.toString())}</span>
+              </span>
             )}
           </div>
         </div>

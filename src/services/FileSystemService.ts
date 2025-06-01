@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { app } from 'electron';
-import type { Project } from '../types';
+import type { CoreProject } from '../types';
 
 export class FileSystemService {
   private static readonly DATA_DIR = 'temp';
@@ -52,11 +52,11 @@ export class FileSystemService {
   }
 
   /**
-   * 读取项目数据
+   * 读取项目数据（仅返回核心信息）
    */
-  static async loadProjects(): Promise<Project[]> {
+  static async loadProjects(): Promise<CoreProject[]> {
     try {
-      console.log('🔍 开始加载项目数据...');
+      console.log('🔍 开始加载项目核心数据...');
       console.log('📁 数据目录:', this.getDataDir());
       
       this.ensureDataDir();
@@ -71,14 +71,16 @@ export class FileSystemService {
       const data = fs.readFileSync(filePath, 'utf-8');
       const projects = JSON.parse(data);
       
-      // 转换日期字符串为Date对象
-      const parsedProjects = projects.map((p: any) => ({
-        ...p,
-        lastOpened: p.lastOpened ? new Date(p.lastOpened) : null
+      // 转换日期字符串为Date对象，并确保只返回核心字段
+      const coreProjects = projects.map((p: any): CoreProject => ({
+        id: p.id,
+        name: p.name,
+        path: p.path,
+        lastOpened: p.lastOpened ? new Date(p.lastOpened) : new Date()
       }));
 
-      console.log(`✅ 加载了 ${parsedProjects.length} 个项目`);
-      return parsedProjects;
+      console.log(`✅ 加载了 ${coreProjects.length} 个项目的核心信息`);
+      return coreProjects;
     } catch (error) {
       console.error('❌ 读取项目数据失败:', error);
       
@@ -89,9 +91,11 @@ export class FileSystemService {
           console.log('🔄 尝试从备份文件恢复...');
           const backupData = fs.readFileSync(backupPath, 'utf-8');
           const projects = JSON.parse(backupData);
-          return projects.map((p: any) => ({
-            ...p,
-            lastOpened: p.lastOpened ? new Date(p.lastOpened) : null
+          return projects.map((p: any): CoreProject => ({
+            id: p.id,
+            name: p.name,
+            path: p.path,
+            lastOpened: p.lastOpened ? new Date(p.lastOpened) : new Date()
           }));
         }
       } catch (backupError) {
@@ -103,9 +107,9 @@ export class FileSystemService {
   }
 
   /**
-   * 保存项目数据
+   * 保存项目数据（仅保存核心信息）
    */
-  static async saveProjects(projects: Project[]): Promise<void> {
+  static async saveProjects(projects: CoreProject[]): Promise<void> {
     try {
       this.ensureDataDir();
       const filePath = this.getProjectsFilePath();
@@ -116,11 +120,11 @@ export class FileSystemService {
         fs.copyFileSync(filePath, backupPath);
       }
       
-      // 保存新数据
+      // 保存新数据（只保存核心信息）
       const data = JSON.stringify(projects, null, 2);
       fs.writeFileSync(filePath, data, 'utf-8');
       
-      console.log(`💾 保存了 ${projects.length} 个项目到 ${filePath}`);
+      console.log(`💾 保存了 ${projects.length} 个项目的核心信息到 ${filePath}`);
     } catch (error) {
       console.error('❌ 保存项目数据失败:', error);
       throw error;
@@ -128,21 +132,31 @@ export class FileSystemService {
   }
 
   /**
-   * 添加项目
+   * 添加项目（仅保存核心信息）
    */
-  static async addProject(project: Project): Promise<void> {
+  static async addProject(project: CoreProject): Promise<void> {
     const projects = await this.loadProjects();
     
     // 检查是否已存在相同路径的项目
     const existingIndex = projects.findIndex(p => p.path === project.path);
     if (existingIndex !== -1) {
-      // 更新现有项目
-      projects[existingIndex] = { ...projects[existingIndex], ...project };
-      console.log(`🔄 更新现有项目: ${project.name}`);
+      // 更新现有项目的核心信息
+      projects[existingIndex] = { 
+        ...projects[existingIndex], 
+        name: project.name,
+        lastOpened: project.lastOpened 
+      };
+      console.log(`🔄 更新现有项目的核心信息: ${project.name}`);
     } else {
-      // 添加新项目
-      projects.push(project);
-      console.log(`➕ 添加新项目: ${project.name}`);
+      // 添加新项目（只保存核心信息）
+      const coreProject: CoreProject = {
+        id: project.id,
+        name: project.name,
+        path: project.path,
+        lastOpened: project.lastOpened
+      };
+      projects.push(coreProject);
+      console.log(`➕ 添加新项目的核心信息: ${project.name}`);
     }
     
     await this.saveProjects(projects);
@@ -164,9 +178,9 @@ export class FileSystemService {
   }
 
   /**
-   * 更新项目信息
+   * 更新项目信息（仅更新核心字段）
    */
-  static async updateProject(projectId: string, updates: Partial<Project>): Promise<void> {
+  static async updateProject(projectId: string, updates: Partial<CoreProject>): Promise<void> {
     const projects = await this.loadProjects();
     const projectIndex = projects.findIndex(p => p.id === projectId);
     
@@ -174,12 +188,39 @@ export class FileSystemService {
       throw new Error(`项目 ID ${projectId} 不存在`);
     }
     
-    // 合并更新
-    projects[projectIndex] = { ...projects[projectIndex], ...updates };
+    // 只更新允许的核心字段
+    const allowedFields: (keyof CoreProject)[] = ['name', 'path', 'lastOpened'];
+    const coreUpdates: Partial<CoreProject> = {};
+    
+    for (const field of allowedFields) {
+      if (field in updates && updates[field] !== undefined) {
+        (coreUpdates as any)[field] = updates[field];
+      }
+    }
+    
+    // 应用更新
+    projects[projectIndex] = { ...projects[projectIndex], ...coreUpdates };
+    
+    await this.saveProjects(projects);
+    console.log(`📝 更新项目核心信息: ${projectId}`, coreUpdates);
+  }
+
+  /**
+   * 更新项目最后打开时间
+   */
+  static async updateProjectLastOpened(projectId: string): Promise<void> {
+    const projects = await this.loadProjects();
+    const projectIndex = projects.findIndex(p => p.id === projectId);
+    
+    if (projectIndex === -1) {
+      throw new Error(`项目 ID ${projectId} 不存在`);
+    }
+    
+    // 只更新最后打开时间
     projects[projectIndex].lastOpened = new Date();
     
     await this.saveProjects(projects);
-    console.log(`📝 更新项目信息: ${projectId}`, updates);
+    console.log(`📝 更新项目最后打开时间: ${projectId}`);
   }
 
   // 项目状态更新已不再需要，因为状态通过PM2实时获取

@@ -4,15 +4,19 @@ export type ProjectTemplate = 'pure-api' | 'static-app' | 'full-stack';
 // 前端框架类型（仅用于 vite-express 模板）
 export type FrontendFramework = 'vanilla-ts' | 'react' | 'vue';
 
-// 项目类型定义
-export interface Project {
+// 核心项目信息（存储在文件中的最小数据）
+export interface CoreProject {
   id: string;
   name: string;
   path: string;
+  lastOpened: Date;
+}
+
+// 完整项目信息（包含动态检测的信息）
+export interface Project extends CoreProject {
   type: 'node' | 'react' | 'vue' | 'electron' | 'other' | 'pure-api' | 'static-app' | 'full-stack';
   status?: 'running' | 'stopped' | 'error';
   port?: number;
-  lastOpened: Date;
   packageManager: 'npm' | 'yarn' | 'pnpm';
   scripts: ProjectScript[];
   description?: string;
