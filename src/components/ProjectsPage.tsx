@@ -40,9 +40,12 @@ export default function ProjectsPage({
     dependencyStatus,
     isCheckingDependencies,
     projectPort,
+    pm2Logs,
+    isLoadingLogs,
     fetchProjectData,
     refreshPM2Status,
     checkDependencies,
+    fetchPM2Logs,
     clearData
   } = useProjectData();
 
@@ -64,14 +67,29 @@ export default function ProjectsPage({
     }
   }, [selectedProject, fetchProjectData, clearData]);
 
+  // 监听项目列表变化，如果当前选中的项目被删除，则清除选择状态
+  useEffect(() => {
+    if (selectedProject && projects) {
+      const projectStillExists = projects.some(p => p.id === selectedProject.id);
+      if (!projectStillExists) {
+        console.log(`🗑️ 检测到选中的项目 "${selectedProject.name}" 已被删除，清除选择状态`);
+        setSelectedProject(null);
+      }
+    }
+  }, [projects, selectedProject]);
+
   // 项目操作处理函数
   const handleStartProject = async () => {
     if (selectedProject) {
       const success = await startProject(selectedProject);
       if (success) {
         showToast(`项目 ${selectedProject.name} 启动成功`, 'success');
-        // 刷新PM2状态
+        // 刷新PM2状态和日志
         refreshPM2Status(selectedProject);
+        // 延迟一下再获取日志，确保进程完全启动
+        setTimeout(() => {
+          fetchPM2Logs(selectedProject);
+        }, 2000);
       }
     }
   };
@@ -110,26 +128,79 @@ export default function ProjectsPage({
   };
 
   // 外部操作处理函数
-  const handleOpenInEditor = () => {
-    if (selectedProject) {
-      window.electronAPI?.invoke('open:editor', selectedProject.path);
-      showToast('正在打开编辑器...', 'info');
+  const handleOpenInEditor = async () => {
+    if (!selectedProject) {
+      showToast('请先选择一个项目', 'error');
+      return;
+    }
+
+    try {
+      const result = await window.electronAPI?.invoke('shell:openInEditor', selectedProject.path);
+      if (result?.success) {
+        showToast('已在编辑器中打开项目', 'success');
+      } else {
+        showToast(`打开编辑器失败: ${result?.error || '未知错误'}`, 'error');
+      }
+    } catch (error) {
+      console.error('打开编辑器失败:', error);
+      showToast('打开编辑器失败', 'error');
     }
   };
 
-  const handleOpenInFolder = () => {
-    if (selectedProject) {
-      window.electronAPI?.invoke('open:folder', selectedProject.path);
-      showToast('正在打开文件夹...', 'info');
+  const handleOpenInFolder = async () => {
+    if (!selectedProject) {
+      showToast('请先选择一个项目', 'error');
+      return;
+    }
+
+    try {
+      const result = await window.electronAPI?.invoke('shell:openPath', selectedProject.path);
+      if (result?.success) {
+        showToast('已在文件夹中打开项目', 'success');
+      } else {
+        showToast(`打开文件夹失败: ${result?.error || '未知错误'}`, 'error');
+      }
+    } catch (error) {
+      console.error('打开文件夹失败:', error);
+      showToast('打开文件夹失败', 'error');
     }
   };
 
-  const handleOpenInBrowser = () => {
-    if (selectedProject) {
-      const port = projectPort || selectedProject.port || 3000;
+  const handleOpenInBrowser = async () => {
+    if (!selectedProject) {
+      showToast('请先选择一个项目', 'error');
+      return;
+    }
+
+    // 检查项目是否正在运行
+    const isRunning = pm2Status?.status === 'online' || selectedProject.status === 'running';
+    
+    if (!isRunning) {
+      // 如果项目未运行，给出提示但仍然尝试打开
+      showToast('项目似乎未运行，尝试打开浏览器...', 'info');
+    }
+
+    try {
+      // 获取项目端口，优先使用检测到的端口
+      let port = projectPort || pm2Status?.port || selectedProject.port;
+      
+      // 如果没有端口信息，不要猜测，而是提示用户
+      if (!port) {
+        showToast('未检测到项目端口，请先设置端口或启动项目后重试', 'error');
+        return;
+      }
+      
       const url = `http://localhost:${port}`;
-      window.electronAPI?.invoke('open:browser', url);
-      showToast(`正在打开浏览器: ${url}`, 'info');
+      
+      const result = await window.electronAPI?.invoke('shell:openExternal', url);
+      if (result?.success) {
+        showToast(`已在浏览器中打开: ${url}`, 'success');
+      } else {
+        showToast(`打开浏览器失败: ${result?.error || '未知错误'}`, 'error');
+      }
+    } catch (error) {
+      console.error('打开浏览器失败:', error);
+      showToast('打开浏览器失败', 'error');
     }
   };
 
@@ -198,6 +269,8 @@ export default function ProjectsPage({
                   dependencyStatus={dependencyStatus}
                   isCheckingDependencies={isCheckingDependencies}
                   isInstallingDependencies={isInstallingDependencies}
+                  pm2Logs={pm2Logs}
+                  isLoadingLogs={isLoadingLogs}
                   onOpenInEditor={handleOpenInEditor}
                   onOpenInFolder={handleOpenInFolder}
                   onOpenInBrowser={handleOpenInBrowser}
@@ -209,6 +282,11 @@ export default function ProjectsPage({
                   onStartProject={handleStartProject}
                   onStopProject={handleStopProject}
                   onRestartProject={handleRestartProject}
+                  onRefreshLogs={() => {
+                    if (selectedProject) {
+                      fetchPM2Logs(selectedProject);
+                    }
+                  }}
                   showToast={showToast}
                 />
               </div>

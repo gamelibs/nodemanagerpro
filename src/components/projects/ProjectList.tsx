@@ -29,10 +29,8 @@ export const ProjectList: React.FC<ProjectListProps> = ({
   const handleDeleteProject = async (e: React.MouseEvent, project: Project) => {
     e.stopPropagation(); // 阻止触发项目选择
     
-    const confirmMessage = `确定要删除项目 "${project.name}" 吗？`;
-    if (confirm(confirmMessage)) {
-      await removeProject(project.id);
-    }
+    // 直接调用 removeProject，确认逻辑在 useProjects hook 中处理
+    await removeProject(project.id);
   };
 
   if (isLoading) {

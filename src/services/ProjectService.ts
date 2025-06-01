@@ -103,32 +103,30 @@ export class ProjectService {
     try {
       await this.initialize();
       
-      // 模拟文件系统检查
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.log(`📥 开始导入项目: ${projectPath}`);
       
-      // 在真实应用中，这里会：
-      // 1. 检查路径是否存在
-      // 2. 读取 package.json
-      // 3. 分析项目类型
-      // 4. 创建项目配置
-      
-      const projectType = this.detectProjectType(projectPath);
-      const detectedPort = this.detectPortFromProject(projectPath, projectType);
+      // 真实检查项目信息
+      const projectAnalysis = await this.analyzeProject(projectPath);
       
       const newProject: Project = {
         id: Date.now().toString(),
-        name: this.extractProjectName(projectPath),
+        name: projectAnalysis.name,
         path: projectPath,
-        type: projectType,
+        type: projectAnalysis.type,
         status: 'stopped',
-        port: detectedPort,
         lastOpened: new Date(),
-        packageManager: 'npm',
-        scripts: [
-          { name: 'start', command: 'npm start', description: '启动项目' },
-        ],
-        description: '导入的项目'
+        packageManager: projectAnalysis.packageManager as 'npm' | 'yarn' | 'pnpm',
+        scripts: projectAnalysis.scripts,
+        description: projectAnalysis.description
       };
+
+      // 只有在检测到端口时才设置端口
+      if (projectAnalysis.port !== null) {
+        newProject.port = projectAnalysis.port;
+        console.log(`✅ 设置项目端口: ${projectAnalysis.port}`);
+      } else {
+        console.log(`⚠️ 未检测到端口配置，端口字段留空`);
+      }
 
       // 使用文件系统服务保存
       const result = await RendererFileSystemService.addProject(newProject);
@@ -483,62 +481,15 @@ export class ProjectService {
   }
 
   // 尝试从项目配置中检测端口（未来可以扩展为真正读取package.json）
-  private static detectPortFromProject(projectPath: string, projectType: Project['type']): number {
-    // 在真实应用中，这里会：
-    // 1. 读取 package.json 中的 scripts
-    // 2. 检查环境变量文件 (.env)
-    // 3. 检查配置文件 (vite.config.js, webpack.config.js 等)
-    // 4. 根据项目类型和命名推测端口
+  private static detectPortFromProject(_projectPath: string, _projectType: Project['type']): number | null {
+    // 这里应该：
+    // 1. 读取环境变量文件 (.env, .env.local)
+    // 2. 检查配置文件 (vite.config.js, webpack.config.js 等)
+    // 3. 检查 Docker 配置文件
+    // 但由于需要文件系统访问，目前返回 null，表示未检测到
     
-    const pathLower = projectPath.toLowerCase();
-    
-    // 根据项目名称或路径推测端口
-    if (pathLower.includes('api') || pathLower.includes('server') || pathLower.includes('backend')) {
-      return 8000;
-    }
-    
-    if (pathLower.includes('frontend') || pathLower.includes('client') || pathLower.includes('web')) {
-      return 3000;
-    }
-    
-    if (pathLower.includes('admin')) {
-      return 9000;
-    }
-    
-    // 检查端口号是否在路径中
-    const portMatch = projectPath.match(/(\d{4,5})/);
-    if (portMatch) {
-      const detectedPort = parseInt(portMatch[1]);
-      if (detectedPort >= 1000 && detectedPort <= 65535) {
-        return detectedPort;
-      }
-    }
-    
-    // 返回类型默认端口
-    return this.getDefaultPortForType(projectType);
-  }
-
-  // 根据项目类型获取默认端口
-  private static getDefaultPortForType(projectType: Project['type']): number {
-    switch (projectType) {
-      case 'react':
-        return 3000;
-      case 'vue':
-        return 8080;
-      case 'pure-api':
-        return 8000;
-      case 'static-app':
-        return 3000;
-      case 'full-stack':
-        return 5173;
-      case 'node':
-        return 5000;
-      case 'electron':
-        return 3000;
-      case 'other':
-      default:
-        return 8000;
-    }
+    console.log(`⚠️ detectPortFromProject: 暂未实现真实端口检测，返回 null`);
+    return null;
   }
 
   // 获取数据存储信息（调试用）
@@ -610,41 +561,238 @@ export class ProjectService {
         return { success: false, error: '无法加载项目列表' };
       }
       
-      let updatedCount = 0;
-      const updatedProjects = result.data.map((project: Project) => {
-        if (!project.port) {
-          updatedCount++;
-          return {
-            ...project,
-            port: this.detectPortFromProject(project.path, project.type)
-          };
-        }
-        return project;
-      });
-      
-      if (updatedCount > 0) {
-        const saveResult = await RendererFileSystemService.saveProjects(updatedProjects);
-        if (saveResult.success) {
-          console.log(`✅ 为 ${updatedCount} 个项目自动分配了端口号`);
-          return {
-            success: true,
-            data: { updatedCount, projects: updatedProjects }
-          };
-        } else {
-          return { success: false, error: '保存更新失败' };
-        }
-      } else {
-        console.log('📝 所有项目都已有端口号，无需更新');
-        return {
-          success: true,
-          data: { updatedCount: 0, projects: result.data }
-        };
-      }
+      // 不再自动分配端口，直接返回现有数据
+      console.log('📝 不再自动分配端口，保持原有状态');
+      return {
+        success: true,
+        data: { updatedCount: 0, projects: result.data }
+      };
     } catch (error) {
       return {
         success: false,
         error: error instanceof Error ? error.message : '自动分配端口失败'
       };
     }
+  }
+
+  // 真实分析项目信息
+  private static async analyzeProject(projectPath: string): Promise<{
+    name: string;
+    type: Project['type'];
+    port: number | null;
+    packageManager: string;
+    scripts: ProjectScript[];
+    description: string;
+  }> {
+    console.log(`🔍 开始分析项目: ${projectPath}`);
+    
+    // 1. 提取项目名称
+    const name = this.extractProjectName(projectPath);
+    console.log(`📁 项目名称: ${name}`);
+    
+    // 2. 尝试读取并分析 package.json
+    let packageJson: any = null;
+    let packageManager = 'npm';
+    let scripts: ProjectScript[] = [];
+    let description = '导入的项目';
+    let detectedType: Project['type'] = 'node';
+    let detectedPort: number | null = null;
+    
+    try {
+      // 通过 IPC 调用主进程读取 package.json
+      if (typeof window !== 'undefined' && window.electronAPI) {
+        console.log('📄 尝试读取 package.json...');
+        const result = await window.electronAPI.invoke('project:getPackageInfo', projectPath);
+        
+        if (result.success && result.data?.packageJson) {
+          packageJson = result.data.packageJson;
+          console.log('✅ 成功读取 package.json');
+          
+          // 分析 package.json 内容
+          if (packageJson.description) {
+            description = packageJson.description;
+          }
+          
+          // 分析项目类型
+          detectedType = this.analyzeProjectTypeFromPackageJson(packageJson);
+          console.log(`🎯 检测到项目类型: ${detectedType}`);
+          
+          // 分析端口
+          detectedPort = this.analyzePortFromPackageJson(packageJson, detectedType);
+          console.log(`🔌 检测到端口: ${detectedPort}`);
+          
+          // 分析脚本
+          scripts = this.analyzeScriptsFromPackageJson(packageJson);
+          console.log(`📜 检测到 ${scripts.length} 个脚本`);
+          
+          // 检测包管理器
+          packageManager = await this.detectPackageManager(projectPath);
+          console.log(`📦 检测到包管理器: ${packageManager}`);
+        } else {
+          console.warn('⚠️ 无法读取 package.json，使用默认配置');
+          // 如果没有 package.json，尝试其他方式检测类型
+          detectedType = this.detectProjectType(projectPath);
+          detectedPort = this.detectPortFromProject(projectPath, detectedType);
+          scripts = [{ name: 'start', command: `${packageManager} start`, description: '启动项目' }];
+        }
+      } else {
+        console.warn('⚠️ 不在 Electron 环境中，使用简单检测');
+        detectedType = this.detectProjectType(projectPath);
+        detectedPort = this.detectPortFromProject(projectPath, detectedType);
+        scripts = [{ name: 'start', command: `${packageManager} start`, description: '启动项目' }];
+      }
+    } catch (error) {
+      console.error('❌ 项目分析失败，使用默认配置:', error);
+      detectedType = this.detectProjectType(projectPath);
+      detectedPort = this.detectPortFromProject(projectPath, detectedType);
+      scripts = [{ name: 'start', command: `${packageManager} start`, description: '启动项目' }];
+    }
+    
+    return {
+      name,
+      type: detectedType,
+      port: detectedPort,
+      packageManager,
+      scripts,
+      description
+    };
+  }
+
+  // 从 package.json 分析项目类型
+  private static analyzeProjectTypeFromPackageJson(packageJson: any): Project['type'] {
+    const dependencies = { ...packageJson.dependencies, ...packageJson.devDependencies };
+    
+    // 检查关键依赖
+    if (dependencies.react) return 'react';
+    if (dependencies.vue) return 'vue';
+    if (dependencies.electron) return 'electron';
+    if (dependencies.express || dependencies.fastify || dependencies.koa) return 'pure-api';
+    if (dependencies.vite && (dependencies.react || dependencies.vue)) return 'full-stack';
+    if (packageJson.type === 'module' || dependencies.vite) return 'node';
+    
+    // 检查脚本
+    const scripts = packageJson.scripts || {};
+    if (scripts.dev && scripts.build) return 'full-stack';
+    if (scripts.start && !scripts.build) return 'pure-api';
+    
+    return 'node';
+  }
+
+  // 从 package.json 分析端口
+  private static analyzePortFromPackageJson(packageJson: any, _projectType: Project['type']): number | null {
+    const scripts = packageJson.scripts || {};
+    
+    // 从启动脚本中查找端口配置
+    for (const [, command] of Object.entries(scripts)) {
+      if (typeof command === 'string') {
+        // 查找 --port 参数
+        const portMatch = command.match(/--port[=\s]+(\d+)/);
+        if (portMatch) {
+          const port = parseInt(portMatch[1]);
+          console.log(`🔌 从启动脚本中检测到端口: ${port}`);
+          return port;
+        }
+        
+        // 查找环境变量 PORT
+        const envPortMatch = command.match(/PORT[=]\s*(\d+)/);
+        if (envPortMatch) {
+          const port = parseInt(envPortMatch[1]);
+          console.log(`🔌 从环境变量中检测到端口: ${port}`);
+          return port;
+        }
+        
+        // 查找 Vite 默认开发端口
+        if (command.includes('vite') && !command.includes('--port')) {
+          console.log(`🔌 检测到 Vite 项目，使用默认端口: 5173`);
+          return 5173;
+        }
+        
+        // 查找 Next.js 默认端口
+        if (command.includes('next dev') && !command.includes('--port')) {
+          console.log(`🔌 检测到 Next.js 项目，使用默认端口: 3000`);
+          return 3000;
+        }
+      }
+    }
+    
+    // 检查 devDependencies 和 dependencies 中的框架
+    const deps = { ...packageJson.dependencies, ...packageJson.devDependencies };
+    
+    if (deps['vite'] || deps['@vitejs/plugin-react'] || deps['@vitejs/plugin-vue']) {
+      console.log(`🔌 检测到 Vite 依赖，使用默认端口: 5173`);
+      return 5173;
+    }
+    
+    if (deps['next']) {
+      console.log(`🔌 检测到 Next.js 依赖，使用默认端口: 3000`);
+      return 3000;
+    }
+    
+    // 如果没找到明确的端口配置，返回 null
+    console.log(`⚠️ 未检测到明确的端口配置`);
+    return null;
+  }
+
+  // 从 package.json 分析脚本
+  private static analyzeScriptsFromPackageJson(packageJson: any): ProjectScript[] {
+    const scripts = packageJson.scripts || {};
+    const result: ProjectScript[] = [];
+    
+    // 常见脚本映射
+    const scriptDescriptions: Record<string, string> = {
+      start: '启动项目',
+      dev: '开发模式',
+      build: '构建项目',
+      test: '运行测试',
+      lint: '代码检查',
+      serve: '预览构建',
+      preview: '预览构建'
+    };
+    
+    for (const [name, command] of Object.entries(scripts)) {
+      if (typeof command === 'string') {
+        result.push({
+          name,
+          command: `npm run ${name}`,
+          description: scriptDescriptions[name] || `运行 ${name}`
+        });
+      }
+    }
+    
+    // 如果没有脚本，添加默认的
+    if (result.length === 0) {
+      result.push({ name: 'start', command: 'npm start', description: '启动项目' });
+    }
+    
+    return result;
+  }
+
+  // 检测包管理器
+  private static async detectPackageManager(projectPath: string): Promise<string> {
+    try {
+      if (typeof window !== 'undefined' && window.electronAPI) {
+        // 检查锁文件存在性
+        const checks = [
+          { file: 'pnpm-lock.yaml', manager: 'pnpm' },
+          { file: 'yarn.lock', manager: 'yarn' },
+          { file: 'package-lock.json', manager: 'npm' }
+        ];
+        
+        for (const check of checks) {
+          try {
+            const result = await window.electronAPI.invoke('fs:validateDirectory', `${projectPath}/${check.file}`);
+            if (result?.exists) {
+              return check.manager;
+            }
+          } catch (error) {
+            // 继续检查下一个
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('检测包管理器失败:', error);
+    }
+    
+    return 'npm'; // 默认使用 npm
   }
 }

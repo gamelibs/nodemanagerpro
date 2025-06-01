@@ -18,9 +18,8 @@ export default function ProjectCard({ project, onOpenSettings }: ProjectCardProp
   const currentPerformance = performanceData[project.id];
 
   const handleRemove = async () => {
-    if (confirm(`确定要移除项目 "${project.name}" 吗？这不会删除文件，只是从列表中移除。`)) {
-      await removeProject(project.id);
-    }
+    // 直接调用 removeProject，确认逻辑在 useProjects hook 中处理
+    await removeProject(project.id);
   };
 
   const handleOpenSettings = () => {

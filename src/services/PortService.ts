@@ -53,9 +53,12 @@ export class PortService {
   /**
    * 为项目检查端口
    */
-  static async checkProjectPort(project: Project): Promise<PortStatus> {
-    const port = project.port || 8000;
-    return this.checkPortAvailability(port);
+  static async checkProjectPort(project: Project): Promise<PortStatus | null> {
+    if (!project.port) {
+      console.warn('项目未设置端口，无法检查端口状态');
+      return null;
+    }
+    return this.checkPortAvailability(project.port);
   }
 
   /**

@@ -278,7 +278,7 @@ export class FileSystemService {
     content = content
       .replace(/\{\{PROJECT_NAME\}\}/g, projectConfig.name)
       .replace(/\{\{PROJECT_PATH\}\}/g, projectConfig.path)
-      .replace(/\{\{PORT\}\}/g, projectConfig.port?.toString() || '3000')
+      .replace(/\{\{PORT\}\}/g, projectConfig.port?.toString() || '// PORT_NOT_SET')
       .replace(/\{\{PACKAGE_MANAGER\}\}/g, projectConfig.packageManager || 'npm')
       .replace(/\{\{DESCRIPTION\}\}/g, projectConfig.description || `A new ${projectConfig.template} project`);
     

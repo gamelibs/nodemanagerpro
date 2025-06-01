@@ -12,6 +12,8 @@ interface ProjectDetailsProps {
   dependencyStatus: {[key: string]: boolean};
   isCheckingDependencies: boolean;
   isInstallingDependencies: boolean;
+  pm2Logs: string[];
+  isLoadingLogs: boolean;
   onOpenInEditor: () => void;
   onOpenInFolder: () => void;
   onOpenInBrowser: () => void;
@@ -20,6 +22,7 @@ interface ProjectDetailsProps {
   onStartProject: () => void;
   onStopProject: () => void;
   onRestartProject: () => void;
+  onRefreshLogs: () => void;
   showToast: (message: string, type: 'success' | 'error' | 'info') => void;
 }
 
@@ -30,20 +33,100 @@ export function ProjectDetails({
   pm2Status,
   isLoadingPM2,
   projectPort,
+  dependencyStatus,
+  isCheckingDependencies,
+  isInstallingDependencies,
+  pm2Logs,
+  isLoadingLogs,
   onOpenInEditor,
   onOpenInFolder,
   onOpenInBrowser,
   onPortEdit,
+  onInstallDependencies,
+  onStartProject,
+  onStopProject,
+  onRestartProject,
+  onRefreshLogs,
   showToast,
 }: ProjectDetailsProps) {
   // 端口编辑状态
   const [isEditingPort, setIsEditingPort] = useState(false);
   const [tempPort, setTempPort] = useState<string>('');
 
+  // 检查项目是否可以启动
+  const canStartProject = () => {
+    // 没有 package.json 文件无法启动
+    if (!packageInfo) {
+      return false;
+    }
+    // 已经在运行中无法启动
+    if (pm2Status && (pm2Status.status === 'online' || pm2Status.pm2_env?.status === 'online')) {
+      return false;
+    }
+    // 有未安装的依赖包无法启动
+    if (hasUninstalledDependencies()) {
+      return false;
+    }
+    return true;
+  };
+
+  // 获取启动按钮的状态文本
+  const getStartButtonText = () => {
+    if (isLoadingPM2) {
+      return '启动中...';
+    }
+    if (!packageInfo) {
+      return '无法启动';
+    }
+    if (pm2Status && (pm2Status.status === 'online' || pm2Status.pm2_env?.status === 'online')) {
+      return '运行中';
+    }
+    if (hasUninstalledDependencies()) {
+      return '依赖未安装';
+    }
+    return '启动';
+  };
+
+  // 获取启动按钮的提示文本
+  const getStartButtonTitle = () => {
+    if (pm2Status && (pm2Status.status === 'online' || pm2Status.pm2_env?.status === 'online')) {
+      return '项目正在运行中，请先停止项目再启动';
+    }
+    if (!packageInfo) {
+      return '缺少 package.json 文件，无法启动项目';
+    }
+    if (hasUninstalledDependencies()) {
+      return '存在未安装的必要依赖包，无法启动项目';
+    }
+    return '启动项目';
+  };
+
+  // 检查是否有关键依赖包未安装
+  const hasUninstalledDependencies = () => {
+    if (!packageInfo || !packageInfo.dependencies) {
+      return false;
+    }
+    
+    // 如果还在检查依赖状态，返回 false（不禁用）
+    if (isCheckingDependencies) {
+      return false;
+    }
+    
+    // 如果依赖状态还没检查完，返回 false
+    if (Object.keys(dependencyStatus).length === 0) {
+      return false;
+    }
+    
+    // 检查生产依赖是否有未安装的包
+    const productionDeps = Object.keys(packageInfo.dependencies);
+    const hasUninstalled = productionDeps.some(dep => dependencyStatus[dep] === false);
+    return hasUninstalled;
+  };
+
   // 处理端口编辑
   const handlePortEditStart = () => {
     setIsEditingPort(true);
-    setTempPort((projectPort || project?.port || 3000).toString());
+    setTempPort((projectPort || project?.port || '').toString());
   };
 
   const handlePortSave = async () => {
@@ -64,7 +147,9 @@ export function ProjectDetails({
   };
 
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="space-y-4">
+      {/* 两栏布局：基本信息和运行状态 */}
+      <div className="grid grid-cols-2 gap-4">
       {/* 基本信息 */}
       <div className="theme-bg-secondary p-3 rounded-lg">
         <h4 className="font-semibold theme-text-primary mb-2">基本信息</h4>
@@ -136,26 +221,34 @@ export function ProjectDetails({
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2">
                       <span className="theme-text-muted text-xs">项目地址:</span>
-                      <a
-                        href={`http://localhost:${projectPort || project?.port || 3000}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          onOpenInBrowser();
-                        }}
-                        className="text-xs text-blue-600 hover:text-blue-800 underline cursor-pointer"
-                        title="在浏览器中打开"
-                      >
-                        http://localhost:{projectPort || project?.port || 3000}
-                      </a>
-                      <button
-                        onClick={onOpenInBrowser}
-                        className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                        title="在浏览器中打开"
-                      >
-                        🌐
-                      </button>
+                      {(projectPort || project?.port) ? (
+                        <>
+                          <a
+                            href={`http://localhost:${projectPort || project?.port}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              onOpenInBrowser();
+                            }}
+                            className="text-xs text-blue-600 hover:text-blue-800 underline cursor-pointer"
+                            title="在浏览器中打开"
+                          >
+                            http://localhost:{projectPort || project?.port}
+                          </a>
+                          <button
+                            onClick={onOpenInBrowser}
+                            className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                            title="在浏览器中打开"
+                          >
+                            🌐
+                          </button>
+                        </>
+                      ) : (
+                        <span className="text-xs theme-text-muted italic">
+                          未设置端口
+                        </span>
+                      )}
                     </div>
                     {isEditingPort ? (
                       <div className="flex items-center gap-1">
@@ -187,7 +280,7 @@ export function ProjectDetails({
                       <div className="flex items-center gap-1">
                         <span className="theme-text-muted text-xs">端口:</span>
                         <span className="theme-text-primary text-xs">
-                          {projectPort || project?.port || 3000}
+                          {projectPort || project?.port || '未设置'}
                         </span>
                         <button
                           onClick={handlePortEditStart}
@@ -222,6 +315,108 @@ export function ProjectDetails({
               )}
             </div>
           </div>
+          
+          {/* 依赖包信息 */}
+          {packageInfo && (packageInfo.dependencies || packageInfo.devDependencies) && (
+            <div className="mt-3 pt-2 border-t theme-border">
+              <div className="font-medium theme-text-primary mb-1 text-xs">依赖包信息:</div>
+              
+              {/* 依赖缺失警告和安装按钮 */}
+              {hasUninstalledDependencies() && (
+                <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded px-2 py-1 mb-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1">
+                      <span className="text-orange-600">⚠</span>
+                      <span className="text-xs text-orange-700 dark:text-orange-300">
+                        检测到未安装的依赖包，项目可能无法正常启动
+                      </span>
+                    </div>
+                    <button
+                      onClick={onInstallDependencies}
+                      disabled={isInstallingDependencies}
+                      className={`px-2 py-1 text-xs rounded transition-colors ${
+                        isInstallingDependencies
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-800/20 dark:text-blue-300 dark:hover:bg-blue-800/40'
+                      }`}
+                      title={`使用 ${project?.packageManager || 'npm'} 安装依赖`}
+                    >
+                      {isInstallingDependencies ? (
+                        <div className="flex items-center gap-1">
+                          <div className="animate-spin rounded-full h-2 w-2 border-b border-current"></div>
+                          安装中...
+                        </div>
+                      ) : (
+                        '📦 安装依赖'
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+              
+              <div className="space-y-1">
+                {packageInfo.dependencies && (
+                  <div className="flex justify-between items-center">
+                    <span className="theme-text-muted text-xs">生产依赖:</span>
+                    <div className="flex items-center gap-2">
+                      <span className="theme-text-primary text-xs">
+                        {Object.keys(packageInfo.dependencies).length} 个
+                      </span>
+                      {isCheckingDependencies ? (
+                        <div className="animate-spin rounded-full h-2 w-2 border-b border-blue-500"></div>
+                      ) : Object.keys(dependencyStatus).length > 0 && (
+                        <span className="text-xs">
+                          {Object.values(dependencyStatus).filter(Boolean).length === Object.keys(packageInfo.dependencies).length ? (
+                            <span className="text-green-600">✓</span>
+                          ) : (
+                            <span className="text-orange-600">⚠</span>
+                          )}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {packageInfo.devDependencies && (
+                  <div className="flex justify-between">
+                    <span className="theme-text-muted text-xs">开发依赖:</span>
+                    <span className="theme-text-primary text-xs">
+                      {Object.keys(packageInfo.devDependencies).length} 个
+                    </span>
+                  </div>
+                )}
+                {packageInfo.dependencies && (
+                  <div className="mt-2">
+                    <div className="text-xs theme-text-muted mb-1">主要依赖:</div>
+                    <div className="flex flex-wrap gap-1">
+                      {Object.entries(packageInfo.dependencies).slice(0, 6).map(([pkg, version]) => {
+                        const isInstalled = dependencyStatus[pkg];
+                        const statusIcon = isCheckingDependencies ? '?' : (isInstalled ? '✓' : '✗');
+                        const statusColor = isCheckingDependencies ? 'text-gray-500' : (isInstalled ? 'text-green-600' : 'text-red-600');
+                        
+                        return (
+                          <span 
+                            key={pkg} 
+                            className={`px-1.5 py-0.5 bg-blue-100 dark:bg-blue-800/20 text-blue-800 dark:text-blue-300 text-xs rounded flex items-center gap-1 ${
+                              !isInstalled && !isCheckingDependencies ? 'opacity-60' : ''
+                            }`}
+                            title={`${pkg}@${(version as string).replace('^', '').replace('~', '')} - ${isCheckingDependencies ? '检查中...' : (isInstalled ? '已安装' : '未安装')}`}
+                          >
+                            {pkg}@{(version as string).replace('^', '').replace('~', '')}
+                            <span className={`text-xs ${statusColor}`}>{statusIcon}</span>
+                          </span>
+                        );
+                      })}
+                      {Object.keys(packageInfo.dependencies).length > 6 && (
+                        <span className="text-xs theme-text-muted">
+                          +{Object.keys(packageInfo.dependencies).length - 6}...
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
       
@@ -298,6 +493,83 @@ export function ProjectDetails({
                 {new Date(project.lastOpened).toLocaleString()}
               </span>
             </div>
+          </div>
+        )}
+        
+        {/* 项目控制按钮 */}
+        <div className="space-y-2 pt-2 border-t theme-border">
+          {/* 主要控制按钮 */}
+          <div className="flex space-x-2">
+            {(pm2Status?.status === 'online' || pm2Status?.pm2_env?.status === 'online') ? (
+              <>
+                <button 
+                  onClick={onStopProject}
+                  className="flex-1 px-3 py-2 btn-remove rounded-lg text-sm"
+                  disabled={isLoadingPM2}
+                >
+                  {isLoadingPM2 ? '停止中...' : '停止'}
+                </button>
+                <button 
+                  onClick={onRestartProject}
+                  className="flex-1 px-3 py-2 btn-warning rounded-lg text-sm"
+                  disabled={isLoadingPM2}
+                >
+                  {isLoadingPM2 ? '重启中...' : '重启'}
+                </button>
+              </>
+            ) : (
+              <button 
+                onClick={onStartProject}
+                className={`flex-1 px-3 py-2 rounded-lg text-sm ${
+                  !canStartProject() 
+                    ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
+                    : 'btn-success'
+                }`}
+                disabled={isLoadingPM2 || !canStartProject()}
+                title={getStartButtonTitle()}
+              >
+                {getStartButtonText()}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+      </div>
+      
+      {/* PM2日志 - 独立在两栏下面 */}
+      <div className="theme-bg-secondary p-4 rounded-lg">
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="font-semibold theme-text-primary">最近日志</h4>
+          <button 
+            onClick={onRefreshLogs}
+            className="text-xs px-2 py-1 btn-info rounded"
+            disabled={isLoadingLogs}
+          >
+            {isLoadingLogs ? '刷新中...' : '刷新'}
+          </button>
+        </div>
+        
+        {isLoadingLogs ? (
+          <div className="flex items-center justify-center py-4">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+            <span className="ml-2 text-xs theme-text-muted">加载日志中...</span>
+          </div>
+        ) : pm2Logs.length > 0 ? (
+          <div className="bg-black text-green-400 p-3 rounded text-xs font-mono max-h-64 overflow-y-auto">
+            {pm2Logs.map((log, index) => (
+              <div key={index} className="mb-1 leading-relaxed">
+                {log}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="bg-gray-100 dark:bg-gray-800 p-3 rounded text-xs theme-text-muted text-center">
+            暂无日志数据
+            {pm2Status && (pm2Status.status === 'errored' || pm2Status.pm2_env?.status === 'errored') && (
+              <div className="mt-2 text-red-500">
+                进程状态为 "errored"，请检查项目依赖和配置
+              </div>
+            )}
           </div>
         )}
       </div>
