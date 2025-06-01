@@ -1,4 +1,6 @@
 import React from 'react';
+import { useApp } from '../../store/AppContext';
+import { useProjects } from '../../hooks/useProjects';
 import type { Project } from '../../types';
 import type { PM2Process } from '../../services/PM2Service';
 
@@ -19,36 +21,17 @@ export const ProjectList: React.FC<ProjectListProps> = ({
   error,
   pm2Status
 }) => {
-  // 检查项目是否正在运行（优先使用PM2实时状态）
-  const isProjectRunning = (project: Project): boolean => {
-    // 如果是当前选中的项目，优先使用实时PM2状态
-    if (selectedProject?.id === project.id && pm2Status) {
-      return pm2Status.pm2_env?.status === 'online';
-    }
-    // 否则使用项目记录的状态
-    return project.status === 'running';
-  };
+  const { i18n } = useApp();
+  const { t } = i18n;
+  const { removeProject } = useProjects();
 
-  // 获取项目状态显示文本
-  const getProjectStatus = (project: Project): string => {
-    if (selectedProject?.id === project.id && pm2Status) {
-      const status = pm2Status.pm2_env?.status;
-      switch (status) {
-        case 'online': return '运行中';
-        case 'stopped': return '已停止';
-        case 'error': 
-        case 'errored': return '错误';
-        case 'stopping': return '停止中';
-        case 'launching': return '启动中';
-        default: return '未知';
-      }
-    }
+  // 删除项目处理
+  const handleDeleteProject = async (e: React.MouseEvent, project: Project) => {
+    e.stopPropagation(); // 阻止触发项目选择
     
-    switch (project.status) {
-      case 'running': return '运行中';
-      case 'stopped': return '已停止';
-      case 'error': return '错误';
-      default: return '未知';
+    const confirmMessage = `确定要删除项目 "${project.name}" 吗？`;
+    if (confirm(confirmMessage)) {
+      await removeProject(project.id);
     }
   };
 
@@ -57,7 +40,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-          <p className="text-gray-600">加载项目中...</p>
+          <p className="text-gray-600">{t('projects.list.loading')}</p>
         </div>
       </div>
     );
@@ -67,7 +50,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
     return (
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-600 mb-2">加载失败</p>
+          <p className="text-red-600 mb-2">{t('projects.list.loadError')}</p>
           <p className="text-gray-600 text-sm">{error}</p>
         </div>
       </div>
@@ -76,94 +59,142 @@ export const ProjectList: React.FC<ProjectListProps> = ({
 
   if (projects.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-600 mb-4">还没有项目</p>
-          <p className="text-gray-500 text-sm">点击上方按钮创建或导入项目</p>
-        </div>
+      <div className="p-4 text-center">
+        <div className="text-4xl mb-4">📁</div>
+        <p className="theme-text-muted text-sm">{t('projects.list.empty')}</p>
+        <p className="theme-text-muted text-xs mt-1">{t('projects.list.emptyDesc')}</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-      <div className="p-4 border-b border-gray-200">
-        <h2 className="text-lg font-semibold text-gray-900">项目列表</h2>
-        <p className="text-sm text-gray-600 mt-1">共 {projects.length} 个项目</p>
-      </div>
-      
-      <div className="divide-y divide-gray-200">
-        {projects.map((project) => (
-          <div
-            key={project.id}
-            className={`p-4 cursor-pointer transition-all duration-200 hover:bg-gray-50 ${
-              selectedProject?.id === project.id
-                ? 'bg-blue-50 border-l-4 border-l-blue-500'
-                : ''
-            }`}
-            onClick={() => onSelectProject(project)}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex-1 min-w-0">
+    <div className="space-y-3">
+      {projects.map((project) => (
+        <div
+          key={project.id}
+          onClick={() => onSelectProject(project)}
+          className={`group project-item px-4 py-3 cursor-pointer transition-all border-l-4 ${
+            selectedProject?.id === project.id
+              ? 'selected theme-bg-primary border-blue-500'
+              : 'theme-text-muted hover:theme-bg-hover border-transparent hover:border-gray-300'
+          }`}
+        >
+          <div className="relative">
+            {/* 项目内容 */}
+            <div className="flex-1">
+              <div className="flex items-center justify-between mb-1">
+                {/* 左侧：项目名称和状态 */}
                 <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-medium text-gray-900 truncate">
-                    {project.name}
-                  </h3>
-                  
+                  <div className="font-medium theme-text-primary truncate">{project.name}</div>
                   {/* 运行状态指示器 */}
-                  <div className="flex items-center gap-1">
-                    <div
-                      className={`w-2 h-2 rounded-full ${
-                        isProjectRunning(project)
-                          ? 'bg-green-500'
-                          : project.status === 'error'
-                          ? 'bg-red-500'
-                          : 'bg-gray-400'
-                      }`}
-                    />
-                    <span
-                      className={`text-xs font-medium ${
-                        isProjectRunning(project)
-                          ? 'text-green-700'
-                          : project.status === 'error'
-                          ? 'text-red-700'
-                          : 'text-gray-600'
-                      }`}
-                    >
-                      {getProjectStatus(project)}
-                    </span>
-                    
-                    {/* 选中项目显示实时状态标识 */}
-                    {selectedProject?.id === project.id && pm2Status && (
-                      <span className="text-xs text-blue-600">●</span>
-                    )}
-                  </div>
+                  <div 
+                    className={`status-dot w-2 h-2 rounded-full ${
+                      selectedProject?.id === project.id && pm2Status ? (
+                        // 如果是选中的项目且有实时状态，显示实时状态
+                        (pm2Status.status === 'online' || pm2Status.pm2_env?.status === 'online') ? 'running bg-green-500 animate-pulse' :
+                        (pm2Status.status === 'stopped' || pm2Status.pm2_env?.status === 'stopped') ? 'bg-gray-400' :
+                        'error bg-red-500'
+                      ) : (
+                        // 否则显示历史状态
+                        project.status === 'running' ? 'running bg-green-500 animate-pulse' :
+                        project.status === 'stopped' ? 'bg-gray-400' :
+                        project.status === 'error' ? 'error bg-red-500' : 'bg-gray-400'
+                      )
+                    }`}
+                    title={`状态: ${
+                      selectedProject?.id === project.id && pm2Status ? (
+                        // 实时状态标题
+                        (pm2Status.status === 'online' || pm2Status.pm2_env?.status === 'online') ? '运行中（实时）' :
+                        (pm2Status.status === 'stopped' || pm2Status.pm2_env?.status === 'stopped') ? '已停止（实时）' :
+                        '错误（实时）'
+                      ) : (
+                        // 历史状态标题
+                        project.status === 'running' ? '运行中（历史）' :
+                        project.status === 'stopped' ? '已停止（历史）' :
+                        project.status === 'error' ? '错误（历史）' : '未知（历史）'
+                      )
+                    }`}
+                  ></div>
                 </div>
                 
-                <p className="text-xs text-gray-500 mt-1 truncate">
-                  {project.path}
-                </p>
-                
-                <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                  <span>类型: {project.type}</span>
-                  {project.port && <span>端口: {project.port}</span>}
-                  <span>包管理器: {project.packageManager}</span>
-                </div>
+                {/* 右侧：删除按钮 */}
+                <button
+                  onClick={(e) => handleDeleteProject(e, project)}
+                  className="opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity duration-200 p-1 rounded text-red-500 hover:text-red-600 hover:bg-red-50"
+                  title={t('projects.deleteProject')}
+                >
+                  🗑️
+                </button>
               </div>
               
-              <div className="ml-4 flex-shrink-0">
-                <div className="text-right">
-                  {project.lastOpened && (
-                    <p className="text-xs text-gray-500">
-                      {new Date(project.lastOpened).toLocaleDateString()}
-                    </p>
+              {/* 项目信息行 */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="theme-text-muted flex items-center gap-1">
+                    <span>📂</span>
+                    {project.type}
+                  </span>
+                  {project.port && (
+                    <span className="theme-text-accent flex items-center gap-1">
+                      <span>🌐</span>
+                      :{project.port}
+                    </span>
                   )}
                 </div>
+                
+                <div className="flex items-center justify-between text-xs">
+                  <span className="theme-text-muted flex items-center gap-1">
+                    <span>📦</span>
+                    {project.packageManager || 'npm'}
+                  </span>
+                  <span className={`project-info-badge px-2 py-0.5 rounded text-xs font-medium ${
+                    selectedProject?.id === project.id && pm2Status ? (
+                      // 选中项目显示实时状态样式
+                      (pm2Status.status === 'online' || pm2Status.pm2_env?.status === 'online')
+                        ? 'bg-green-100 text-green-800 dark:bg-green-800/20 dark:text-green-300'
+                        : (pm2Status.status === 'stopped' || pm2Status.pm2_env?.status === 'stopped')
+                        ? 'bg-gray-100 text-gray-800 dark:bg-gray-800/50 dark:text-gray-300'
+                        : 'bg-red-100 text-red-800 dark:bg-red-800/20 dark:text-red-300'
+                    ) : (
+                      // 非选中项目显示历史状态样式
+                      project.status === 'running' 
+                        ? 'bg-green-100 text-green-800 dark:bg-green-800/20 dark:text-green-300'
+                        : project.status === 'stopped' 
+                        ? 'bg-gray-100 text-gray-800 dark:bg-gray-800/50 dark:text-gray-300'
+                        : 'bg-red-100 text-red-800 dark:bg-red-800/20 dark:text-red-300'
+                    )
+                  }`}>
+                    {selectedProject?.id === project.id && pm2Status ? (
+                      // 选中项目显示实时状态文字
+                      (pm2Status.status === 'online' || pm2Status.pm2_env?.status === 'online') ? '运行中 ●' :
+                      (pm2Status.status === 'stopped' || pm2Status.pm2_env?.status === 'stopped') ? '已停止 ●' :
+                      '错误 ●'
+                    ) : (
+                      // 非选中项目显示历史状态文字
+                      project.status === 'running' ? '运行中' :
+                      project.status === 'stopped' ? '已停止' :
+                      project.status === 'error' ? '错误' : '未知'
+                    )}
+                  </span>
+                </div>
+                
+                {/* 最后开启时间 */}
+                {project.lastOpened && (
+                  <div className="text-xs theme-text-muted flex items-center gap-1 mt-1">
+                    <span>🕒</span>
+                    <span>上次: {new Date(project.lastOpened).toLocaleDateString()}</span>
+                  </div>
+                )}
               </div>
             </div>
+            
+            {/* 选中指示器 */}
+            {selectedProject?.id === project.id && (
+              <span className="theme-text-primary font-bold ml-2">→</span>
+            )}
           </div>
-        ))}
-      </div>
+        </div>
+      ))}
     </div>
   );
 };

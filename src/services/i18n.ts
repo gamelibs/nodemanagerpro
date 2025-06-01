@@ -9,12 +9,37 @@ const zh = {
     title: '项目管理',
     totalProjects: '总项目数',
     importProject: '导入项目',
-    createProject: '创建项目', 
+    import: '导入项目',
+    importing: '导入中...',
+    createProject: '创建项目',
+    create: '创建项目', 
+    creating: '创建中...',
     deleteProject: '删除项目',
     selectProject: '请选择管理的项目',
     selectProjectDesc: '从左侧项目列表中选择一个项目来查看详细信息',
     noProjects: '暂无项目',
     noProjectsDesc: '点击创建项目开始您的开发之旅',
+    list: {
+      title: '项目列表',
+      totalCount: '共 {{count}} 个项目',
+      loading: '加载项目中...',
+      loadError: '加载失败',
+      empty: '还没有项目',
+      emptyDesc: '点击上方按钮创建或导入项目',
+      status: {
+        running: '运行中',
+        stopped: '已停止',
+        error: '错误',
+        stopping: '停止中',
+        launching: '启动中',
+        unknown: '未知'
+      },
+      info: {
+        type: '类型',
+        port: '端口',
+        packageManager: '包管理器'
+      }
+    },
     tabs: {
       overview: '项目概览',
       logs: '日志监控',
@@ -432,12 +457,37 @@ const en = {
     title: 'Project Management',
     totalProjects: 'Total Projects',
     importProject: 'Import Project',
+    import: 'Import Project',
+    importing: 'Importing...',
     createProject: 'Create Project',
+    create: 'Create Project',
+    creating: 'Creating...',
     deleteProject: 'Delete Project',
     selectProject: 'Please select a project to manage',
     selectProjectDesc: 'Choose a project from the left sidebar to view details',
     noProjects: 'No Projects',
     noProjectsDesc: 'Click Create Project to start your development journey',
+    list: {
+      title: 'Project List',
+      totalCount: 'Total {{count}} projects',
+      loading: 'Loading projects...',
+      loadError: 'Failed to load',
+      empty: 'No projects yet',
+      emptyDesc: 'Click the buttons above to create or import a project',
+      status: {
+        running: 'Running',
+        stopped: 'Stopped',
+        error: 'Error',
+        stopping: 'Stopping',
+        launching: 'Launching',
+        unknown: 'Unknown'
+      },
+      info: {
+        type: 'Type',
+        port: 'Port',
+        packageManager: 'Package Manager'
+      }
+    },
     tabs: {
       overview: 'Project Overview',
       logs: 'Log Monitoring',

@@ -76,7 +76,7 @@ function Toast({ message, onClose }: ToastProps) {
             setIsVisible(false);
             setTimeout(() => onClose(message.id), 300);
           }}
-          className="text-white light-theme:text-gray-900 hover:text-gray-200 light-theme:hover:text-gray-600 transition-colors"
+          className="text-white light-theme:text-gray-900 hover:text-gray-200 light-theme:hover:text-gray-600 transition-colors bg-transparent border-none p-0 cursor-pointer"
         >
           ✕
         </button>
