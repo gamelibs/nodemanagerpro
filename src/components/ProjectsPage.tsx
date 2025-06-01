@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ProjectSettingsModal from './ProjectSettingsModal';
 import type { Project } from '../types';
 
@@ -7,11 +7,10 @@ import {
   ProjectHeader,
   ProjectList,
   ProjectDetails,
-  ProjectActions,
-  DependencyStatus,
-  ProjectLogs,
   ToastContainer,
-  useToast
+  useToast,
+  useProjectData,
+  useProjectOperations
 } from './projects';
 
 interface ProjectsPageProps {
@@ -31,6 +30,108 @@ export default function ProjectsPage({
 
   // Toast提示系统
   const { toasts, showToast, hideToast } = useToast();
+
+  // 项目数据管理
+  const {
+    pm2Status,
+    isLoadingPM2,
+    packageInfo,
+    isLoadingPackage,
+    dependencyStatus,
+    isCheckingDependencies,
+    projectPort,
+    fetchProjectData,
+    refreshPM2Status,
+    checkDependencies,
+    clearData
+  } = useProjectData();
+
+  // 项目操作管理
+  const {
+    isInstallingDependencies,
+    startProject,
+    stopProject,
+    restartProject,
+    installDependencies
+  } = useProjectOperations();
+
+  // 当选择的项目改变时，获取项目数据
+  useEffect(() => {
+    if (selectedProject) {
+      fetchProjectData(selectedProject);
+    } else {
+      clearData();
+    }
+  }, [selectedProject, fetchProjectData, clearData]);
+
+  // 项目操作处理函数
+  const handleStartProject = async () => {
+    if (selectedProject) {
+      const success = await startProject(selectedProject);
+      if (success) {
+        showToast(`项目 ${selectedProject.name} 启动成功`, 'success');
+        // 刷新PM2状态
+        refreshPM2Status(selectedProject);
+      }
+    }
+  };
+
+  const handleStopProject = async () => {
+    if (selectedProject) {
+      const success = await stopProject(selectedProject);
+      if (success) {
+        showToast(`项目 ${selectedProject.name} 已停止`, 'success');
+        // 刷新PM2状态
+        refreshPM2Status(selectedProject);
+      }
+    }
+  };
+
+  const handleRestartProject = async () => {
+    if (selectedProject) {
+      const success = await restartProject(selectedProject);
+      if (success) {
+        showToast(`项目 ${selectedProject.name} 重启成功`, 'success');
+        // 刷新PM2状态
+        refreshPM2Status(selectedProject);
+      }
+    }
+  };
+
+  const handleInstallDependencies = async () => {
+    if (selectedProject && packageInfo) {
+      const success = await installDependencies(selectedProject, 'npm');
+      if (success) {
+        showToast('依赖包安装成功', 'success');
+        // 重新检查依赖状态
+        checkDependencies(selectedProject, packageInfo);
+      }
+    }
+  };
+
+  // 外部操作处理函数
+  const handleOpenInEditor = () => {
+    if (selectedProject) {
+      window.electronAPI?.invoke('open:editor', selectedProject.path);
+      showToast('正在打开编辑器...', 'info');
+    }
+  };
+
+  const handleOpenInFolder = () => {
+    if (selectedProject) {
+      window.electronAPI?.invoke('open:folder', selectedProject.path);
+      showToast('正在打开文件夹...', 'info');
+    }
+  };
+
+  const handleOpenInBrowser = () => {
+    if (selectedProject) {
+      const port = projectPort || selectedProject.port || 3000;
+      const url = `http://localhost:${port}`;
+      window.electronAPI?.invoke('open:browser', url);
+      showToast(`正在打开浏览器: ${url}`, 'info');
+    }
+  };
 
   // 项目选择处理（界面协调）
   const handleSelectProject = (project: Project) => {
@@ -83,58 +184,32 @@ export default function ProjectsPage({
         
         {/* 右边主显示模块区 (Main Content) */}
         <div className="flex-1 main-content theme-bg-primary">
-          <div className="p-6 h-full overflow-y-auto">
+          <div className="p-4 h-full overflow-y-auto">
             {selectedProject ? (
-              <div className="flex flex-col gap-6">
-                {/* 使用真实的项目详情组件 */}
+              <div className="flex flex-col gap-4">
+                {/* 使用简化的项目详情组件 - 只包含基本信息和运行状态 */}
                 <ProjectDetails
                   project={selectedProject}
-                  packageInfo={null}
-                  isLoadingPackage={false}
-                  pm2Status={null}
-                  isLoadingPM2={false}
-                  projectPort={selectedProject.port || null}
-                />
-
-                {/* 使用真实的项目操作组件 */}
-                <ProjectActions
-                  project={selectedProject}
-                  pm2Status={null}
-                  isLoadingPM2={false}
-                  dependencyStatus={{}}
-                  isCheckingDependencies={false}
-                  isInstallingDependencies={false}
-                  packageInfo={null}
-                  projectPort={selectedProject.port || null}
-                  isEditingPort={false}
-                  tempPort=""
-                  onStartProject={() => {}}
-                  onStopProject={() => {}}
-                  onRestartProject={() => {}}
-                  onDeleteProject={() => {}}
-                  onInstallDependencies={() => {}}
-                  onEditPort={() => {}}
-                  onSavePort={() => {}}
-                  onCancelEditPort={() => {}}
-                  onPortChange={() => {}}
-                />
-
-                {/* 使用真实的依赖状态组件 */}
-                <DependencyStatus
-                  project={selectedProject}
-                  packageInfo={null}
-                  dependencyStatus={{}}
-                  isCheckingDependencies={false}
-                  isInstallingDependencies={false}
-                  onInstallDependencies={() => {}}
-                />
-
-                {/* 使用真实的项目日志组件 */}
-                <ProjectLogs
-                  project={selectedProject}
-                  pm2Logs={[]}
-                  isLoadingLogs={false}
-                  onRefreshLogs={() => {}}
+                  packageInfo={packageInfo}
+                  isLoadingPackage={isLoadingPackage}
+                  pm2Status={pm2Status}
+                  isLoadingPM2={isLoadingPM2}
+                  projectPort={projectPort}
+                  dependencyStatus={dependencyStatus}
+                  isCheckingDependencies={isCheckingDependencies}
+                  isInstallingDependencies={isInstallingDependencies}
+                  onOpenInEditor={handleOpenInEditor}
+                  onOpenInFolder={handleOpenInFolder}
+                  onOpenInBrowser={handleOpenInBrowser}
+                  onPortEdit={(port: number) => {
+                    // Handle port editing if needed
+                    console.log('Port edit requested:', port);
+                  }}
+                  onInstallDependencies={handleInstallDependencies}
+                  onStartProject={handleStartProject}
+                  onStopProject={handleStopProject}
+                  onRestartProject={handleRestartProject}
+                  showToast={showToast}
                 />
               </div>
             ) : (
