@@ -1,36 +1,43 @@
-import ProjectsPage from './components/ProjectsPage';
-import SettingsPage from './components/SettingsPage';
 import { AppProvider, useApp } from './store/AppContext';
 import { ToastProvider } from './store/ToastContext';
-import { useProjects } from './hooks/useProjects';
-import { useEffect } from 'react';
 import './App.css';
 
 function AppContent() {
-  const { projects, isLoading, error, loadProjects } = useProjects();
   const { navigation } = useApp();
   const { activeTab } = navigation;
 
-  // 组件挂载时加载项目
-  useEffect(() => {
-    loadProjects();
-  }, [loadProjects]);
-
-
-
   return (
-    <div className="h-screen w-screen bg-[#0F172A] light-theme:bg-gray-50 theme-bg-primary overflow-hidden">
-      {activeTab === 'settings' ? (
-        // 设置页面 - 独立页面
-        <SettingsPage />
-      ) : (
-        // 新的项目管理布局
-        <ProjectsPage 
-          projects={projects}
-          isLoading={isLoading}
-          error={error}
-        />
-      )}
+    <div className="app-container theme-bg-primary">
+      {/* 顶部栏 (Header) */}
+      <div className="h-16 theme-bg-secondary theme-border-b border-b">
+        {/* Header内容由Header组件填充 */}
+      </div>
+      
+      {/* 主体内容区域 */}
+      <div className="flex-1 flex overflow-hidden">
+        {activeTab === 'settings' ? (
+          // 设置页面 - 全宽布局
+          <div className="flex-1 main-content theme-bg-primary">
+            {/* 设置页面内容由 SettingsPage 组件填充 */}
+          </div>
+        ) : (
+          <>
+            {/* 左边栏 (Sidebar) - 项目列表区域 */}
+            <div className="w-80 theme-bg-secondary theme-border-r border-r">
+              <div className="p-4 h-full overflow-y-auto">
+                {/* 项目列表内容由相应组件填充 */}
+              </div>
+            </div>
+            
+            {/* 右边主显示模块区 (Main Content) */}
+            <div className="flex-1 main-content theme-bg-primary">
+              <div className="p-6 h-full overflow-y-auto">
+                {/* 主要内容由相应组件填充 */}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
