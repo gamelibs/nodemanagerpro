@@ -38,7 +38,6 @@ export const ProjectHeader: React.FC<ProjectHeaderProps> = () => {
         {/* 左侧：应用名称和信息 */}
         <div className="flex items-center gap-4">
           <h1 className="text-xl font-bold theme-text-primary">{t('appTitle')}</h1>
-          <span className="theme-text-muted text-sm">Node App Manager</span>
         </div>
 
         {/* 右侧：操作按钮 */}

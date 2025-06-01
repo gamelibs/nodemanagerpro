@@ -6,6 +6,16 @@ export default function SettingsPage() {
   const { t } = i18n;
   const { setActiveTab } = navigation;
 
+  // 调试翻译系统
+  if (typeof window !== 'undefined' && import.meta.env?.DEV) {
+    console.log('SettingsPage - Translation test:', {
+      'settings.reset': t('settings.reset'),
+      'settings.title': t('settings.title'),
+      currentLanguage: current.language,
+      tFunction: typeof t
+    });
+  }
+
   return (
     <div className="p-8 h-full overflow-auto">
       {/* 页面容器 */}
@@ -26,7 +36,7 @@ export default function SettingsPage() {
             className="px-4 py-2 theme-bg-secondary hover:theme-bg-tertiary border theme-border rounded-lg text-sm flex items-center space-x-2 transition-colors"
           >
             <span>←</span>
-            <span>{current.language === 'zh' ? '返回' : 'Back'}</span>
+            <span>{t('back')}</span>
           </button>
         </div>
 
@@ -43,23 +53,23 @@ export default function SettingsPage() {
                     <label className="text-base font-medium theme-text-primary block mb-1">{t('settings.app.theme')}</label>
                     <p className="text-sm theme-text-muted">{t('settings.app.themeDesc')}</p>
                   </div>
-                  <div className="flex bg-slate-700/50 light-theme:bg-gray-200 rounded-xl p-1 ml-6">
+                  <div className="flex bg-gray-800/30 light-theme:bg-gray-100 rounded-xl p-1 border border-gray-700/50 light-theme:border-gray-200 ml-6">
                     <button
                       onClick={() => updateSetting('theme', 'dark')}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all min-w-[80px] ${
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 min-w-[80px] flex items-center justify-center gap-2 ${
                         current.theme === 'dark'
-                          ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md'
-                          : 'text-gray-400 hover:text-gray-300 light-theme:text-gray-600 light-theme:hover:text-gray-800'
+                          ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25 transform scale-[1.02]'
+                          : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50 light-theme:text-gray-600 light-theme:hover:text-gray-800 light-theme:hover:bg-gray-200/70'
                       }`}
                     >
                       🌙 {t('theme.dark')}
                     </button>
                     <button
                       onClick={() => updateSetting('theme', 'light')}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all min-w-[80px] ${
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 min-w-[80px] flex items-center justify-center gap-2 ${
                         current.theme === 'light'
-                          ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md'
-                          : 'text-gray-400 hover:text-gray-300 light-theme:text-gray-600 light-theme:hover:text-gray-800'
+                          ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25 transform scale-[1.02]'
+                          : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50 light-theme:text-gray-600 light-theme:hover:text-gray-800 light-theme:hover:bg-gray-200/70'
                       }`}
                     >
                       ☀️ {t('theme.light')}
@@ -73,27 +83,26 @@ export default function SettingsPage() {
                   <label className="text-base font-medium theme-text-primary block mb-1">{t('settings.app.language')}</label>
                   <p className="text-sm theme-text-muted">{t('settings.app.languageDesc')}</p>
                 </div>
-                <div className="flex items-center space-x-1">
+                <div className="flex items-center bg-gray-800/30 light-theme:bg-gray-100 rounded-lg p-1 border border-gray-700/50 light-theme:border-gray-200">
                   <button
                     onClick={() => updateSetting('language', 'zh')}
-                    className={`px-3 py-1 rounded text-sm transition-all ${
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 min-w-[70px] ${
                       current.language === 'zh'
-                        ? 'theme-text-primary font-medium'
-                        : 'theme-text-muted hover:theme-text-primary'
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50 light-theme:text-gray-600 light-theme:hover:text-gray-800 light-theme:hover:bg-gray-200/70'
                     }`}
                   >
-                    中文
+                    {t('language.zh')}
                   </button>
-                  <span className="text-sm theme-text-muted">|</span>
                   <button
                     onClick={() => updateSetting('language', 'en')}
-                    className={`px-3 py-1 rounded text-sm transition-all ${
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 min-w-[70px] ${
                       current.language === 'en'
-                        ? 'theme-text-primary font-medium'
-                        : 'theme-text-muted hover:theme-text-primary'
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50 light-theme:text-gray-600 light-theme:hover:text-gray-800 light-theme:hover:bg-gray-200/70'
                     }`}
                   >
-                    English
+                    {t('language.en')}
                   </button>
                 </div>
               </div>
@@ -106,12 +115,12 @@ export default function SettingsPage() {
                 </div>
                 <button
                   onClick={() => updateSetting('autoStart', !current.autoStart)}
-                  className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ml-6 ${
-                    current.autoStart ? 'bg-gradient-to-r from-indigo-600 to-purple-600' : 'bg-gray-600 light-theme:bg-gray-300'
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900 light-theme:focus:ring-offset-white ml-6 ${
+                    current.autoStart ? 'bg-blue-600 shadow-lg shadow-blue-600/25' : 'bg-gray-600 light-theme:bg-gray-300'
                   }`}
                 >
                   <span
-                    className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-lg transition-transform duration-200 ${
                       current.autoStart ? 'translate-x-6' : 'translate-x-1'
                     }`}
                   />
@@ -138,13 +147,13 @@ export default function SettingsPage() {
                       }
                     }
                   }}
-                  className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ml-6 ${
-                    current.devTools ? 'bg-gradient-to-r from-indigo-600 to-purple-600' : 'bg-gray-600 light-theme:bg-gray-300'
+                  className={`settings-toggle ml-6 ${
+                    current.devTools ? 'settings-toggle-active' : 'settings-toggle-inactive'
                   }`}
                 >
                   <span
-                    className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
-                      current.devTools ? 'translate-x-6' : 'translate-x-1'
+                    className={`settings-toggle-thumb ${
+                      current.devTools ? 'settings-toggle-thumb-active' : 'settings-toggle-thumb-inactive'
                     }`}
                   />
                 </button>
@@ -170,13 +179,13 @@ export default function SettingsPage() {
                     ...current.notifications, 
                     projectStatus: !current.notifications.projectStatus 
                   })}
-                  className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ml-6 ${
-                    current.notifications.projectStatus ? 'btn-primary' : 'bg-gray-600 light-theme:bg-gray-300'
+                  className={`settings-toggle ml-6 ${
+                    current.notifications.projectStatus ? 'settings-toggle-active' : 'settings-toggle-inactive'
                   }`}
                 >
                   <span
-                    className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
-                      current.notifications.projectStatus ? 'translate-x-6' : 'translate-x-1'
+                    className={`settings-toggle-thumb ${
+                      current.notifications.projectStatus ? 'settings-toggle-thumb-active' : 'settings-toggle-thumb-inactive'
                     }`}
                   />
                 </button>
@@ -192,13 +201,13 @@ export default function SettingsPage() {
                     ...current.notifications, 
                     errors: !current.notifications.errors 
                   })}
-                  className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ml-6 ${
-                    current.notifications.errors ? 'btn-primary' : 'bg-gray-600 light-theme:bg-gray-300'
+                  className={`settings-toggle ml-6 ${
+                    current.notifications.errors ? 'settings-toggle-active' : 'settings-toggle-inactive'
                   }`}
                 >
                   <span
-                    className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
-                      current.notifications.errors ? 'translate-x-6' : 'translate-x-1'
+                    className={`settings-toggle-thumb ${
+                      current.notifications.errors ? 'settings-toggle-thumb-active' : 'settings-toggle-thumb-inactive'
                     }`}
                   />
                 </button>
@@ -227,13 +236,13 @@ export default function SettingsPage() {
                       autoInstallDeps: !current.projects.creation.autoInstallDeps 
                     }
                   })}
-                  className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ml-6 ${
-                    current.projects.creation.autoInstallDeps ? 'btn-primary' : 'bg-gray-600 light-theme:bg-gray-300'
+                  className={`settings-toggle ml-6 ${
+                    current.projects.creation.autoInstallDeps ? 'settings-toggle-active' : 'settings-toggle-inactive'
                   }`}
                 >
                   <span
-                    className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
-                      current.projects.creation.autoInstallDeps ? 'translate-x-6' : 'translate-x-1'
+                    className={`settings-toggle-thumb ${
+                      current.projects.creation.autoInstallDeps ? 'settings-toggle-thumb-active' : 'settings-toggle-thumb-inactive'
                     }`}
                   />
                 </button>
@@ -252,13 +261,13 @@ export default function SettingsPage() {
                       autoOpenBrowser: !current.projects.creation.autoOpenBrowser 
                     }
                   })}
-                  className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ml-6 ${
-                    current.projects.creation.autoOpenBrowser ? 'btn-primary' : 'bg-gray-600 light-theme:bg-gray-300'
+                  className={`settings-toggle ml-6 ${
+                    current.projects.creation.autoOpenBrowser ? 'settings-toggle-active' : 'settings-toggle-inactive'
                   }`}
                 >
                   <span
-                    className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
-                      current.projects.creation.autoOpenBrowser ? 'translate-x-6' : 'translate-x-1'
+                    className={`settings-toggle-thumb ${
+                      current.projects.creation.autoOpenBrowser ? 'settings-toggle-thumb-active' : 'settings-toggle-thumb-inactive'
                     }`}
                   />
                 </button>
@@ -300,193 +309,26 @@ export default function SettingsPage() {
                       enabled: !current.projects.git.enabled
                     }
                   })}
-                  className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ml-6 ${
-                    current.projects.git.enabled ? 'btn-primary' : 'bg-gray-600 light-theme:bg-gray-300'
+                  className={`settings-toggle ml-6 ${
+                    current.projects.git.enabled ? 'settings-toggle-active' : 'settings-toggle-inactive'
                   }`}
                 >
                   <span
-                    className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
-                      current.projects.git.enabled ? 'translate-x-6' : 'translate-x-1'
+                    className={`settings-toggle-thumb ${
+                      current.projects.git.enabled ? 'settings-toggle-thumb-active' : 'settings-toggle-thumb-inactive'
                     }`}
                   />
                 </button>
               </div>
             </div>
           </div>
-
-          {/* 性能监控设置 */}
-          <div className="theme-bg-secondary p-6 rounded-xl border theme-border shadow-lg">
-            <h2 className="text-xl font-semibold theme-text-primary mb-6 flex items-center space-x-2">
-              <span className="text-lg">📊</span>
-              <span>{t('settings.monitoring.title')}</span>
-            </h2>
-            
-            <div className="space-y-6">
-              <div className="flex items-center justify-between py-4 border-b theme-border-b">
-                <div className="flex-1">
-                  <label className="text-base font-medium theme-text-primary block mb-1">{t('settings.monitoring.enablePerformanceMonitoring')}</label>
-                  <p className="text-sm theme-text-muted">{t('settings.monitoring.enablePerformanceMonitoringDesc')}</p>
-                </div>
-                <button
-                  onClick={() => updateSetting('projects', { 
-                    ...current.projects, 
-                    monitoring: {
-                      ...current.projects.monitoring,
-                      enabled: !current.projects.monitoring.enabled
-                    }
-                  })}
-                  className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ml-6 ${
-                    current.projects.monitoring.enabled ? 'btn-primary' : 'bg-gray-600 light-theme:bg-gray-300'
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
-                      current.projects.monitoring.enabled ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
-                </button>
-              </div>
-
-              <div className="flex items-center justify-between py-4 border-b theme-border-b">
-                <div className="flex-1">
-                  <label className="text-base font-medium theme-text-primary block mb-1">{t('settings.monitoring.alertOnHighCPU')}</label>
-                  <p className="text-sm theme-text-muted">{t('settings.monitoring.alertOnHighCPUDesc')}</p>
-                </div>
-                <div className="flex items-center space-x-2 ml-6">
-                  <input
-                    type="number"
-                    min="50"
-                    max="100"
-                    value={current.projects.monitoring.cpuThreshold}
-                    onChange={(e) => updateSetting('projects', { 
-                      ...current.projects, 
-                      monitoring: {
-                        ...current.projects.monitoring,
-                        cpuThreshold: parseInt(e.target.value) || 80
-                      }
-                    })}
-                    className="w-20 px-3 py-1 theme-bg-primary theme-text-primary border theme-border rounded-lg text-center"
-                  />
-                  <span className="text-sm theme-text-secondary">%</span>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between py-4">
-                <div className="flex-1">
-                  <label className="text-base font-medium theme-text-primary block mb-1">{t('settings.monitoring.autoCleanupLogs')}</label>
-                  <p className="text-sm theme-text-muted">{t('settings.monitoring.autoCleanupLogsDesc')}</p>
-                </div>
-                <button
-                  onClick={() => updateSetting('projects', { 
-                    ...current.projects, 
-                    monitoring: {
-                      ...current.projects.monitoring,
-                      autoCleanupLogs: !current.projects.monitoring.autoCleanupLogs
-                    }
-                  })}
-                  className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ml-6 ${
-                    current.projects.monitoring.autoCleanupLogs ? 'btn-primary' : 'bg-gray-600 light-theme:bg-gray-300'
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
-                      current.projects.monitoring.autoCleanupLogs ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* 编辑器集成设置 */}
-          <div className="theme-bg-secondary p-6 rounded-xl border theme-border shadow-lg">
-            <h2 className="text-xl font-semibold theme-text-primary mb-6 flex items-center space-x-2">
-              <span className="text-lg">💻</span>
-              <span>{t('settings.editor.title')}</span>
-            </h2>
-            
-            <div className="space-y-6">
-              <div className="flex items-center justify-between py-4 border-b theme-border-b">
-                <div className="flex-1">
-                  <label className="text-base font-medium theme-text-primary block mb-1">{t('settings.editor.defaultEditor')}</label>
-                  <p className="text-sm theme-text-muted">{t('settings.editor.defaultEditorDesc')}</p>
-                </div>
-                <select
-                  value={current.projects.editor.defaultEditor}
-                  onChange={(e) => updateSetting('projects', { 
-                    ...current.projects, 
-                    editor: {
-                      ...current.projects.editor,
-                      defaultEditor: e.target.value as any
-                    }
-                  })}
-                  className="px-3 py-2 theme-bg-primary theme-text-primary border theme-border rounded-lg ml-6"
-                >
-                  <option value="vscode">VS Code</option>
-                  <option value="webstorm">WebStorm</option>
-                  <option value="atom">Atom</option>
-                  <option value="sublime">Sublime Text</option>
-                  <option value="vim">Vim</option>
-                  <option value="custom">自定义</option>
-                </select>
-              </div>
-
-              <div className="flex items-center justify-between py-4">
-                <div className="flex-1">
-                  <label className="text-base font-medium theme-text-primary block mb-1">{t('settings.editor.openProjectOnCreate')}</label>
-                  <p className="text-sm theme-text-muted">{t('settings.editor.openProjectOnCreateDesc')}</p>
-                </div>
-                <button
-                  onClick={() => updateSetting('projects', { 
-                    ...current.projects, 
-                    editor: {
-                      ...current.projects.editor,
-                      openProjectOnCreate: !current.projects.editor.openProjectOnCreate
-                    }
-                  })}
-                  className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ml-6 ${
-                    current.projects.editor.openProjectOnCreate ? 'btn-primary' : 'bg-gray-600 light-theme:bg-gray-300'
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
-                      current.projects.editor.openProjectOnCreate ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* 开发者调试工具 - 仅在开发模式下显示 */}
-          {window.electronAPI?.isDev && (
-            <div className="theme-bg-secondary p-6 rounded-xl border theme-border shadow-lg">
-              <h2 className="text-xl font-semibold theme-text-primary mb-6 flex items-center space-x-3">
-                <span>🛠️</span>
-                <span>{t('settings.debugTools.title')}</span>
-              </h2>
-              <p className="text-sm theme-text-muted mb-6">{t('settings.debugTools.description')}</p>
-              
-              <div className="space-y-6">
-                {/* 调试工具已移除 - 如需添加新的调试工具，请在此处添加 */}
-                <div className="border theme-border rounded-lg p-4">
-                  <h3 className="text-lg font-medium theme-text-primary mb-2 flex items-center space-x-2">
-                    <span>�</span>
-                    <span>{t('settings.debugTools.title')}</span>
-                  </h3>
-                  <p className="text-sm theme-text-muted">调试工具功能已整合到项目详情页面中。</p>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* 重置设置 */}
           <div className="flex justify-center pt-6">
             <button
               onClick={resetSettings}
               className="px-6 py-3 bg-red-600/20 hover:bg-red-600/30 text-red-400 hover:text-red-300 light-theme:text-red-600 light-theme:hover:text-red-700 rounded-xl border border-red-500/30 light-theme:border-red-300 text-sm font-medium transition-all hover:shadow-lg"
             >
-              🔄 {t('settings.reset')}
+              🔄 {current.language === 'zh' ? '重置设置' : 'Reset Settings'}
             </button>
           </div>
         </div>

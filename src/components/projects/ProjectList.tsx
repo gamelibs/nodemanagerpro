@@ -151,7 +151,16 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                 {project.lastOpened && (
                   <div className="text-xs theme-text-muted flex items-center gap-1 mt-1">
                     <span>🕒</span>
-                    <span>上次: {new Date(project.lastOpened).toLocaleDateString()}</span>
+                    <span>{new Date(project.lastOpened).toLocaleDateString('zh-CN', {
+                      year: 'numeric',
+                      month: '2-digit', 
+                      day: '2-digit'
+                    }).replace(/\//g, '-')} {new Date(project.lastOpened).toLocaleTimeString('zh-CN', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit',
+                      hour12: false
+                    })}</span>
                   </div>
                 )}
               </div>

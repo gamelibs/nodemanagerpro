@@ -10,6 +10,7 @@ export interface Project {
   name: string;
   path: string;
   type: 'node' | 'react' | 'vue' | 'electron' | 'other' | 'pure-api' | 'static-app' | 'full-stack';
+  status?: 'running' | 'stopped' | 'error';
   port?: number;
   lastOpened: Date;
   packageManager: 'npm' | 'yarn' | 'pnpm';
@@ -67,6 +68,7 @@ export type AppAction =
   | { type: 'REMOVE_PROJECT'; payload: string }
   | { type: 'UPDATE_PROJECT'; payload: Project }
   | { type: 'UPDATE_PROJECT_PARTIAL'; payload: { id: string; updates: Partial<Project> } }
+  | { type: 'UPDATE_PROJECT_STATUS'; payload: { id: string; status: Project['status'] } }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_ERROR'; payload: string | null }
   | { type: 'SET_ACTIVE_PROJECT'; payload: Project | null }

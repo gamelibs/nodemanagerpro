@@ -33,7 +33,7 @@ export function useProjects() {
     }
   }, [dispatch]);
 
-  // 导入项目
+  // 导入项目 - 支持进度回调
   const importProject = useCallback(async (projectPath?: string) => {
     // 如果没有提供路径，显示文件选择器
     if (!projectPath) {
@@ -46,22 +46,28 @@ export function useProjects() {
     dispatch({ type: 'SET_ERROR', payload: null });
 
     try {
-      const result = await ProjectService.importProject(projectPath);
+      // 创建进度回调函数
+      const onProgress = (message: string, level: 'info' | 'warn' | 'error' | 'success' = 'info') => {
+        console.log(`[导入进度] [${level.toUpperCase()}] ${message}`);
+        // 可以在这里添加更多的进度显示逻辑，比如更新UI状态
+      };
+
+      const result = await ProjectService.importProject(projectPath, onProgress);
       
       if (result.success && result.data) {
         dispatch({ type: 'ADD_PROJECT', payload: result.data });
         
         // 显示成功通知
-        showToast('项目导入成功', `已成功导入项目: ${result.data.name}`, 'success');
+        showToast(`项目导入成功: ${result.data.name}`, 'success');
       } else {
         const errorMsg = result.error || '导入项目失败';
         dispatch({ type: 'SET_ERROR', payload: errorMsg });
-        showToast('导入失败', errorMsg, 'error');
+        showToast(`导入失败: ${errorMsg}`, 'error');
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : '导入项目时发生未知错误';
       dispatch({ type: 'SET_ERROR', payload: errorMessage });
-      showToast('导入失败', errorMessage, 'error');
+      showToast(`导入失败: ${errorMessage}`, 'error');
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
@@ -95,16 +101,16 @@ export function useProjects() {
       
       if (result.success) {
         dispatch({ type: 'REMOVE_PROJECT', payload: projectId });
-        showToast('项目已移除', `已从列表中移除项目: ${project.name}`, 'success');
+        showToast(`项目已移除: ${project.name}`, 'success');
       } else {
         const errorMsg = result.error || '移除项目失败';
         dispatch({ type: 'SET_ERROR', payload: errorMsg });
-        showToast('移除失败', errorMsg, 'error');
+        showToast(`移除失败: ${errorMsg}`, 'error');
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : '移除项目时发生未知错误';
       dispatch({ type: 'SET_ERROR', payload: errorMessage });
-      showToast('移除失败', errorMessage, 'error');
+      showToast(`移除失败: ${errorMessage}`, 'error');
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
@@ -116,13 +122,13 @@ export function useProjects() {
       const success = await runnerStartProject(project);
       
       if (success) {
-        showToast('项目已启动', `${project.name} 正在运行`, 'success');
+        showToast(`项目已启动: ${project.name}`, 'success');
       } else {
-        showToast('启动失败', '启动项目失败', 'error');
+        showToast('启动项目失败', 'error');
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : '启动项目时发生未知错误';
-      showToast('启动失败', errorMessage, 'error');
+      showToast(`启动失败: ${errorMessage}`, 'error');
     }
   }, [runnerStartProject, showToast]);
 
@@ -133,10 +139,10 @@ export function useProjects() {
 
     try {
       await runnerStopProject(project);
-      showToast('项目已停止', `${project.name} 已停止运行`, 'success');
+      showToast(`项目已停止: ${project.name}`, 'success');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : '停止项目时发生未知错误';
-      showToast('停止失败', errorMessage, 'error');
+      showToast(`停止失败: ${errorMessage}`, 'error');
     }
   }, [state.projects, runnerStopProject, showToast]);
 
@@ -206,7 +212,7 @@ export function useProjects() {
         });
 
         dispatch({ type: 'ADD_PROJECT', payload: result.data });
-        showToast('项目创建成功', `已成功创建项目: ${result.data.name}`, 'success');
+        showToast(`项目创建成功: ${result.data.name}`, 'success');
 
         // 添加最终提示，但不自动关闭日志会话
         addLog({
@@ -229,7 +235,7 @@ export function useProjects() {
         });
 
         dispatch({ type: 'SET_ERROR', payload: errorMsg });
-        showToast('创建失败', errorMsg, 'error');
+        showToast(`创建失败: ${errorMsg}`, 'error');
         
         // 出错时延迟关闭日志会话，让用户看到错误信息
         setTimeout(() => {
@@ -248,7 +254,7 @@ export function useProjects() {
       });
 
       dispatch({ type: 'SET_ERROR', payload: errorMessage });
-      showToast('创建失败', errorMessage, 'error');
+      showToast(`创建失败: ${errorMessage}`, 'error');
       
       // 异常错误时延迟关闭日志会话，让用户看到错误信息
       setTimeout(() => {
@@ -267,7 +273,7 @@ export function useProjects() {
       if (result.success && result.data && result.data.updatedCount > 0) {
         // 重新加载项目列表以反映更新
         await loadProjects();
-        showToast('端口分配成功', `为 ${result.data.updatedCount} 个项目自动分配了端口号`, 'success');
+        showToast(`端口分配成功: 为 ${result.data.updatedCount} 个项目自动分配了端口号`, 'success');
       }
     } catch (error) {
       console.error('自动分配端口失败:', error);
@@ -327,8 +333,7 @@ export function useProjects() {
       if (updates.length > 0) {
         const statusChangeText = updates.map(u => `${u.name}: ${u.status}`).join(', ');
         showToast(
-          '状态同步完成', 
-          `更新了 ${updates.length} 个项目状态: ${statusChangeText}`, 
+          `状态同步完成: 更新了 ${updates.length} 个项目状态: ${statusChangeText}`, 
           'success'
         );
         console.log(`✅ 同步完成，更新了 ${updates.length} 个项目的状态`);
@@ -337,7 +342,7 @@ export function useProjects() {
       }
     } catch (error) {
       console.error('❌ 同步项目状态失败:', error);
-      showToast('同步失败', '无法同步项目状态，请稍后重试', 'error');
+      showToast('同步项目状态失败，请稍后重试', 'error');
     }
   }, [state.projects, dispatch, showToast]);
 
@@ -353,15 +358,15 @@ export function useProjects() {
           payload: { id: projectId, updates }
         });
         
-        showToast('更新成功', '项目信息已更新', 'success');
+        showToast('项目信息已更新', 'success');
         return { success: true };
       } else {
-        showToast('更新失败', result.error || '更新项目失败', 'error');
+        showToast(`更新项目失败: ${result.error}`, 'error');
         return { success: false, error: result.error };
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : '更新项目时发生未知错误';
-      showToast('更新失败', errorMessage, 'error');
+      showToast(`更新项目失败: ${errorMessage}`, 'error');
       return { success: false, error: errorMessage };
     }
   }, [dispatch, showToast]);

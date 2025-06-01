@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { ProjectCreationConfig, FrontendFramework, PackageManagerInfo, TemplateInfo } from '../types';
-import { t } from '../services/i18n';
+import { t, tArray } from '../services/i18n';
 
 interface CreateProjectModalProps {
   isOpen: boolean;
@@ -14,27 +14,21 @@ const getTemplates = (): TemplateInfo[] => [
     id: 'pure-api',
     name: t('projects.createModal.templates.pureApi.name'),
     description: t('projects.createModal.templates.pureApi.description'),
-    features: [
-      'Express.js 服务器', 'RESTful API', 'JSON 响应', 'CORS 支持', '中间件配置', '专注后端'
-    ],
+    features: tArray('projects.createModal.templates.pureApi.features'),
     supportsFrontendFramework: false
   },
   {
     id: 'static-app',
     name: t('projects.createModal.templates.staticApp.name'),
     description: t('projects.createModal.templates.staticApp.description'),
-    features: [
-      'Express.js 后端', '静态文件服务', 'HTML/CSS/JS', 'public 目录', '传统网站', '简单部署'
-    ],
+    features: tArray('projects.createModal.templates.staticApp.features'),
     supportsFrontendFramework: false
   },
   {
     id: 'full-stack',
     name: t('projects.createModal.templates.fullStack.name'),
     description: t('projects.createModal.templates.fullStack.description'),
-    features: [
-      'TypeScript 支持', 'Vite 构建工具', 'Express 后端', '热重载', 'API 代理', '现代前端框架'
-    ],
+    features: tArray('projects.createModal.templates.fullStack.features'),
     supportsFrontendFramework: true
   }
 ];

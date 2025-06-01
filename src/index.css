@@ -362,6 +362,87 @@
   .light-theme .status-indicator {
     border: 1px solid rgba(0, 0, 0, 0.1);
   }
+
+  /* 设置页面按钮样式 */
+  .settings-btn-group {
+    @apply flex bg-gray-800/30 rounded-xl p-1 border border-gray-700/50;
+  }
+
+  .light-theme .settings-btn-group {
+    @apply bg-gray-100 border-gray-200;
+  }
+
+  .settings-btn {
+    @apply px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 min-w-[80px] flex items-center justify-center gap-2;
+  }
+
+  .settings-btn-active {
+    @apply bg-blue-600 text-white shadow-lg shadow-blue-600/25 transform scale-[1.02];
+  }
+
+  .settings-btn-inactive {
+    @apply text-gray-400 hover:text-gray-200 hover:bg-gray-700/50;
+  }
+
+  .light-theme .settings-btn-inactive {
+    @apply text-gray-600 hover:text-gray-800 hover:bg-gray-200/70;
+  }
+
+  .settings-language-group {
+    @apply flex items-center bg-gray-800/30 rounded-lg p-1 border border-gray-700/50;
+  }
+
+  .light-theme .settings-language-group {
+    @apply bg-gray-100 border-gray-200;
+  }
+
+  .settings-language-btn {
+    @apply px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 min-w-[70px];
+  }
+
+  .settings-language-btn-active {
+    @apply bg-blue-600 text-white shadow-md;
+  }
+
+  .settings-language-btn-inactive {
+    @apply text-gray-400 hover:text-gray-200 hover:bg-gray-700/50;
+  }
+
+  .light-theme .settings-language-btn-inactive {
+    @apply text-gray-600 hover:text-gray-800 hover:bg-gray-200/70;
+  }
+
+  .settings-toggle {
+    @apply relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900;
+  }
+  
+  .light-theme .settings-toggle {
+    @apply focus:ring-offset-white;
+  }
+
+  .settings-toggle-active {
+    @apply bg-blue-600 shadow-lg shadow-blue-600/25;
+  }
+
+  .settings-toggle-inactive {
+    @apply bg-gray-600;
+  }
+
+  .light-theme .settings-toggle-inactive {
+    @apply bg-gray-300;
+  }
+
+  .settings-toggle-thumb {
+    @apply inline-block h-4 w-4 transform rounded-full bg-white shadow-lg transition-transform duration-200;
+  }
+
+  .settings-toggle-thumb-active {
+    @apply translate-x-6;
+  }
+
+  .settings-toggle-thumb-inactive {
+    @apply translate-x-1;
+  }
 }
 
 a {

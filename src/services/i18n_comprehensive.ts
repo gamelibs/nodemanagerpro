@@ -45,6 +45,18 @@ const zh = {
   },
   settings: {
     title: '设置',
+    description: '应用程序配置和偏好设置',
+    app: {
+      title: '应用设置',
+      theme: '主题',
+      themeDesc: '选择应用程序的视觉主题',
+      language: '语言',
+      languageDesc: '设置应用程序界面语言',
+      autoStart: '开机自启',
+      autoStartDesc: '系统启动时自动启动应用程序',
+      devTools: '开发者工具',
+      devToolsDesc: '启用开发者调试工具',
+    },
     general: {
       title: '通用设置',
       theme: '主题',

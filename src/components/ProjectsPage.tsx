@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import ProjectSettingsModal from './ProjectSettingsModal';
 import type { Project } from '../types';
 import { useToastContext } from '../store/ToastContext';
+import { t } from '../services/i18n';
 
 // 导入项目模块
 import {
@@ -256,8 +257,9 @@ export default function ProjectsPage({
         {/* 左侧项目列表 */}
         <div className="w-1/4 border-r theme-border theme-bg-secondary flex flex-col">
           {/* 项目列表头部 */}
-          <div className="p-3 border-b theme-border">
-            <h2 className="text-base font-semibold theme-text-primary">项目</h2>
+          <div className="p-3 border-b theme-border flex items-center justify-between">
+            <h2 className="text-base font-semibold theme-text-primary">{t('projects.listHeader')}</h2>
+            <span className="text-sm theme-text-secondary">{t('projects.list.totalCount', { count: projects.length.toString() })}</span>
           </div>
 
           {/* 项目列表内容 */}
@@ -323,8 +325,8 @@ export default function ProjectsPage({
             ) : (
               <div className="flex-1 flex items-center justify-center">
                 <div className="text-center">
-                  <p className="theme-text-secondary text-lg mb-2">请选择一个项目</p>
-                  <p className="theme-text-muted">从左侧列表中选择项目查看详情</p>
+                  <p className="theme-text-secondary text-lg mb-2">{t('projects.selectProject')}</p>
+                  <p className="theme-text-muted">{t('projects.selectProjectDesc')}</p>
                 </div>
               </div>
             )}

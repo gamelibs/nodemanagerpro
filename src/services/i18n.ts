@@ -15,6 +15,7 @@ const zh = {
     create: '创建项目', 
     creating: '创建中...',
     deleteProject: '删除项目',
+    listHeader: '项目',
     selectProject: '请选择管理的项目',
     selectProjectDesc: '从左侧项目列表中选择一个项目来查看详细信息',
     noProjects: '暂无项目',
@@ -46,6 +47,99 @@ const zh = {
       settings: '项目设置',
       dependencies: '依赖管理',
       performance: '性能监控',
+    },
+    createModal: {
+      title: '创建新项目',
+      basicInfo: '基本信息',
+      projectName: '项目名称',
+      projectNamePlaceholder: '请输入项目名称',
+      projectPath: '项目路径',
+      projectPathPlaceholder: '选择项目存储路径',
+      selectButton: '选择',
+      portNumber: '端口号',
+      portPlaceholder: '8000',
+      portDesc: '项目运行的端口号，留空将自动分配',
+      projectTemplate: '项目模板',
+      packageManager: '包管理器',
+      optionalTools: '可选工具',
+      templates: {
+        pureApi: {
+          name: '纯API服务',
+          description: '专注后端API开发的Express.js服务器',
+          features: ['Express服务器', 'RESTful API', 'JSON响应', 'CORS支持', '中间件配置', '专注后端']
+        },
+        staticApp: {
+          name: '静态应用',
+          description: '传统的静态网站，包含Express后端服务',
+          features: ['Express后端', '静态文件服务', 'HTML/CSS/JS', 'public目录', '传统网站', '简单部署']
+        },
+        fullStack: {
+          name: '全栈应用',
+          description: '现代全栈应用，支持前端框架集成',
+          features: ['TypeScript支持', 'Vite构建工具', 'Express后端', '热重载', 'API代理', '现代前端框架']
+        }
+      },
+      frameworks: {
+        vanillaTs: {
+          name: 'Vanilla TypeScript',
+          description: '原生TypeScript开发'
+        },
+        react: {
+          name: 'React',
+          description: '使用React构建用户界面'
+        },
+        vue: {
+          name: 'Vue.js',
+          description: '渐进式JavaScript框架'
+        }
+      },
+      packageManagers: {
+        npm: {
+          name: 'npm',
+          description: 'Node.js默认包管理器'
+        },
+        yarn: {
+          name: 'Yarn',
+          description: '快速、可靠、安全的依赖管理'
+        },
+        pnpm: {
+          name: 'pnpm',
+          description: '高效的磁盘空间利用'
+        }
+      },
+      tools: {
+        eslint: {
+          name: 'ESLint',
+          description: '代码质量检查工具'
+        },
+        prettier: {
+          name: 'Prettier',
+          description: '代码格式化工具'
+        },
+        jest: {
+          name: 'Jest',
+          description: 'JavaScript测试框架'
+        },
+        envConfig: {
+          name: '环境配置',
+          description: '自动配置开发环境变量'
+        },
+        autoInstall: {
+          name: '自动安装',
+          description: '创建后自动安装依赖'
+        },
+        git: {
+          name: 'Git初始化',
+          description: '自动初始化Git仓库'
+        }
+      },
+      validation: {
+        nameRequired: '请输入项目名称',
+        pathRequired: '请选择项目路径',
+        portRange: '端口号必须在1000-65535之间'
+      },
+      cancel: '取消',
+      create: '创建'
     },
   },
   
@@ -92,6 +186,18 @@ const zh = {
   },
   settings: {
     title: '设置',
+    description: '应用程序配置和偏好设置',
+    app: {
+      title: '应用设置',
+      theme: '主题',
+      themeDesc: '选择应用程序的视觉主题',
+      language: '语言',
+      languageDesc: '设置应用程序界面语言',
+      autoStart: '开机自启',
+      autoStartDesc: '系统启动时自动启动应用程序',
+      devTools: '开发者工具',
+      devToolsDesc: '启用开发者调试工具',
+    },
     general: {
       title: '通用设置',
       theme: '主题',
@@ -126,6 +232,16 @@ const zh = {
       defaultPathDesc: '新建项目的默认存储路径',
       defaultPackageManager: '默认包管理器',
       defaultPackageManagerDesc: '创建新项目时使用的包管理器',
+      
+      // 扁平化的设置键，用于设置页面
+      autoInstallDeps: '自动安装依赖',
+      autoInstallDepsDesc: '创建新项目时自动运行依赖安装',
+      autoOpenBrowser: '自动打开浏览器',
+      autoOpenBrowserDesc: '启动Web项目时自动在浏览器中打开',
+      maxConcurrentProjects: '最大并发项目数',
+      maxConcurrentProjectsDesc: '允许同时运行的项目数量上限',
+      gitIntegration: 'Git集成',
+      gitIntegrationDesc: '启用Git版本控制功能',
       
       // 端口设置
       portRange: {
@@ -249,6 +365,8 @@ const zh = {
         title: '性能监控',
         enabled: '启用监控',
         enabledDesc: '启用项目性能监控功能',
+        enablePerformanceMonitoring: '启用性能监控',
+        enablePerformanceMonitoringDesc: '启用项目性能监控功能',
         realTimeMonitoring: '实时监控',
         realTimeMonitoringDesc: '实时监控项目运行状态',
         logRetentionDays: '日志保留天数',
@@ -366,6 +484,11 @@ const zh = {
         installedPlugins: '已安装插件',
         installedPluginsDesc: '管理当前安装的插件',
       },
+      debugTools: {
+        title: '调试工具',
+        description: '开发者调试和诊断工具',
+      },
+      reset: '重置设置',
     },
   },
   project: {
@@ -431,6 +554,14 @@ const zh = {
       dependencies: '依赖管理',
     },
   },
+  theme: {
+    dark: '深色',
+    light: '浅色',
+  },
+  language: {
+    zh: '中文',
+    en: 'English',
+  },
   toast: {
     projectCreated: '项目创建成功',
     projectDeleted: '项目删除成功',
@@ -463,6 +594,7 @@ const en = {
     create: 'Create Project',
     creating: 'Creating...',
     deleteProject: 'Delete Project',
+    listHeader: 'Projects',
     selectProject: 'Please select a project to manage',
     selectProjectDesc: 'Choose a project from the left sidebar to view details',
     noProjects: 'No Projects',
@@ -494,6 +626,99 @@ const en = {
       settings: 'Project Settings',
       dependencies: 'Dependencies',
       performance: 'Performance Monitoring',
+    },
+    createModal: {
+      title: 'Create New Project',
+      basicInfo: 'Basic Information',
+      projectName: 'Project Name',
+      projectNamePlaceholder: 'Enter project name',
+      projectPath: 'Project Path',
+      projectPathPlaceholder: 'Select project storage path',
+      selectButton: 'Select',
+      portNumber: 'Port Number',
+      portPlaceholder: '8000',
+      portDesc: 'Port number for the project, leave empty for auto-assignment',
+      projectTemplate: 'Project Template',
+      packageManager: 'Package Manager',
+      optionalTools: 'Optional Tools',
+      templates: {
+        pureApi: {
+          name: 'Pure API Service',
+          description: 'Express.js server focused on backend API development',
+          features: ['Express Server', 'RESTful API', 'JSON Response', 'CORS Support', 'Middleware Config', 'Backend Focus']
+        },
+        staticApp: {
+          name: 'Static Application',
+          description: 'Traditional static website with Express backend service',
+          features: ['Express Backend', 'Static File Service', 'HTML/CSS/JS', 'Public Directory', 'Traditional Website', 'Easy Deploy']
+        },
+        fullStack: {
+          name: 'Full Stack Application',
+          description: 'Modern full-stack application with frontend framework integration',
+          features: ['TypeScript Support', 'Vite Build Tool', 'Express Backend', 'Hot Reload', 'API Proxy', 'Modern Frontend']
+        }
+      },
+      frameworks: {
+        vanillaTs: {
+          name: 'Vanilla TypeScript',
+          description: 'Native TypeScript development'
+        },
+        react: {
+          name: 'React',
+          description: 'Build user interfaces with React'
+        },
+        vue: {
+          name: 'Vue.js',
+          description: 'Progressive JavaScript framework'
+        }
+      },
+      packageManagers: {
+        npm: {
+          name: 'npm',
+          description: 'Default Node.js package manager'
+        },
+        yarn: {
+          name: 'Yarn',
+          description: 'Fast, reliable, and secure dependency management'
+        },
+        pnpm: {
+          name: 'pnpm',
+          description: 'Efficient disk space usage'
+        }
+      },
+      tools: {
+        eslint: {
+          name: 'ESLint',
+          description: 'Code quality checking tool'
+        },
+        prettier: {
+          name: 'Prettier',
+          description: 'Code formatting tool'
+        },
+        jest: {
+          name: 'Jest',
+          description: 'JavaScript testing framework'
+        },
+        envConfig: {
+          name: 'Environment Config',
+          description: 'Auto-configure development environment variables'
+        },
+        autoInstall: {
+          name: 'Auto Install',
+          description: 'Automatically install dependencies after creation'
+        },
+        git: {
+          name: 'Git Initialize',
+          description: 'Automatically initialize Git repository'
+        }
+      },
+      validation: {
+        nameRequired: 'Please enter project name',
+        pathRequired: 'Please select project path',
+        portRange: 'Port number must be between 1000-65535'
+      },
+      cancel: 'Cancel',
+      create: 'Create'
     },
   },
   
@@ -540,6 +765,18 @@ const en = {
   },
   settings: {
     title: 'Settings',
+    description: 'Application configuration and preferences',
+    app: {
+      title: 'App Settings',
+      theme: 'Theme',
+      themeDesc: 'Choose the visual theme of the application',
+      language: 'Language',
+      languageDesc: 'Set the interface language',
+      autoStart: 'Auto Start',
+      autoStartDesc: 'Start the application automatically when system boots',
+      devTools: 'Developer Tools',
+      devToolsDesc: 'Enable developer debugging tools',
+    },
     general: {
       title: 'General Settings',
       theme: 'Theme',
@@ -574,6 +811,16 @@ const en = {
       defaultPathDesc: 'Default storage path for new projects',
       defaultPackageManager: 'Default Package Manager',
       defaultPackageManagerDesc: 'Package manager to use for new projects',
+      
+      // Flat keys for settings page
+      autoInstallDeps: 'Auto Install Dependencies',
+      autoInstallDepsDesc: 'Automatically run dependency installation when creating new projects',
+      autoOpenBrowser: 'Auto Open Browser',
+      autoOpenBrowserDesc: 'Automatically open browser when starting web projects',
+      maxConcurrentProjects: 'Max Concurrent Projects',
+      maxConcurrentProjectsDesc: 'Maximum number of projects that can run simultaneously',
+      gitIntegration: 'Git Integration',
+      gitIntegrationDesc: 'Enable Git version control functionality',
       
       // Port Settings
       portRange: {
@@ -697,6 +944,8 @@ const en = {
         title: 'Performance Monitoring',
         enabled: 'Enable Monitoring',
         enabledDesc: 'Enable project performance monitoring features',
+        enablePerformanceMonitoring: 'Enable Performance Monitoring',
+        enablePerformanceMonitoringDesc: 'Enable project performance monitoring features',
         realTimeMonitoring: 'Real-time Monitoring',
         realTimeMonitoringDesc: 'Monitor project runtime status in real-time',
         logRetentionDays: 'Log Retention Days',
@@ -814,6 +1063,11 @@ const en = {
         installedPlugins: 'Installed Plugins',
         installedPluginsDesc: 'Manage currently installed plugins',
       },
+      debugTools: {
+        title: 'Debug Tools',
+        description: 'Developer debugging and diagnostic tools',
+      },
+      reset: 'Reset Settings',
     },
   },
   project: {
@@ -878,6 +1132,14 @@ const en = {
       environment: 'Environment Variables',
       dependencies: 'Dependencies Management',
     },
+  },
+  theme: {
+    dark: 'Dark',
+    light: 'Light',
+  },
+  language: {
+    zh: '中文',
+    en: 'English',
   },
   toast: {
     projectCreated: 'Project created successfully',
@@ -947,6 +1209,35 @@ export const t = (key: string, params?: Record<string, string>): string => {
   return value;
 };
 
+// 新增：支持数组类型的翻译函数
+export const tArray = (key: string): string[] => {
+  const keys = key.split('.');
+  let value: any = translations[currentLanguage];
+  
+  for (const k of keys) {
+    if (value && typeof value === 'object' && k in value) {
+      value = value[k];
+    } else {
+      // 如果当前语言没有找到，尝试使用默认语言
+      value = translations[DEFAULT_LANGUAGE];
+      for (const defaultK of keys) {
+        if (value && typeof value === 'object' && defaultK in value) {
+          value = value[defaultK];
+        } else {
+          return []; // 如果都没找到，返回空数组
+        }
+      }
+      break;
+    }
+  }
+  
+  if (Array.isArray(value)) {
+    return value;
+  }
+  
+  return []; // 如果不是数组，返回空数组
+};
+
 // 初始化i18n系统
 export const initI18n = (language?: 'zh' | 'en') => {
   if (language) {
@@ -957,11 +1248,23 @@ export const initI18n = (language?: 'zh' | 'en') => {
 export default {
   translations,
   t,
+  tArray,
   setLanguage,
   getCurrentLanguage,
   initI18n,
   DEFAULT_LANGUAGE,
 };
+
+// 调试代码 - 仅在开发环境中暴露翻译对象到全局
+if (typeof window !== 'undefined' && import.meta.env?.DEV) {
+  (window as any).i18nDebug = translations;
+  (window as any).i18nTest = {
+    t,
+    getCurrentLanguage,
+    setLanguage,
+    translations
+  };
+}
 
 // 国际化服务类（为了保持与现有代码的兼容性）
 export class I18nService {

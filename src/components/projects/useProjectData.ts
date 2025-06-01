@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { PM2Service, type PM2Process } from '../../services/PM2Service';
+import { ProjectValidationService } from '../../services/ProjectValidationService';
 import type { Project } from '../../types';
 
 export interface UseProjectDataReturn {
@@ -12,12 +13,24 @@ export interface UseProjectDataReturn {
   projectPort: number | null;
   pm2Logs: string[];
   isLoadingLogs: boolean;
+  // 新增验证相关状态
+  validationResult: {
+    isValid: boolean;
+    configValid: boolean;
+    pm2StatusValid: boolean;
+    errors: string[];
+    warnings: string[];
+  } | null;
+  isValidating: boolean;
+  
   fetchProjectData: (project: Project) => Promise<void>;
   refreshPM2Status: (project: Project) => Promise<PM2Process | null>;
   refreshPackageInfo: (project: Project) => Promise<any>;
   refreshProjectPort: (project: Project) => Promise<number | null>;
   checkDependencies: (project: Project, packageData: any) => Promise<void>;
   fetchPM2Logs: (project: Project) => Promise<void>;
+  // 新增验证方法
+  validateProject: (project: Project, onProgress?: (message: string, level?: 'info' | 'warn' | 'error' | 'success') => void) => Promise<void>;
   clearData: () => void;
 }
 
@@ -36,6 +49,16 @@ export const useProjectData = (): UseProjectDataReturn => {
   const [projectPort, setProjectPort] = useState<number | null>(null);
   const [pm2Logs, setPm2Logs] = useState<string[]>([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+  
+  // 新增验证相关状态
+  const [validationResult, setValidationResult] = useState<{
+    isValid: boolean;
+    configValid: boolean;
+    pm2StatusValid: boolean;
+    errors: string[];
+    warnings: string[];
+  } | null>(null);
+  const [isValidating, setIsValidating] = useState(false);
 
   // 清空所有数据
   const clearData = useCallback(() => {
@@ -44,6 +67,7 @@ export const useProjectData = (): UseProjectDataReturn => {
     setDependencyStatus({});
     setProjectPort(null);
     setPm2Logs([]);
+    setValidationResult(null);
   }, []);
 
   // 获取PM2状态
@@ -253,7 +277,83 @@ export const useProjectData = (): UseProjectDataReturn => {
     }
   }, []);
 
-  // 获取项目的所有数据
+  // 验证项目配置和PM2状态
+  const validateProject = useCallback(async (project: Project, onProgress?: (message: string, level?: 'info' | 'warn' | 'error' | 'success') => void): Promise<void> => {
+    setIsValidating(true);
+    setValidationResult(null);
+    
+    const report = (message: string, level: 'info' | 'warn' | 'error' | 'success' = 'info') => {
+      console.log(`[${level.toUpperCase()}] ${message}`);
+      onProgress?.(message, level);
+    };
+
+    try {
+      report('开始项目验证...', 'info');
+      
+      // 使用 ProjectValidationService 进行综合验证
+      const validationResult = await ProjectValidationService.validateProject(project, report);
+      
+      if (validationResult.success && validationResult.data) {
+        const { configuration, pm2Status } = validationResult.data;
+        
+        // 更新package信息
+        if (configuration?.hasPackageJson && configuration.packageJson) {
+          setPackageInfo(configuration.packageJson);
+          report('✅ 项目配置信息已更新', 'success');
+        }
+        
+        // 设置验证结果
+        const configValid = configuration?.hasPackageJson || false;
+        const pm2StatusValid = pm2Status?.isRunning !== undefined;
+        
+        setValidationResult({
+          isValid: configValid && pm2StatusValid,
+          configValid,
+          pm2StatusValid,
+          errors: [],
+          warnings: configValid ? [] : ['未找到 package.json 文件']
+        });
+
+        if (configValid && pm2StatusValid) {
+          report('✅ 项目验证通过', 'success');
+        } else {
+          if (!configValid) {
+            report('⚠️ 项目配置验证失败', 'warn');
+          }
+          if (!pm2StatusValid) {
+            report('⚠️ PM2状态检查异常', 'warn');
+          }
+        }
+      } else {
+        const errorMsg = validationResult.error || '验证失败';
+        report(`❌ 验证失败: ${errorMsg}`, 'error');
+        
+        setValidationResult({
+          isValid: false,
+          configValid: false,
+          pm2StatusValid: false,
+          errors: [errorMsg],
+          warnings: []
+        });
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '验证过程中发生未知错误';
+      report(`💥 验证异常: ${errorMessage}`, 'error');
+      
+      setValidationResult({
+        isValid: false,
+        configValid: false,
+        pm2StatusValid: false,
+        errors: [errorMessage],
+        warnings: []
+      });
+    } finally {
+      setIsValidating(false);
+      report('验证完成', 'info');
+    }
+  }, []);
+
+  // 获取项目的所有数据 - 集成验证功能
   const fetchProjectData = useCallback(async (project: Project): Promise<void> => {
     console.log('🔄 获取项目最新数据...');
     clearData();
@@ -272,7 +372,10 @@ export const useProjectData = (): UseProjectDataReturn => {
     if (packageData) {
       await checkDependencies(project, packageData);
     }
-  }, [refreshPM2Status, refreshPackageInfo, refreshProjectPort, fetchPM2Logs, checkDependencies, clearData]);
+
+    // 最后进行项目验证
+    await validateProject(project);
+  }, [refreshPM2Status, refreshPackageInfo, refreshProjectPort, fetchPM2Logs, checkDependencies, validateProject, clearData]);
 
   return {
     pm2Status,
@@ -284,12 +387,15 @@ export const useProjectData = (): UseProjectDataReturn => {
     projectPort,
     pm2Logs,
     isLoadingLogs,
+    validationResult,
+    isValidating,
     fetchProjectData,
     refreshPM2Status,
     refreshPackageInfo,
     refreshProjectPort,
     checkDependencies,
     fetchPM2Logs,
+    validateProject,
     clearData
   };
 };

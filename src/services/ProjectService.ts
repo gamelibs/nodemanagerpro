@@ -1,5 +1,6 @@
 import type { Project, ProjectScript, FileSystemResult, ProjectCreationConfig, ProjectTemplate, ProjectCreationProgress } from '../types';
 import { RendererFileSystemService } from './RendererFileSystemService';
+import { ProjectValidationService } from './ProjectValidationService';
 
 // 模拟项目数据（作为初始数据和fallback）
 const MOCK_PROJECTS: Project[] = [];
@@ -98,14 +99,43 @@ export class ProjectService {
     }
   }
 
-  // 导入项目
-  static async importProject(projectPath: string): Promise<FileSystemResult> {
+  // 导入项目 - 现在包含完整验证
+  static async importProject(
+    projectPath: string, 
+    onProgress?: (message: string, level?: 'info' | 'warn' | 'error' | 'success') => void
+  ): Promise<FileSystemResult> {
     try {
       await this.initialize();
       
       console.log(`📥 开始导入项目: ${projectPath}`);
+      onProgress?.(`📥 开始导入项目: ${projectPath}`, 'info');
       
-      // 真实检查项目信息
+      // 使用 ProjectValidationService 进行综合验证
+      onProgress?.('🔍 正在验证项目配置和PM2状态...', 'info');
+      
+      // 先创建一个临时项目对象用于验证PM2状态
+      const tempProject: Project = {
+        id: Date.now().toString(),
+        name: this.extractProjectName(projectPath),
+        path: projectPath,
+        type: 'node', // 临时类型，稍后会更新
+        lastOpened: new Date(),
+        packageManager: 'npm', // 临时值，稍后会更新
+        scripts: [],
+        description: '导入的项目'
+      };
+
+      // 执行综合验证
+      const validationResult = await ProjectValidationService.validateProject(tempProject, onProgress);
+      
+      if (!validationResult.success) {
+        onProgress?.(`❌ 项目验证失败: ${validationResult.error}`, 'error');
+        // 即使验证失败，仍然尝试导入项目，但记录警告
+        console.warn('⚠️ 项目验证失败，但继续导入:', validationResult.error);
+      }
+
+      // 分析项目信息（保留原有逻辑以确保兼容性）
+      onProgress?.('📋 正在分析项目结构...', 'info');
       const projectAnalysis = await this.analyzeProject(projectPath);
       
       const newProject: Project = {
@@ -113,7 +143,6 @@ export class ProjectService {
         name: projectAnalysis.name,
         path: projectPath,
         type: projectAnalysis.type,
-        status: 'stopped',
         lastOpened: new Date(),
         packageManager: projectAnalysis.packageManager as 'npm' | 'yarn' | 'pnpm',
         scripts: projectAnalysis.scripts,
@@ -123,15 +152,31 @@ export class ProjectService {
       // 只有在检测到端口时才设置端口
       if (projectAnalysis.port !== null) {
         newProject.port = projectAnalysis.port;
+        onProgress?.(`✅ 检测到项目端口: ${projectAnalysis.port}`, 'success');
         console.log(`✅ 设置项目端口: ${projectAnalysis.port}`);
       } else {
+        onProgress?.('⚠️ 未检测到端口配置', 'warn');
         console.log(`⚠️ 未检测到端口配置，端口字段留空`);
       }
 
+      // 添加验证结果到项目信息
+      if (validationResult.success && validationResult.data) {
+        onProgress?.('✅ 项目验证通过', 'success');
+        
+        // 可以在这里添加验证结果的处理逻辑
+        // 例如：记录配置信息、PM2状态等
+        console.log('📊 验证结果:', {
+          hasPackageJson: validationResult.data.configuration?.hasPackageJson,
+          pm2Running: validationResult.data.pm2Status?.isRunning
+        });
+      }
+
       // 使用文件系统服务保存
+      onProgress?.('💾 正在保存项目配置...', 'info');
       const result = await RendererFileSystemService.addProject(newProject);
       
       if (result.success) {
+        onProgress?.(`✅ 项目导入成功: ${newProject.name}`, 'success');
         return {
           success: true,
           data: newProject
@@ -139,15 +184,18 @@ export class ProjectService {
       } else {
         // 降级到localStorage
         this.saveProjectToLocalStorage(newProject);
+        onProgress?.(`✅ 项目导入成功 (使用本地存储): ${newProject.name}`, 'success');
         return {
           success: true,
           data: newProject
         };
       }
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '导入项目失败';
+      onProgress?.(`❌ 导入失败: ${errorMessage}`, 'error');
       return {
         success: false,
-        error: error instanceof Error ? error.message : '导入项目失败'
+        error: errorMessage
       };
     }
   }
