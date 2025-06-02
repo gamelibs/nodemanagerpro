@@ -3,7 +3,6 @@ import { useApp } from '../store/AppContext';
 import { useToastContext } from '../store/ToastContext';
 import { ProjectService } from '../services/ProjectService';
 import { usePM2ProjectRunner } from '../services/PM2ProjectRunner';
-import { PM2Service } from '../services/PM2Service';
 import { useLogs } from './useLogs';
 import type { Project, ProjectCreationConfig } from '../types';
 
@@ -64,6 +63,17 @@ export function useProjects() {
             
             const updates: { id: string; status: 'running' | 'stopped' | 'error'; name: string }[] = [];
             const queryResults: string[] = []; // 收集查询结果用于弹窗
+            
+            // 🆕 添加导入后同步的特殊标记
+            const isPostImportSync = !!state.projects.find(p => p.lastOpened && 
+              (Date.now() - p.lastOpened.getTime()) < 5000); // 5秒内新增的项目
+            
+            if (isPostImportSync) {
+              console.log('🎯 [导入后同步] 检测到项目导入后同步，将提供详细反馈');
+              if (showToast) {
+                showToast('🔄 正在同步新导入项目的PM2状态...', 'info');
+              }
+            }
             
             for (const project of state.projects) {
               try {
@@ -158,12 +168,39 @@ export function useProjects() {
             
             if (updates.length > 0) {
               console.log(`✅ 自动同步完成，更新了 ${updates.length} 个项目的状态`);
+              
+              // 🆕 导入后同步的特殊处理
+              if (isPostImportSync) {
+                const syncResult = updates.length > 0 
+                  ? `🎉 导入同步完成！发现 ${updates.length} 个运行中的PM2进程已自动关联`
+                  : `✅ 导入同步完成，新项目状态已确认`;
+                
+                if (showToast) {
+                  showToast(syncResult, 'success');
+                }
+                
+                // 显示详细的导入后同步结果
+                if (updates.length > 0) {
+                  const updateDetails = updates.map(u => `${u.name}: ${u.status}`).join(', ');
+                  console.log(`🎯 [导入后同步] 状态更新详情: ${updateDetails}`);
+                  if (showToast) {
+                    setTimeout(() => {
+                      showToast(`项目状态已同步: ${updateDetails}`, 'info');
+                    }, 1000);
+                  }
+                }
+              }
             } else {
               console.log('✅ 所有项目状态已同步');
+              
+              // 🆕 导入后同步但无状态更新的情况
+              if (isPostImportSync && showToast) {
+                showToast('✅ 新导入项目状态同步完成，未发现运行中的PM2进程', 'info');
+              }
             }
             
-            // 显示查询结果弹窗
-            if (queryResults.length > 0 && showToast) {
+            // 显示查询结果弹窗（非导入后同步时）
+            if (queryResults.length > 0 && showToast && !isPostImportSync) {
               const summaryMessage = `状态查询完成：检查了 ${queryResults.length} 个项目，更新了 ${updates.length} 个状态`;
               showToast(summaryMessage, 'info');
               
@@ -177,6 +214,13 @@ export function useProjects() {
                 const updateDetails = updates.map(u => `${u.name}: ${u.status}`).join(', ');
                 showToast(`状态更新详情: ${updateDetails}`, 'success');
               }
+            }
+            
+            // 🆕 始终记录详细的查询结果到控制台
+            if (queryResults.length > 0) {
+              const detailedResults = queryResults.map((result, index) => `${index + 1}. ${result}`).join('\n\n');
+              console.log('📊 [状态同步] 详细查询结果:');
+              console.log('\n' + detailedResults);
             }
           } catch (error) {
             console.error('❌ 自动同步项目状态失败:', error);
@@ -253,6 +297,18 @@ export function useProjects() {
         
         // 显示成功通知
         showToast(`项目导入成功: ${result.data.name}`, 'success');
+        
+        // 🔄 触发项目导入后的自动同步
+        console.log('🔄 项目导入成功，开始自动同步PM2状态...');
+        onProgress('🔄 正在同步PM2状态...', 'info');
+        
+        // 设置自动同步标志，触发PM2状态检查
+        shouldAutoSync.current = true;
+        
+        // 延迟一小段时间后进行状态同步，确保项目已添加到列表中
+        setTimeout(() => {
+          console.log('🔄 开始导入后PM2状态同步...');
+        }, 500);
       } else {
         const errorMsg = result.error || '导入项目失败';
         dispatch({ type: 'SET_ERROR', payload: errorMsg });
