@@ -3,79 +3,12 @@ import { RendererFileSystemService } from './RendererFileSystemService';
 import { ProjectValidationService } from './ProjectValidationService';
 import { PM2Service } from './PM2Service';
 
-// 模拟项目数据（作为初始数据和fallback）
-const MOCK_PROJECTS: Project[] = [];
-
 // 项目服务类
 export class ProjectService {
-  private static migrationDone = false;
-
-  // 初始化服务 - 执行数据迁移
-  static async initialize(): Promise<void> {
-    if (this.migrationDone) return;
-
-    try {
-      console.log('🔄 初始化ProjectService并检查数据迁移...');
-      await this.migrateFromLocalStorage();
-      this.migrationDone = true;
-      console.log('✅ ProjectService初始化完成');
-    } catch (error) {
-      console.error('❌ ProjectService初始化失败:', error);
-    }
-  }
-
-  // 从localStorage迁移数据到文件系统
-  private static async migrateFromLocalStorage(): Promise<void> {
-    try {
-      // 检查文件系统中是否已有数据
-      const fileResult = await RendererFileSystemService.loadProjects();
-      
-      if (fileResult.success && fileResult.data && fileResult.data.length > 0) {
-        console.log('📁 文件系统中已有项目数据，跳过迁移');
-        return;
-      }
-
-      // 检查localStorage中是否有数据
-      const localStorageKey = 'nodeAppManager_projects';
-      const storedData = localStorage.getItem(localStorageKey);
-      
-      if (storedData) {
-        try {
-          const projects = JSON.parse(storedData);
-          const migratedProjects = projects.map((p: any) => ({
-            ...p,
-            lastOpened: new Date(p.lastOpened)
-          }));
-
-          console.log(`🚚 发现localStorage中有 ${migratedProjects.length} 个项目，开始迁移...`);
-          
-          // 保存到文件系统
-          const saveResult = await RendererFileSystemService.saveProjects(migratedProjects);
-          
-          if (saveResult.success) {
-            console.log('✅ 数据迁移成功，清除localStorage');
-            localStorage.removeItem(localStorageKey);
-          } else {
-            console.warn('⚠️ 文件系统保存失败，保留localStorage数据');
-          }
-        } catch (parseError) {
-          console.error('❌ localStorage数据解析失败:', parseError);
-        }
-      } else {
-        // 如果都没有数据，不自动创建测试项目，保持空状态
-        console.log('📝 没有发现现有数据，保持空项目列表状态');
-        // await RendererFileSystemService.saveProjects(MOCK_PROJECTS); // 已禁用自动创建测试数据
-      }
-    } catch (error) {
-      console.error('❌ 数据迁移过程出错:', error);
-    }
-  }
 
   // 获取所有项目（带动态配置检测）
   static async getAllProjects(): Promise<FileSystemResult> {
     try {
-      await this.initialize();
-      
       // 首先加载核心项目信息
       const coreResult = await RendererFileSystemService.loadProjects();
       
@@ -89,12 +22,11 @@ export class ProjectService {
           data: coreResult.data
         };
       } else {
-        // 文件系统失败时，尝试从localStorage读取（降级方案）
-        console.warn('⚠️ 文件系统读取失败，尝试localStorage降级方案');
-        const fallbackProjects = this.loadProjectsFromLocalStorage();
+        // 文件系统失败时，返回空数组
+        console.warn('⚠️ 文件系统读取失败，返回空项目列表');
         return {
           success: true,
-          data: fallbackProjects
+          data: []
         };
       }
     } catch (error) {
@@ -111,7 +43,6 @@ export class ProjectService {
     onProgress?: (message: string, level?: 'info' | 'warn' | 'error' | 'success') => void
   ): Promise<FileSystemResult> {
     try {
-      await this.initialize();
       
       console.log(`📥 开始导入项目: ${projectPath}`);
       onProgress?.(`📥 开始导入项目: ${projectPath}`, 'info');
@@ -226,12 +157,10 @@ export class ProjectService {
           data: newProject
         };
       } else {
-        // 降级到localStorage
-        this.saveProjectToLocalStorage(newProject);
-        onProgress?.(`✅ 项目导入成功 (使用本地存储): ${newProject.name}`, 'success');
+        // 文件系统失败时，返回错误
         return {
-          success: true,
-          data: newProject
+          success: false,
+          error: result.error || '保存项目失败'
         };
       }
     } catch (error) {
@@ -247,8 +176,6 @@ export class ProjectService {
   // 移除项目
   static async removeProject(projectId: string): Promise<FileSystemResult> {
     try {
-      await this.initialize();
-      
       // 使用文件系统服务删除
       const result = await RendererFileSystemService.removeProject(projectId);
       
@@ -258,11 +185,10 @@ export class ProjectService {
           data: projectId
         };
       } else {
-        // 降级到localStorage
-        this.removeProjectFromLocalStorage(projectId);
+        // 文件系统删除失败时，返回错误
         return {
-          success: true,
-          data: projectId
+          success: false,
+          error: result.error || '删除项目失败'
         };
       }
     } catch (error) {
@@ -276,8 +202,6 @@ export class ProjectService {
   // 更新项目信息
   static async updateProject(projectId: string, updates: Partial<Project>): Promise<FileSystemResult> {
     try {
-      await this.initialize();
-      
       // 使用文件系统服务更新项目
       const result = await RendererFileSystemService.updateProject(projectId, updates);
       
@@ -303,8 +227,6 @@ export class ProjectService {
   // 更新项目状态
   static async updateProjectStatus(projectId: string, status: Project['status']): Promise<FileSystemResult> {
     try {
-      await this.initialize();
-      
       // 使用文件系统服务更新
       const result = await RendererFileSystemService.updateProjectStatus(projectId, status);
       
@@ -314,11 +236,9 @@ export class ProjectService {
           data: { projectId, status }
         };
       } else {
-        // 降级到localStorage（需要实现更复杂的逻辑）
-        console.warn('⚠️ 文件系统更新失败，暂时跳过localStorage降级');
         return {
           success: false,
-          error: '更新项目状态失败'
+          error: result.error || '更新项目状态失败'
         };
       }
     } catch (error) {
@@ -379,8 +299,6 @@ export class ProjectService {
   // 创建新项目 - 现在使用稳定ID
   static async createProject(projectConfig: ProjectCreationConfig, progressCallback?: ProjectCreationProgress): Promise<FileSystemResult> {
     try {
-      await this.initialize();
-      
       const onProgress = progressCallback?.onProgress || (() => {});
       
       onProgress(`🏗️ 开始创建项目: ${projectConfig.name}`);
@@ -455,12 +373,10 @@ export class ProjectService {
           data: newProject
         };
       } else {
-        // 降级到localStorage
-        this.saveProjectToLocalStorage(newProject);
-        onProgress(`✅ 项目创建完成 (使用本地存储)`, 'success');
+        // 文件系统创建失败
         return {
-          success: true,
-          data: newProject
+          success: false,
+          error: result.error || '创建项目失败'
         };
       }
     } catch (error) {
@@ -662,66 +578,26 @@ export class ProjectService {
   static async getStorageInfo(): Promise<{ fileSystem: any; localStorage: any }> {
     try {
       const fileSystemInfo = await RendererFileSystemService.getDataInfo();
-      const localStorageData = this.loadProjectsFromLocalStorage();
       
       return {
         fileSystem: fileSystemInfo,
         localStorage: {
-          hasData: !!localStorage.getItem('nodeAppManager_projects'),
-          projectCount: localStorageData.length
+          hasData: false,
+          projectCount: 0,
+          note: 'localStorage功能已移除'
         }
       };
     } catch (error) {
       return {
         fileSystem: { error: String(error) },
-        localStorage: { error: 'Failed to access localStorage' }
+        localStorage: { error: 'localStorage功能已移除' }
       };
-    }
-  }
-
-  // localStorage 辅助方法（降级方案）
-  private static loadProjectsFromLocalStorage(): Project[] {
-    try {
-      const storedData = localStorage.getItem('nodeAppManager_projects');
-      if (storedData) {
-        const projects = JSON.parse(storedData);
-        return projects.map((p: any) => ({
-          ...p,
-          lastOpened: new Date(p.lastOpened)
-        }));
-      }
-      return MOCK_PROJECTS;
-    } catch (error) {
-      console.error('加载localStorage数据失败:', error);
-      return MOCK_PROJECTS;
-    }
-  }
-
-  private static saveProjectToLocalStorage(project: Project): void {
-    try {
-      const existingProjects = this.loadProjectsFromLocalStorage();
-      const updatedProjects = [...existingProjects, project];
-      localStorage.setItem('nodeAppManager_projects', JSON.stringify(updatedProjects));
-    } catch (error) {
-      console.error('保存项目到localStorage失败:', error);
-    }
-  }
-
-  private static removeProjectFromLocalStorage(projectId: string): void {
-    try {
-      const existingProjects = this.loadProjectsFromLocalStorage();
-      const filteredProjects = existingProjects.filter(p => p.id !== projectId);
-      localStorage.setItem('nodeAppManager_projects', JSON.stringify(filteredProjects));
-    } catch (error) {
-      console.error('从localStorage删除项目失败:', error);
     }
   }
 
   // 为现有项目自动分配端口（如果没有端口）
   static async assignPortsToExistingProjects(): Promise<FileSystemResult> {
     try {
-      await this.initialize();
-      
       const result = await RendererFileSystemService.loadProjects();
       if (!result.success || !result.data) {
         return { success: false, error: '无法加载项目列表' };
