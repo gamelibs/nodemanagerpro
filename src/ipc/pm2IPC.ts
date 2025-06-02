@@ -326,10 +326,20 @@ export function setupPM2IPC() {
               error: err.message 
             });
           } else {
-            resolve({ 
-              success: true, 
-              data: desc
-            });
+            // 检查是否找到了进程
+            if (desc && desc.length > 0) {
+              console.log('✅ PM2 获取描述成功:', desc[0]?.name, '状态:', desc[0]?.pm2_env?.status);
+              resolve({ 
+                success: true, 
+                status: desc[0] // PM2 describe 返回数组，取第一个元素
+              });
+            } else {
+              console.log('❌ PM2 进程不存在:', projectId);
+              resolve({ 
+                success: false, 
+                error: '进程不存在' 
+              });
+            }
           }
         });
       });

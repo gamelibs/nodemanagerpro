@@ -63,16 +63,60 @@ export function useProjects() {
             console.log('🔄 正在同步项目状态...');
             
             const updates: { id: string; status: 'running' | 'stopped' | 'error'; name: string }[] = [];
+            const queryResults: string[] = []; // 收集查询结果用于弹窗
             
             for (const project of state.projects) {
               try {
                 // 使用与PM2Service相同的进程名称生成逻辑
                 const processName = generateStableProjectId(project.name, project.path);
+                
+                // 详细日志记录查询信息
+                console.log(`🔍 [状态同步] 项目: ${project.name}`);
+                console.log(`🆔 [状态同步] 项目ID: ${project.id}`);
+                console.log(`📁 [状态同步] 项目路径: ${project.path}`);
+                console.log(`🎯 [状态同步] 查询进程名: ${processName}`);
+                console.log(`📊 [状态同步] 当前状态: ${project.status}`);
+                console.log(`🔍 [状态同步] ID匹配检查: 项目ID=${project.id}, 生成进程名=${processName}`);
+                
                 const result = await window.electronAPI?.invoke('pm2:describe', processName);
                 
+                console.log(`📡 [状态同步] PM2查询结果:`, {
+                  success: result?.success,
+                  hasStatus: !!result?.status,
+                  error: result?.error,
+                  statusDetails: result?.status ? {
+                    status: result.status.status,
+                    pid: result.status.pid,
+                    pm_id: result.status.pm_id,
+                    name: result.status.name,
+                    pm2_env_status: result.status.pm2_env?.status
+                  } : null
+                });
+                
+                // 获取实际的PM2状态
+                const actualPM2Status = result?.status?.pm2_env?.status || result?.status?.status || '未找到';
+                
+                // 收集查询结果信息
+                const queryInfo = `项目: ${project.name}\n` +
+                  `进程名: ${processName}\n` +
+                  `查询成功: ${result?.success ? '是' : '否'}\n` +
+                  `PM2状态: ${actualPM2Status}\n` +
+                  `直接状态: ${result?.status?.status || 'N/A'}\n` +
+                  `PM2环境状态: ${result?.status?.pm2_env?.status || 'N/A'}\n` +
+                  `进程ID: ${result?.status?.pid || 'N/A'}\n` +
+                  `错误信息: ${result?.error || '无'}`;
+                queryResults.push(queryInfo);
+                
                 if (result?.success && result.status) {
-                  const pm2Status = result.status.status;
+                  // PM2状态在 pm2_env.status 字段中
+                  const pm2Status = result.status.pm2_env?.status || result.status.status;
                   let projectStatus: 'running' | 'stopped' | 'error' = 'stopped';
+                  
+                  console.log(`🔍 [状态同步] 原始PM2状态数据:`, {
+                    directStatus: result.status.status,
+                    pm2EnvStatus: result.status.pm2_env?.status,
+                    finalStatus: pm2Status
+                  });
                   
                   if (pm2Status === 'online') {
                     projectStatus = 'running';
@@ -80,18 +124,27 @@ export function useProjects() {
                     projectStatus = 'error';
                   }
                   
+                  console.log(`🔄 [状态同步] PM2状态映射: ${pm2Status} -> ${projectStatus}`);
+                  
                   if (project.status !== projectStatus) {
                     updates.push({ id: project.id, status: projectStatus, name: project.name });
-                    console.log(`📝 项目 ${project.name} 状态同步: ${project.status} -> ${projectStatus}`);
+                    console.log(`📝 [状态同步] 需要更新状态: ${project.status} -> ${projectStatus}`);
+                  } else {
+                    console.log(`✅ [状态同步] 状态一致，无需更新: ${projectStatus}`);
                   }
                 } else {
+                  console.log(`❌ [状态同步] PM2进程不存在或查询失败`);
                   if (project.status !== 'stopped') {
                     updates.push({ id: project.id, status: 'stopped', name: project.name });
-                    console.log(`📝 项目 ${project.name} 未在PM2中运行，状态同步: ${project.status} -> stopped`);
+                    console.log(`📝 [状态同步] 项目 ${project.name} 未在PM2中运行，状态同步: ${project.status} -> stopped`);
+                  } else {
+                    console.log(`✅ [状态同步] 状态已为stopped，无需更新`);
                   }
                 }
               } catch (error) {
-                console.warn(`检查项目 ${project.name} 状态失败:`, error);
+                console.warn(`❌ [状态同步] 检查项目 ${project.name} 状态失败:`, error);
+                const errorInfo = `项目: ${project.name}\n查询异常: ${error}`;
+                queryResults.push(errorInfo);
               }
             }
             
@@ -107,6 +160,23 @@ export function useProjects() {
               console.log(`✅ 自动同步完成，更新了 ${updates.length} 个项目的状态`);
             } else {
               console.log('✅ 所有项目状态已同步');
+            }
+            
+            // 显示查询结果弹窗
+            if (queryResults.length > 0 && showToast) {
+              const summaryMessage = `状态查询完成：检查了 ${queryResults.length} 个项目，更新了 ${updates.length} 个状态`;
+              showToast(summaryMessage, 'info');
+              
+              // 显示详细的查询结果弹窗
+              const detailedResults = queryResults.map((result, index) => `${index + 1}. ${result}`).join('\n\n');
+              console.log('📊 [状态同步] 详细查询结果:');
+              console.log('\n' + detailedResults);
+              
+              // 添加一个额外的详细信息弹窗（可选）
+              if (updates.length > 0) {
+                const updateDetails = updates.map(u => `${u.name}: ${u.status}`).join(', ');
+                showToast(`状态更新详情: ${updateDetails}`, 'success');
+              }
             }
           } catch (error) {
             console.error('❌ 自动同步项目状态失败:', error);
