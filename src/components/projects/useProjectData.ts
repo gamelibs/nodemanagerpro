@@ -34,9 +34,9 @@ export interface UseProjectDataReturn {
   clearData: () => void;
 }
 
-// 生成PM2进程名称的辅助函数
+// 生成PM2进程名称的辅助函数 - 使用稳定ID
 const generateProcessName = (project: Project) => {
-  return `${project.name}-${project.id}`;
+  return PM2Service.generateStableProjectId(project.name, project.path);
 };
 
 export const useProjectData = (): UseProjectDataReturn => {

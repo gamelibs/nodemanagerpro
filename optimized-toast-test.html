@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>优化后的Toast系统测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #0F172A;
+            color: white;
+            padding: 20px;
+        }
+        
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        
+        .toast {
+            background: #1E293B;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 8px;
+            min-width: 300px;
+            transform: translateY(100%) scale(0.9);
+            opacity: 0;
+            transition: all 0.15s ease-out;
+        }
+        
+        .toast.visible {
+            transform: translateY(0) scale(1);
+            opacity: 1;
+        }
+        
+        .toast.exiting {
+            transform: translateY(-100%) scale(0.9);
+            opacity: 0;
+            transition: all 0.15s ease-in;
+        }
+        
+        .toast.success {
+            border-left: 4px solid #10B981;
+        }
+        
+        .toast.error {
+            border-left: 4px solid #EF4444;
+        }
+        
+        .toast.info {
+            border-left: 4px solid #3B82F6;
+        }
+        
+        button {
+            background: #646cff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        button:hover {
+            background: #747bff;
+        }
+        
+        .stats {
+            margin-top: 20px;
+            padding: 15px;
+            background: #1E293B;
+            border-radius: 8px;
+        }
+        
+        .optimization-info {
+            background: #065F46;
+            border: 1px solid #10B981;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="optimization-info">
+        <h2>🚀 Toast系统优化完成</h2>
+        <ul>
+            <li><strong>显示时间：</strong>从2秒减少到1.5秒</li>
+            <li><strong>动画速度：</strong>从0.2秒提升到0.15秒</li>
+            <li><strong>下一条Toast：</strong>上一条开始退出后仅10ms就出现（几乎立即）</li>
+            <li><strong>总体速度提升：</strong>约25%更快的用户体验</li>
+        </ul>
+    </div>
+    
+    <h1>优化后的Toast系统测试</h1>
+    <p>时间配置：显示1.5秒，动画0.15秒，下一条Toast几乎立即出现</p>
+    
+    <button onclick="testSingleToast()">单个Toast测试</button>
+    <button onclick="testMultipleToasts()">多个Toast测试（模拟项目导入）</button>
+    <button onclick="testFastSequence()">快速连续测试</button>
+    <button onclick="clearAll()">清除所有</button>
+    
+    <div class="stats">
+        <div>当前Toast数量: <span id="current-count">0</span></div>
+        <div>队列长度: <span id="queue-length">0</span></div>
+        <div>总处理时间: <span id="total-time">0ms</span></div>
+        <div>平均每条用时: <span id="avg-time">0ms</span></div>
+    </div>
+    
+    <div class="toast-container" id="toast-container"></div>
+
+    <script>
+        let currentToast = null;
+        let toastQueue = [];
+        let processing = false;
+        let startTime = null;
+        let toastCounter = 0;
+        let processedToasts = 0;
+
+        function updateStats() {
+            document.getElementById('current-count').textContent = currentToast ? 1 : 0;
+            document.getElementById('queue-length').textContent = toastQueue.length;
+            
+            if (startTime && !currentToast && toastQueue.length === 0) {
+                const totalTime = Date.now() - startTime;
+                document.getElementById('total-time').textContent = totalTime + 'ms';
+                document.getElementById('avg-time').textContent = 
+                    processedToasts > 0 ? Math.round(totalTime / processedToasts) + 'ms' : '0ms';
+                startTime = null;
+            }
+        }
+
+        function processNextToast() {
+            if (processing || toastQueue.length === 0) return;
+            
+            const nextToast = toastQueue.shift();
+            processing = true;
+            
+            currentToast = nextToast;
+            showToastElement(nextToast);
+            
+            // 1.5秒后开始退出（优化后的时间）
+            setTimeout(() => {
+                if (currentToast === nextToast) {
+                    exitToast(nextToast);
+                    processedToasts++;
+                    
+                    // 10ms后处理下一个（几乎立即，优化后）
+                    processing = false;
+                    setTimeout(processNextToast, 10);
+                    
+                    // 150ms后清除（优化后的动画时间）
+                    setTimeout(() => {
+                        if (currentToast === nextToast) {
+                            removeToastElement(nextToast);
+                            currentToast = null;
+                            updateStats();
+                        }
+                    }, 150);
+                }
+            }, 1500); // 优化：减少显示时间
+            
+            updateStats();
+        }
+
+        function showToast(message, type = 'info') {
+            if (!startTime) {
+                startTime = Date.now();
+                processedToasts = 0;
+            }
+            
+            const toast = {
+                id: `toast-${++toastCounter}`,
+                message,
+                type,
+                element: null
+            };
+            
+            toastQueue.push(toast);
+            updateStats();
+            
+            if (!processing) {
+                setTimeout(processNextToast, 0);
+            }
+        }
+
+        function showToastElement(toast) {
+            const container = document.getElementById('toast-container');
+            const element = document.createElement('div');
+            element.className = `toast ${toast.type}`;
+            element.textContent = toast.message;
+            element.id = toast.id;
+            
+            container.appendChild(element);
+            toast.element = element;
+            
+            // 强制重绘，然后添加visible类
+            setTimeout(() => {
+                element.classList.add('visible');
+            }, 10);
+        }
+
+        function exitToast(toast) {
+            if (toast.element) {
+                toast.element.classList.remove('visible');
+                toast.element.classList.add('exiting');
+            }
+        }
+
+        function removeToastElement(toast) {
+            if (toast.element && toast.element.parentNode) {
+                toast.element.parentNode.removeChild(toast.element);
+            }
+        }
+
+        function testSingleToast() {
+            showToast('这是一个优化后的Toast消息！', 'success');
+        }
+
+        function testMultipleToasts() {
+            showToast('🔍 PM2同步检测中...', 'info');
+            setTimeout(() => showToast('📋 发现项目配置文件', 'info'), 100);
+            setTimeout(() => showToast('⚙️ 正在配置项目环境', 'info'), 200);
+            setTimeout(() => showToast('✅ 项目导入成功！', 'success'), 300);
+        }
+
+        function testFastSequence() {
+            for (let i = 1; i <= 5; i++) {
+                setTimeout(() => {
+                    showToast(`快速消息 ${i}/5`, i % 2 === 0 ? 'success' : 'info');
+                }, i * 50);
+            }
+        }
+
+        function clearAll() {
+            const container = document.getElementById('toast-container');
+            container.innerHTML = '';
+            currentToast = null;
+            toastQueue = [];
+            processing = false;
+            startTime = null;
+            processedToasts = 0;
+            updateStats();
+        }
+
+        // 初始化统计
+        updateStats();
+        
+        // 显示优化信息
+        setTimeout(() => {
+            showToast('🎉 Toast系统已优化完成！', 'success');
+        }, 1000);
+    </script>
+</body>
+</html>

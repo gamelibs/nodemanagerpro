@@ -2,7 +2,6 @@ import React from 'react';
 import { useApp } from '../../store/AppContext';
 import { useProjects } from '../../hooks/useProjects';
 import type { Project } from '../../types';
-import type { PM2Process } from '../../services/PM2Service';
 
 interface ProjectListProps {
   projects: Project[];
@@ -10,7 +9,6 @@ interface ProjectListProps {
   onSelectProject: (project: Project) => void;
   isLoading: boolean;
   error: string | null;
-  pm2Status?: PM2Process | null;
 }
 
 export const ProjectList: React.FC<ProjectListProps> = ({
@@ -18,8 +16,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
   selectedProject,
   onSelectProject,
   isLoading,
-  error,
-  pm2Status
+  error
 }) => {
   const { i18n } = useApp();
   const { t } = i18n;
@@ -35,36 +32,21 @@ export const ProjectList: React.FC<ProjectListProps> = ({
 
   // 获取项目状态指示器
   const getStatusIndicator = (project: Project) => {
-    // 优先显示实时PM2状态（仅当项目被选中时）
-    const isSelected = selectedProject?.id === project.id;
-    const hasRealTimeStatus = isSelected && pm2Status;
-    
-    if (hasRealTimeStatus) {
-      const isOnline = pm2Status.status === 'online' || pm2Status.pm2_env?.status === 'online';
-      const isStopped = pm2Status.status === 'stopped' || pm2Status.pm2_env?.status === 'stopped';
-      const isError = pm2Status.status === 'error' || pm2Status.status === 'errored' || pm2Status.pm2_env?.status === 'error' || pm2Status.pm2_env?.status === 'errored';
-      
-      if (isOnline) {
-        return <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" title="运行中"></span>;
-      } else if (isStopped) {
-        return <span className="w-2 h-2 rounded-full bg-gray-400" title="已停止"></span>;
-      } else if (isError) {
-        return <span className="w-2 h-2 rounded-full bg-red-500" title="错误"></span>;
-      } else {
-        return <span className="w-2 h-2 rounded-full bg-yellow-500" title="状态未知"></span>;
-      }
+    // 处理 undefined 或 null 状态的占位逻辑
+    if (!project.status) {
+      return <span className="w-3 h-3 rounded-full bg-gray-300 animate-pulse" title="状态检测中"></span>;
     }
     
-    // 显示项目自带的状态（来自导入时的验证结果或启动操作结果）
+    // 根据项目状态显示不同颜色的圆点
     if (project.status === 'running') {
-      return <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" title="运行中"></span>;
-    } else if (project.status === 'stopped') {
-      return <span className="w-2 h-2 rounded-full bg-gray-400" title="已停止"></span>;
+      return <span className="w-3 h-3 rounded-full bg-green-500 animate-pulse" title="运行中"></span>;
     } else if (project.status === 'error') {
-      return <span className="w-2 h-2 rounded-full bg-red-500" title="错误"></span>;
+      return <span className="w-3 h-3 rounded-full bg-red-500" title="错误"></span>;
+    } else if (project.status === 'stopped') {
+      return <span className="w-3 h-3 rounded-full bg-gray-400" title="已停止"></span>;
     } else {
-      // 默认状态
-      return <span className="w-2 h-2 rounded-full bg-gray-300" title="未知状态"></span>;
+      // 未知状态时显示灰色圆点
+      return <span className="w-3 h-3 rounded-full bg-gray-300" title="状态未知"></span>;
     }
   };
 
@@ -134,14 +116,14 @@ export const ProjectList: React.FC<ProjectListProps> = ({
           <div className="flex items-center justify-between">
             {/* 项目名称和状态 */}
             <div className="flex items-center gap-3 flex-1 min-w-0">
-              {/* 状态指示器 */}
-              <div className="status-indicator">
-                {getStatusIndicator(project)}
-              </div>
-              
               {/* 项目名称 */}
               <div className="font-medium theme-text-primary truncate">
                 {project.name}
+              </div>
+              
+              {/* 状态指示器 - 更明显的样式 */}
+              <div className="status-indicator flex items-center justify-center">
+                {getStatusIndicator(project)}
               </div>
             </div>
             
@@ -166,12 +148,10 @@ export const ProjectList: React.FC<ProjectListProps> = ({
             )}
             
             {/* 端口信息 */}
-            {project.port && (
-              <span className="flex items-center gap-1">
-                <span>🌐</span>
-                <span>:{project.port}</span>
-              </span>
-            )}
+            <span className="flex items-center gap-1">
+              <span>🌐</span>
+              <span>{project.port ? `:${project.port}` : '检测中'}</span>
+            </span>
             
             {/* 最后开启时间 */}
             {project.lastOpened && (

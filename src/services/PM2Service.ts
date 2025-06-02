@@ -38,11 +38,105 @@ export class PM2Service {
   private static isInitialized = false;
 
   /**
-   * 生成 PM2 进程名称
+   * 生成稳定的项目ID - 基于项目名称和路径
+   * 改进版本：保持更多信息以确保唯一性
+   */
+  static generateStableProjectId(projectName: string, projectPath: string): string {
+    // 组合名称和路径，使用分隔符确保不会混淆
+    const combined = `${projectName}|${projectPath}`;
+    
+    // 使用哈希来确保唯一性，而不是简单去除字符
+    let hash = 0;
+    for (let i = 0; i < combined.length; i++) {
+      const char = combined.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // 转换为32位整数
+    }
+    
+    // 确保哈希为正数
+    const positiveHash = Math.abs(hash);
+    
+    // 转换为Base36字符串（包含数字和字母）
+    const hashString = positiveHash.toString(36);
+    
+    // 结合项目名的前几个字符（清理后）+ 哈希
+    const cleanName = projectName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 6);
+    const stableId = `${cleanName}${hashString}`.substring(0, 16);
+    
+    // 确保至少有8个字符，不足的用哈希补充
+    if (stableId.length < 8) {
+      return (stableId + hashString + '00000000').substring(0, 16);
+    }
+    
+    return stableId;
+  }
+
+  /**
+   * 生成 PM2 进程名称 - 使用稳定ID
    */
   private static generateProcessName(project: Project): string {
-    // 优先使用保存的进程名称，否则生成标准格式
-    return project.pm2?.processName || `${project.name}-${project.id}`;
+    // 使用稳定ID作为PM2进程名称
+    return this.generateStableProjectId(project.name, project.path);
+  }
+
+  /**
+   * 检查PM2中是否存在指定项目的进程，并返回状态同步信息
+   */
+  static async checkAndSyncPM2Status(projectName: string, projectPath: string): Promise<{
+    exists: boolean;
+    status?: 'running' | 'stopped' | 'error';
+    processInfo?: PM2Process;
+    message: string;
+  }> {
+    try {
+      const stableId = this.generateStableProjectId(projectName, projectPath);
+      console.log(`🔍 检查PM2进程: ${stableId} (${projectName})`);
+      
+      if (!window.electronAPI) {
+        return {
+          exists: false,
+          status: 'error',
+          message: '不在 Electron 环境中，无法检查PM2状态'
+        };
+      }
+
+      const result = await window.electronAPI.invoke('pm2:describe', stableId);
+      
+      if (result.success && result.status) {
+        // PM2中存在该进程
+        const pm2Status = result.status.status;
+        let projectStatus: 'running' | 'stopped' | 'error' = 'stopped';
+        
+        if (pm2Status === 'online') {
+          projectStatus = 'running';
+        } else if (pm2Status === 'error' || pm2Status === 'errored') {
+          projectStatus = 'error';
+        }
+        
+        console.log(`✅ 找到PM2进程: ${stableId}, 状态: ${projectStatus}`);
+        return {
+          exists: true,
+          status: projectStatus,
+          processInfo: result.status,
+          message: `发现已存在的PM2进程 (${projectStatus}), 已同步状态`
+        };
+      } else {
+        // PM2中不存在该进程
+        console.log(`❌ 未找到PM2进程: ${stableId}`);
+        return {
+          exists: false,
+          status: 'stopped',
+          message: '未发现运行中的PM2进程，项目状态设为已停止'
+        };
+      }
+    } catch (error) {
+      console.error('检查PM2状态失败:', error);
+      return {
+        exists: false,
+        status: 'error',
+        message: `检查PM2状态失败: ${error instanceof Error ? error.message : '未知错误'}`
+      };
+    }
   }
 
   /**
@@ -147,8 +241,8 @@ export class PM2Service {
         return { success: false, error: '不在 Electron 环境中' };
       }
 
-      // 优先使用保存的PM2进程名称，否则使用项目ID
-      const processIdentifier = project.pm2?.processName || project.id;
+      // 优先使用保存的PM2进程名称，否则使用正确的进程名称生成逻辑
+      const processIdentifier = project.pm2?.processName || this.generateProcessName(project);
       const result = await window.electronAPI.invoke('pm2:stop', processIdentifier);
       
       if (result.success) {
@@ -466,7 +560,7 @@ export class PM2Service {
     const startScript = project.scripts.find(s => s.name === 'start') || project.scripts[0];
     
     return {
-      name: `${project.name}-${project.id}`, // 使用名称+ID的组合，便于识别
+      name: this.generateProcessName(project), // 使用稳定ID作为进程名称
       script: startScript?.command || 'npm start',
       cwd: project.path,
       // 不设置 PORT 环境变量，让项目使用自己的配置（.env文件、代码中的默认值等）

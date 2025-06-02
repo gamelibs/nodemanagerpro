@@ -1,7 +1,7 @@
 import type { Project, ProjectScript, FileSystemResult, ProjectCreationConfig, ProjectTemplate, ProjectCreationProgress, CoreProject } from '../types';
 import { RendererFileSystemService } from './RendererFileSystemService';
 import { ProjectValidationService } from './ProjectValidationService';
-import { ProjectConfigService } from './ProjectConfigService';
+import { PM2Service } from './PM2Service';
 
 // 模拟项目数据（作为初始数据和fallback）
 const MOCK_PROJECTS: Project[] = [];
@@ -105,7 +105,7 @@ export class ProjectService {
     }
   }
 
-  // 导入项目 - 现在包含完整验证
+  // 导入项目 - 现在包含完整验证和PM2状态同步
   static async importProject(
     projectPath: string, 
     onProgress?: (message: string, level?: 'info' | 'warn' | 'error' | 'success') => void
@@ -116,23 +116,48 @@ export class ProjectService {
       console.log(`📥 开始导入项目: ${projectPath}`);
       onProgress?.(`📥 开始导入项目: ${projectPath}`, 'info');
       
-      // 使用 ProjectValidationService 进行综合验证
-      onProgress?.('🔍 正在验证项目配置和PM2状态...', 'info');
+      // 首先分析项目信息以获得项目名称
+      onProgress?.('📋 正在分析项目结构...', 'info');
+      const projectAnalysis = await this.analyzeProject(projectPath);
       
-      // 先创建一个临时项目对象用于验证PM2状态
-      const tempProject: Project = {
-        id: Date.now().toString(),
-        name: this.extractProjectName(projectPath),
+      // 生成稳定的项目ID
+      const stableId = PM2Service.generateStableProjectId(projectAnalysis.name, projectPath);
+      console.log(`🆔 生成稳定项目ID: ${stableId} (基于: ${projectAnalysis.name} + ${projectPath})`);
+      
+      // 检查PM2中是否存在该项目的进程
+      onProgress?.('🔍 检查是否存在PM2进程...', 'info');
+      const pm2SyncResult = await PM2Service.checkAndSyncPM2Status(projectAnalysis.name, projectPath);
+      
+      // 根据PM2检查结果显示通知
+      if (pm2SyncResult.exists) {
+        onProgress?.(`🔄 ${pm2SyncResult.message}`, pm2SyncResult.status === 'running' ? 'success' : 'warn');
+        console.log(`🔄 PM2同步: ${pm2SyncResult.message}`, pm2SyncResult);
+      } else {
+        onProgress?.('ℹ️ 未发现现有PM2进程，项目将作为新项目导入', 'info');
+        console.log('ℹ️ 未发现现有PM2进程');
+      }
+      
+      // 使用 ProjectValidationService 进行综合验证
+      onProgress?.('🔍 正在验证项目配置...', 'info');
+      
+      // 创建项目对象，使用稳定ID
+      const newProject: Project = {
+        id: stableId, // 使用稳定ID替代随机ID
+        name: projectAnalysis.name,
         path: projectPath,
-        type: 'node', // 临时类型，稍后会更新
         lastOpened: new Date(),
-        packageManager: 'npm', // 临时值，稍后会更新
-        scripts: [],
-        description: '导入的项目'
+        // 根据PM2同步结果设置初始状态
+        status: pm2SyncResult.exists ? pm2SyncResult.status || 'stopped' : 'stopped',
+        port: projectAnalysis.port || undefined, // 保存检测到的端口
+        // 动态检测的信息
+        type: projectAnalysis.type,
+        packageManager: projectAnalysis.packageManager as 'npm' | 'yarn' | 'pnpm',
+        scripts: projectAnalysis.scripts,
+        description: projectAnalysis.description
       };
 
       // 执行综合验证
-      const validationResult = await ProjectValidationService.validateProject(tempProject, onProgress);
+      const validationResult = await ProjectValidationService.validateProject(newProject, onProgress);
       
       if (!validationResult.success) {
         onProgress?.(`❌ 项目验证失败: ${validationResult.error}`, 'error');
@@ -140,24 +165,7 @@ export class ProjectService {
         console.warn('⚠️ 项目验证失败，但继续导入:', validationResult.error);
       }
 
-      // 分析项目信息（保留原有逻辑以确保兼容性）
-      onProgress?.('📋 正在分析项目结构...', 'info');
-      const projectAnalysis = await this.analyzeProject(projectPath);
-      
-      // 只保存核心项目信息，不保存动态检测的配置和状态
-      const newProject: Project = {
-        id: Date.now().toString(),
-        name: projectAnalysis.name,
-        path: projectPath,
-        lastOpened: new Date(),
-        // 动态检测的信息，仅用于验证和日志显示，不保存
-        type: projectAnalysis.type,
-        packageManager: projectAnalysis.packageManager as 'npm' | 'yarn' | 'pnpm',
-        scripts: projectAnalysis.scripts,
-        description: projectAnalysis.description
-      };
-
-      // 记录检测到的信息但不保存
+      // 记录检测到的项目信息
       if (projectAnalysis.port !== null) {
         onProgress?.(`✅ 检测到项目端口: ${projectAnalysis.port}`, 'success');
         console.log(`✅ 检测到项目端口: ${projectAnalysis.port} (不保存，仅用于显示)`);
@@ -166,26 +174,26 @@ export class ProjectService {
         console.log(`⚠️ 未检测到端口配置`);
       }
 
-      // 添加验证结果到项目信息（仅用于日志，不保存状态）
+      // 记录PM2同步结果和验证结果
       if (validationResult.success && validationResult.data) {
         onProgress?.('✅ 项目验证通过', 'success');
         
-        // 记录检测到的PM2状态但不保存
-        if (validationResult.data.pm2Status?.isRunning) {
-          onProgress?.('✅ 检测到项目正在运行', 'success');
-          console.log('📊 PM2状态检测: 运行中 (不保存，仅用于显示)');
-        } else if (validationResult.data.pm2Status && validationResult.data.pm2Status.isRunning === false) {
-          onProgress?.('ℹ️ 项目当前未运行', 'info');
-          console.log('📊 PM2状态检测: 已停止 (不保存，仅用于显示)');
+        // 优先显示PM2同步状态（更准确）
+        if (pm2SyncResult.exists) {
+          console.log(`📊 PM2状态同步: ${pm2SyncResult.status} (来源: PM2进程检测)`);
+          // 已在前面显示过PM2同步消息，这里不重复显示
+        } else if (validationResult.data.pm2Status?.isRunning) {
+          onProgress?.('ℹ️ 检测到其他运行状态（非PM2）', 'info');
+          console.log('📊 非PM2状态检测: 运行中');
         } else {
-          onProgress?.('⚠️ 无法确定项目运行状态', 'warn');
-          console.log('📊 PM2状态检测: 无法确定状态');
+          console.log('📊 项目状态: 已停止');
         }
         
-        // 记录验证结果（不保存状态）
-        console.log('📊 验证结果:', {
+        // 记录完整的检测结果
+        console.log('📊 导入总结:', {
+          stableId: newProject.id,
           hasPackageJson: validationResult.data.configuration?.hasPackageJson,
-          pm2Status: validationResult.data.pm2Status,
+          pm2Sync: pm2SyncResult,
           detectedType: newProject.type,
           detectedPort: projectAnalysis.port,
           note: '状态信息不保存，每次打开时重新检测'
@@ -194,6 +202,11 @@ export class ProjectService {
         // 验证失败时记录但不影响导入
         onProgress?.('⚠️ 项目验证失败，运行时将重新检测状态', 'warn');
         console.log('📊 验证失败，运行时将重新检测所有状态信息');
+        console.log('📊 导入总结 (验证失败):', {
+          stableId: newProject.id,
+          pm2Sync: pm2SyncResult,
+          note: '验证失败，状态信息需要后续重新检测'
+        });
       }
 
       // 使用文件系统服务保存（只保存核心信息）
@@ -363,7 +376,7 @@ export class ProjectService {
     }
   }
 
-  // 创建新项目
+  // 创建新项目 - 现在使用稳定ID
   static async createProject(projectConfig: ProjectCreationConfig, progressCallback?: ProjectCreationProgress): Promise<FileSystemResult> {
     try {
       await this.initialize();
@@ -373,6 +386,24 @@ export class ProjectService {
       onProgress(`🏗️ 开始创建项目: ${projectConfig.name}`);
       onProgress(`📍 路径: ${projectConfig.path}`);
       onProgress(`🎨 模板: ${projectConfig.template}`);
+      
+      // 生成稳定的项目ID
+      const stableId = PM2Service.generateStableProjectId(projectConfig.name, projectConfig.path);
+      console.log(`🆔 生成稳定项目ID: ${stableId} (基于: ${projectConfig.name} + ${projectConfig.path})`);
+      onProgress(`🆔 生成项目ID: ${stableId}`, 'info');
+      
+      // 检查PM2中是否存在该项目的进程
+      onProgress('🔍 检查现有PM2进程...', 'info');
+      const pm2SyncResult = await PM2Service.checkAndSyncPM2Status(projectConfig.name, projectConfig.path);
+      
+      // 根据PM2检查结果显示通知
+      if (pm2SyncResult.exists) {
+        onProgress(`🔄 ${pm2SyncResult.message}`, pm2SyncResult.status === 'running' ? 'warn' : 'info');
+        console.log(`🔄 PM2同步 (创建项目): ${pm2SyncResult.message}`, pm2SyncResult);
+      } else {
+        onProgress('ℹ️ 未发现现有PM2进程，将创建新项目', 'info');
+        console.log('ℹ️ 创建项目时未发现现有PM2进程');
+      }
       
       // 模拟项目创建过程
       onProgress('⏳ 准备项目环境...', 'info');
@@ -389,7 +420,7 @@ export class ProjectService {
       // 5. 初始化Git仓库（如果启用）
       
       const newProject: Project = {
-        id: Date.now().toString(),
+        id: stableId, // 使用稳定ID替代随机ID
         name: projectConfig.name,
         path: projectConfig.path,
         type: this.mapTemplateToProjectType(projectConfig.template),
@@ -974,6 +1005,7 @@ export class ProjectService {
         type: 'other',
         packageManager: 'npm',
         scripts: []
+        // 不再强制设置默认 status，让UI层处理
       }));
 
       return {

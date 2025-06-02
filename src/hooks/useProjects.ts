@@ -1,10 +1,42 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useApp } from '../store/AppContext';
 import { useToastContext } from '../store/ToastContext';
 import { ProjectService } from '../services/ProjectService';
 import { usePM2ProjectRunner } from '../services/PM2ProjectRunner';
+import { PM2Service } from '../services/PM2Service';
 import { useLogs } from './useLogs';
 import type { Project, ProjectCreationConfig } from '../types';
+
+// 从PM2Service复制的进程名称生成逻辑
+function generateStableProjectId(projectName: string, projectPath: string): string {
+  // 组合名称和路径，使用分隔符确保不会混淆
+  const combined = `${projectName}|${projectPath}`;
+  
+  // 使用哈希来确保唯一性，而不是简单去除字符
+  let hash = 0;
+  for (let i = 0; i < combined.length; i++) {
+    const char = combined.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // 转换为32位整数
+  }
+  
+  // 确保哈希为正数
+  const positiveHash = Math.abs(hash);
+  
+  // 转换为Base36字符串（包含数字和字母）
+  const hashString = positiveHash.toString(36);
+  
+  // 结合项目名的前几个字符（清理后）+ 哈希
+  const cleanName = projectName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 6);
+  const stableId = `${cleanName}${hashString}`.substring(0, 16);
+  
+  // 确保至少有8个字符，不足的用哈希补充
+  if (stableId.length < 8) {
+    return (stableId + hashString + '00000000').substring(0, 16);
+  }
+  
+  return stableId;
+}
 
 export function useProjects() {
   const { state, dispatch } = useApp();
@@ -12,17 +44,103 @@ export function useProjects() {
   const { startLogSession, endLogSession, addLog } = useLogs();
   const { startProject: runnerStartProject, stopProject: runnerStopProject } = usePM2ProjectRunner();
 
+  // 使用 ref 来追踪是否需要自动同步状态
+  const shouldAutoSync = useRef(false);
+  // 添加防重复加载标志
+  const isLoadingRef = useRef(false);
+
+  // 自动状态同步效果
+  useEffect(() => {
+    if (shouldAutoSync.current && state.projects.length > 0) {
+      console.log('🔄 检测到项目列表更新，开始自动同步状态...');
+      shouldAutoSync.current = false; // 重置标志
+      
+      // 延迟一点时间确保状态更新完毕
+      const timer = setTimeout(() => {
+        // 直接在这里调用同步逻辑，避免依赖 synchronizeProjectStatuses 函数
+        (async () => {
+          try {
+            console.log('🔄 正在同步项目状态...');
+            
+            const updates: { id: string; status: 'running' | 'stopped' | 'error'; name: string }[] = [];
+            
+            for (const project of state.projects) {
+              try {
+                // 使用与PM2Service相同的进程名称生成逻辑
+                const processName = generateStableProjectId(project.name, project.path);
+                const result = await window.electronAPI?.invoke('pm2:describe', processName);
+                
+                if (result?.success && result.status) {
+                  const pm2Status = result.status.status;
+                  let projectStatus: 'running' | 'stopped' | 'error' = 'stopped';
+                  
+                  if (pm2Status === 'online') {
+                    projectStatus = 'running';
+                  } else if (pm2Status === 'error' || pm2Status === 'errored') {
+                    projectStatus = 'error';
+                  }
+                  
+                  if (project.status !== projectStatus) {
+                    updates.push({ id: project.id, status: projectStatus, name: project.name });
+                    console.log(`📝 项目 ${project.name} 状态同步: ${project.status} -> ${projectStatus}`);
+                  }
+                } else {
+                  if (project.status !== 'stopped') {
+                    updates.push({ id: project.id, status: 'stopped', name: project.name });
+                    console.log(`📝 项目 ${project.name} 未在PM2中运行，状态同步: ${project.status} -> stopped`);
+                  }
+                }
+              } catch (error) {
+                console.warn(`检查项目 ${project.name} 状态失败:`, error);
+              }
+            }
+            
+            // 批量更新状态
+            for (const update of updates) {
+              dispatch({
+                type: 'UPDATE_PROJECT_STATUS',
+                payload: { id: update.id, status: update.status }
+              });
+            }
+            
+            if (updates.length > 0) {
+              console.log(`✅ 自动同步完成，更新了 ${updates.length} 个项目的状态`);
+            } else {
+              console.log('✅ 所有项目状态已同步');
+            }
+          } catch (error) {
+            console.error('❌ 自动同步项目状态失败:', error);
+          }
+        })();
+      }, 200);
+
+      return () => clearTimeout(timer);
+    }
+  }, [state.projects.length, dispatch]); // 移除showToast依赖
+
   // 加载所有项目（带动态配置检测）
   const loadProjects = useCallback(async () => {
+    // 防止重复加载
+    if (isLoadingRef.current) {
+      console.log('⚠️ 项目正在加载中，跳过重复请求');
+      return;
+    }
+    
+    isLoadingRef.current = true;
     dispatch({ type: 'SET_LOADING', payload: true });
     dispatch({ type: 'SET_ERROR', payload: null });
 
     try {
+      console.log('🔄 开始加载项目...');
       // 使用带有动态配置检测的方法
       const result = await ProjectService.getAllProjectsWithConfig();
       
       if (result.success && result.data) {
         dispatch({ type: 'SET_PROJECTS', payload: result.data });
+        
+        // 加载项目后自动检查 PM2 状态
+        console.log('🔄 项目加载完成，设置自动同步标志...');
+        shouldAutoSync.current = true;
       } else {
         dispatch({ type: 'SET_ERROR', payload: result.error || '加载项目失败' });
       }
@@ -31,6 +149,9 @@ export function useProjects() {
         type: 'SET_ERROR', 
         payload: error instanceof Error ? error.message : '加载项目时发生未知错误' 
       });
+    } finally {
+      isLoadingRef.current = false;
+      dispatch({ type: 'SET_LOADING', payload: false });
     }
   }, [dispatch]);
 
@@ -47,10 +168,12 @@ export function useProjects() {
     dispatch({ type: 'SET_ERROR', payload: null });
 
     try {
-      // 创建进度回调函数
+      // 创建进度回调函数 - 同时在控制台和Toast中显示
       const onProgress = (message: string, level: 'info' | 'warn' | 'error' | 'success' = 'info') => {
         console.log(`[导入进度] [${level.toUpperCase()}] ${message}`);
-        // 可以在这里添加更多的进度显示逻辑，比如更新UI状态
+        // 通过Toast系统向用户显示进度，将 warn 映射为 info
+        const toastType = level === 'warn' ? 'info' : level;
+        showToast(message, toastType);
       };
 
       const result = await ProjectService.importProject(projectPath, onProgress);
@@ -117,6 +240,95 @@ export function useProjects() {
     }
   }, [state.projects, dispatch, showToast]);
 
+  // 同步项目状态与PM2 - 需要在startProject和stopProject之前定义
+  const synchronizeProjectStatuses = useCallback(async () => {
+    try {
+      console.log('🔄 正在同步项目状态...');
+      
+      // 遍历所有项目，检查其实际状态
+      const updates: { id: string; status: 'running' | 'stopped' | 'error'; name: string }[] = [];
+      
+      for (const project of state.projects) {
+        console.log(`🔍 [同步状态] 检查项目: ${project.name} (ID: ${project.id})`);
+        console.log(`📊 [同步状态] 当前项目状态: ${project.status}`);
+        
+        try {
+          // 使用与PM2Service相同的进程名称生成逻辑
+          const processName = generateStableProjectId(project.name, project.path);
+          console.log(`🎯 [同步状态] 查询PM2进程: ${processName}`);
+          
+          const result = await window.electronAPI?.invoke('pm2:describe', processName);
+          console.log(`📡 [同步状态] PM2查询结果:`, {
+            success: result?.success,
+            hasStatus: !!result?.status,
+            statusDetails: result?.status ? {
+              status: result.status.status,
+              pid: result.status.pid,
+              pm_id: result.status.pm_id
+            } : null
+          });
+          
+          if (result?.success && result.status) {
+            // PM2 进程存在且运行
+            const pm2Status = result.status.status;
+            let projectStatus: 'running' | 'stopped' | 'error' = 'stopped';
+            
+            if (pm2Status === 'online') {
+              projectStatus = 'running';
+            } else if (pm2Status === 'error' || pm2Status === 'errored') {
+              projectStatus = 'error';
+            }
+            
+            console.log(`🔄 [同步状态] PM2状态映射: ${pm2Status} -> ${projectStatus}`);
+            
+            // 如果状态不一致，记录需要更新
+            if (project.status !== projectStatus) {
+              updates.push({ id: project.id, status: projectStatus, name: project.name });
+              console.log(`📝 [同步状态] 状态不一致，需要更新: ${project.status} -> ${projectStatus}`);
+            } else {
+              console.log(`✅ [同步状态] 状态一致，无需更新: ${projectStatus}`);
+            }
+          } else {
+            console.log(`❌ [同步状态] PM2进程不存在或查询失败`);
+            // PM2 进程不存在，应该标记为stopped
+            if (project.status !== 'stopped') {
+              updates.push({ id: project.id, status: 'stopped', name: project.name });
+              console.log(`📝 [同步状态] 项目 ${project.name} 未在PM2中运行，状态同步: ${project.status} -> stopped`);
+            } else {
+              console.log(`✅ [同步状态] 项目已是stopped状态，无需更新`);
+            }
+          }
+        } catch (error) {
+          console.warn(`❌ [同步状态] 检查项目 ${project.name} 状态失败:`, error);
+        }
+      }
+      
+      // 批量更新状态
+      console.log(`📊 [同步状态] 准备更新 ${updates.length} 个项目的状态`);
+      for (const update of updates) {
+        console.log(`🔄 [同步状态] 分发状态更新: ${update.name} -> ${update.status}`);
+        dispatch({
+          type: 'UPDATE_PROJECT_STATUS',
+          payload: { id: update.id, status: update.status }
+        });
+      }
+      
+      if (updates.length > 0) {
+        const statusChangeText = updates.map(u => `${u.name}: ${u.status}`).join(', ');
+        showToast(
+          `状态同步完成: 更新了 ${updates.length} 个项目状态: ${statusChangeText}`, 
+          'success'
+        );
+        console.log(`✅ [同步状态] 同步完成，更新了 ${updates.length} 个项目的状态`);
+      } else {
+        console.log('✅ [同步状态] 所有项目状态已同步，无需更新');
+      }
+    } catch (error) {
+      console.error('❌ 同步项目状态失败:', error);
+      showToast('同步项目状态失败，请稍后重试', 'error');
+    }
+  }, [state.projects, dispatch, showToast]);
+
   // 启动项目
   const startProject = useCallback(async (project: Project) => {
     try {
@@ -124,6 +336,12 @@ export function useProjects() {
       
       if (success) {
         showToast(`项目已启动: ${project.name}`, 'success');
+        
+        // 启动成功后延迟同步状态，确保PM2进程完全启动
+        setTimeout(() => {
+          console.log('🔄 项目启动成功，触发状态同步...');
+          synchronizeProjectStatuses();
+        }, 1500);
       } else {
         showToast('启动项目失败', 'error');
       }
@@ -131,7 +349,7 @@ export function useProjects() {
       const errorMessage = error instanceof Error ? error.message : '启动项目时发生未知错误';
       showToast(`启动失败: ${errorMessage}`, 'error');
     }
-  }, [runnerStartProject, showToast]);
+  }, [runnerStartProject, showToast, synchronizeProjectStatuses]);
 
   // 停止项目
   const stopProject = useCallback(async (projectId: string) => {
@@ -141,11 +359,17 @@ export function useProjects() {
     try {
       await runnerStopProject(project);
       showToast(`项目已停止: ${project.name}`, 'success');
+      
+      // 停止成功后延迟同步状态，确保PM2进程完全停止
+      setTimeout(() => {
+        console.log('🔄 项目停止成功，触发状态同步...');
+        synchronizeProjectStatuses();
+      }, 1000);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : '停止项目时发生未知错误';
       showToast(`停止失败: ${errorMessage}`, 'error');
     }
-  }, [state.projects, runnerStopProject, showToast]);
+  }, [state.projects, runnerStopProject, showToast, synchronizeProjectStatuses]);
 
   // 创建项目
   const createProject = useCallback(async (projectConfig: ProjectCreationConfig) => {
@@ -280,72 +504,6 @@ export function useProjects() {
       console.error('自动分配端口失败:', error);
     }
   }, [loadProjects, showToast]);
-
-  // 同步项目状态与PM2
-  const synchronizeProjectStatuses = useCallback(async () => {
-    try {
-      console.log('🔄 正在同步项目状态...');
-      
-      // 遍历所有项目，检查其实际状态
-      const updates: { id: string; status: 'running' | 'stopped' | 'error'; name: string }[] = [];
-      
-      for (const project of state.projects) {
-        try {
-          // 使用正确的进程名称格式 ${project.name}-${project.id}
-          const processName = `${project.name}-${project.id}`;
-          const result = await window.electronAPI?.invoke('pm2:describe', processName);
-          
-          if (result?.success && result.status) {
-            // PM2 进程存在且运行
-            const pm2Status = result.status.status;
-            let projectStatus: 'running' | 'stopped' | 'error' = 'stopped';
-            
-            if (pm2Status === 'online') {
-              projectStatus = 'running';
-            } else if (pm2Status === 'error' || pm2Status === 'errored') {
-              projectStatus = 'error';
-            }
-            
-            // 如果状态不一致，记录需要更新
-            if (project.status !== projectStatus) {
-              updates.push({ id: project.id, status: projectStatus, name: project.name });
-              console.log(`📝 项目 ${project.name} 状态同步: ${project.status} -> ${projectStatus}`);
-            }
-          } else {
-            // PM2 进程不存在，应该标记为stopped
-            if (project.status !== 'stopped') {
-              updates.push({ id: project.id, status: 'stopped', name: project.name });
-              console.log(`📝 项目 ${project.name} 未在PM2中运行，状态同步: ${project.status} -> stopped`);
-            }
-          }
-        } catch (error) {
-          console.warn(`检查项目 ${project.name} 状态失败:`, error);
-        }
-      }
-      
-      // 批量更新状态
-      for (const update of updates) {
-        dispatch({
-          type: 'UPDATE_PROJECT_STATUS',
-          payload: { id: update.id, status: update.status }
-        });
-      }
-      
-      if (updates.length > 0) {
-        const statusChangeText = updates.map(u => `${u.name}: ${u.status}`).join(', ');
-        showToast(
-          `状态同步完成: 更新了 ${updates.length} 个项目状态: ${statusChangeText}`, 
-          'success'
-        );
-        console.log(`✅ 同步完成，更新了 ${updates.length} 个项目的状态`);
-      } else {
-        console.log('✅ 所有项目状态已同步');
-      }
-    } catch (error) {
-      console.error('❌ 同步项目状态失败:', error);
-      showToast('同步项目状态失败，请稍后重试', 'error');
-    }
-  }, [state.projects, dispatch, showToast]);
 
   // 更新项目信息
   const updateProject = useCallback(async (projectId: string, updates: Partial<Project>) => {

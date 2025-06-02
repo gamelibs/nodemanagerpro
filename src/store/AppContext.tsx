@@ -62,13 +62,23 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, activeProject: action.payload };
     
     case 'UPDATE_PROJECT_STATUS':
+      console.log(`🔄 [Reducer] 更新项目状态:`, {
+        projectId: action.payload.id,
+        newStatus: action.payload.status,
+        timestamp: new Date().toISOString()
+      });
+      
+      const updatedProjects = state.projects.map(p => {
+        if (p.id === action.payload.id) {
+          console.log(`📝 [Reducer] 项目 "${p.name}" 状态更新: ${p.status} -> ${action.payload.status}`);
+          return { ...p, status: action.payload.status };
+        }
+        return p;
+      });
+      
       return {
         ...state,
-        projects: state.projects.map(p =>
-          p.id === action.payload.id 
-            ? { ...p, status: action.payload.status }
-            : p
-        )
+        projects: updatedProjects
       };
     
     case 'START_LOG_SESSION':

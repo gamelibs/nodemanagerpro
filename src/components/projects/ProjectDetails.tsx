@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useToastContext } from '../../store/ToastContext';
 import type { Project } from '../../types';
 import type { PM2Process } from '../../services/PM2Service';
 
@@ -24,7 +25,6 @@ interface ProjectDetailsProps {
   onStopProject: () => void;
   onRestartProject: () => void;
   onRefreshLogs: () => void;
-  showToast: (message: string, type: 'success' | 'error' | 'info') => void;
 }
 
 export function ProjectDetails({
@@ -49,11 +49,13 @@ export function ProjectDetails({
   onStopProject,
   onRestartProject,
   onRefreshLogs,
-  showToast,
 }: ProjectDetailsProps) {
   // 端口编辑状态
   const [isEditingPort, setIsEditingPort] = useState(false);
   const [tempPort, setTempPort] = useState<string>('');
+
+  // 使用全局 Toast 系统
+  const { showToast } = useToastContext();
 
   // 检查项目是否可以启动
   const canStartProject = () => {
@@ -247,8 +249,8 @@ export function ProjectDetails({
                           </button>
                         </>
                       ) : (
-                        <span className="text-xs theme-text-muted italic">
-                          未设置端口
+                        <span className="text-xs theme-text-muted italic flex items-center gap-1">
+                          ⏳ 端口检测中
                         </span>
                       )}
                     </div>
@@ -282,7 +284,9 @@ export function ProjectDetails({
                       <div className="flex items-center gap-1">
                         <span className="theme-text-muted text-xs">端口:</span>
                         <span className="theme-text-primary text-xs">
-                          {projectPort || project?.port || '未设置'}
+                          {projectPort || project?.port || (
+                            <span className="theme-text-muted italic">检测中</span>
+                          )}
                         </span>
                         <button
                           onClick={handlePortEditStart}
@@ -348,9 +352,21 @@ export function ProjectDetails({
                    (pm2Status.status === 'launching' || pm2Status.pm2_env?.status === 'launching') ? '🟡 启动中' :
                    (pm2Status.status === 'stopping' || pm2Status.pm2_env?.status === 'stopping') ? '🟠 停止中' : '🔴 错误'}
                 </span>
+              ) : project?.status ? (
+                <span className={`px-2 py-1 rounded text-xs font-medium ${
+                  project.status === 'running'
+                    ? 'bg-green-100 text-green-800 dark:bg-green-800/20 dark:text-green-300'
+                    : project.status === 'stopped'
+                    ? 'bg-gray-100 text-gray-800 dark:bg-gray-800/50 dark:text-gray-300'
+                    : 'bg-red-100 text-red-800 dark:bg-red-800/20 dark:text-red-300'
+                }`}>
+                  {project.status === 'running' ? '🟢 运行中' : 
+                   project.status === 'stopped' ? '⚪ 已停止' : 
+                   '🔴 错误'}
+                </span>
               ) : (
-                <span className="px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-800/50 dark:text-gray-300">
-                  ⚫ 未运行
+                <span className="px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-800/50 dark:text-gray-300 flex items-center gap-1">
+                  <span className="animate-pulse">⏳</span> 状态检测中
                 </span>
               )}
             </div>

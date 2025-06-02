@@ -37,8 +37,8 @@ export class ProjectConfigService {
         scripts,
         port,
         description,
-        version,
-        // 状态将通过PM2服务动态获取，这里不设置
+        version
+        // 不再强制设置 status，让UI层处理显示逻辑
       };
 
       console.log(`✅ 项目配置检测完成: ${coreProject.name}`, {
@@ -59,6 +59,7 @@ export class ProjectConfigService {
         type: 'other',
         packageManager: 'npm',
         scripts: []
+        // 不再强制设置默认 status
       };
     }
   }
@@ -118,7 +119,7 @@ export class ProjectConfigService {
         const npmScripts = packageJson.scripts || {};
 
         // 转换npm脚本为ProjectScript格式
-        for (const [name, command] of Object.entries(npmScripts)) {
+        for (const [name, _command] of Object.entries(npmScripts)) {
           scripts.push({
             name,
             command: `${packageManager} run ${name}`,

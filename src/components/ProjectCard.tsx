@@ -70,6 +70,16 @@ export default function ProjectCard({ project, onOpenSettings }: ProjectCardProp
   };
 
   const getStatusDisplay = (status: Project['status']) => {
+    // 处理 undefined 或 null 状态的占位逻辑
+    if (!status) {
+      return {
+        text: '检测中',
+        color: 'theme-bg-tertiary',
+        textColor: 'theme-text-secondary',
+        icon: '⏳'
+      };
+    }
+    
     switch (status) {
       case 'running':
         return {
@@ -161,12 +171,10 @@ export default function ProjectCard({ project, onOpenSettings }: ProjectCardProp
             <span className="text-xs">🕒</span>
             <span>最后打开: {formatLastOpened(project.lastOpened)}</span>
           </p>
-          {project.port && (
-            <p className="flex items-center space-x-2">
-              <span className="text-xs">🌐</span>
-              <span>:{project.port}</span>
-            </p>
-          )}
+          <p className="flex items-center space-x-2">
+            <span className="text-xs">🌐</span>
+            <span>{project.port ? `:${project.port}` : '端口检测中'}</span>
+          </p>
         </div>
         {project.description && (
           <p className="flex items-center space-x-2">

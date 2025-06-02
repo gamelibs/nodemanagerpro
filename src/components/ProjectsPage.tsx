@@ -58,6 +58,8 @@ export default function ProjectsPage({
     installDependencies
   } = useProjectOperations();
 
+  // 项目状态同步 - 已移除手动同步调用，使用自动同步机制
+
   // 当选择的项目改变时，获取项目数据
   useEffect(() => {
     if (selectedProject) {
@@ -90,6 +92,7 @@ export default function ProjectsPage({
         setTimeout(() => {
           fetchPM2Logs(selectedProject);
         }, 2000);
+        // 状态同步已在useProjects hook中自动处理，无需重复调用
       }
     }
   };
@@ -101,6 +104,7 @@ export default function ProjectsPage({
         showToast(`项目 ${selectedProject.name} 已停止`, 'success');
         // 刷新PM2状态
         refreshPM2Status(selectedProject);
+        // 状态同步已在useProjects hook中自动处理，无需重复调用
       }
     }
   };
@@ -112,6 +116,7 @@ export default function ProjectsPage({
         showToast(`项目 ${selectedProject.name} 重启成功`, 'success');
         // 刷新PM2状态
         refreshPM2Status(selectedProject);
+        // 状态同步已在useProjects hook中自动处理，无需重复调用
       }
     }
   };
@@ -235,9 +240,15 @@ export default function ProjectsPage({
   };
 
   // 项目选择处理（界面协调）
-  const handleSelectProject = (project: Project) => {
+  const handleSelectProject = async (project: Project) => {
+    console.log(`🎯 选择项目: ${project.name} (ID: ${project.id})`);
+    console.log('📊 当前项目状态:', project.status);
+    
     setSelectedProject(project);
     showToast(`已选择项目: ${project.name}`, 'info');
+    
+    // 项目选择时不需要手动同步状态，自动同步机制会处理
+    // 只需要获取项目的详细数据
   };
 
   // 项目设置模态框处理（界面协调）
@@ -319,7 +330,6 @@ export default function ProjectsPage({
                       fetchPM2Logs(selectedProject);
                     }
                   }}
-                  showToast={showToast}
                 />
               </div>
             ) : (

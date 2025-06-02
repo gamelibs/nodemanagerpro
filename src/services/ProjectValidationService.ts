@@ -1,6 +1,37 @@
 import type { Project } from '../types';
 import { PM2Service } from './PM2Service';
 
+// 从PM2Service复制的进程名称生成逻辑
+function generateStableProjectId(projectName: string, projectPath: string): string {
+  // 组合名称和路径，使用分隔符确保不会混淆
+  const combined = `${projectName}|${projectPath}`;
+  
+  // 使用哈希来确保唯一性，而不是简单去除字符
+  let hash = 0;
+  for (let i = 0; i < combined.length; i++) {
+    const char = combined.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // 转换为32位整数
+  }
+  
+  // 确保哈希为正数
+  const positiveHash = Math.abs(hash);
+  
+  // 转换为Base36字符串（包含数字和字母）
+  const hashString = positiveHash.toString(36);
+  
+  // 结合项目名的前几个字符（清理后）+ 哈希
+  const cleanName = projectName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 6);
+  const stableId = `${cleanName}${hashString}`.substring(0, 16);
+  
+  // 确保至少有8个字符，不足的用哈希补充
+  if (stableId.length < 8) {
+    return (stableId + hashString + '00000000').substring(0, 16);
+  }
+  
+  return stableId;
+}
+
 /**
  * 项目验证和配置获取服务
  * 封装项目配置获取和PM2运行状态检查的通用方法
@@ -128,7 +159,8 @@ export class ProjectValidationService {
       }
 
       const processes = processListResult.processes || [];
-      const expectedProcessName = `${project.name}-${project.id}`;
+      // 使用与PM2Service相同的进程名称生成逻辑
+      const expectedProcessName = generateStableProjectId(project.name, project.path);
       
       onProgress?.(`🎯 正在查找进程: ${expectedProcessName}`, 'info');
       

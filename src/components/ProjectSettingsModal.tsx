@@ -3,6 +3,37 @@ import type { Project } from '../types';
 import { RendererFileSystemService } from '../services/RendererFileSystemService';
 import { useProjects } from '../hooks/useProjects';
 
+// 从PM2Service复制的进程名称生成逻辑
+function generateStableProjectId(projectName: string, projectPath: string): string {
+  // 组合名称和路径，使用分隔符确保不会混淆
+  const combined = `${projectName}|${projectPath}`;
+  
+  // 使用哈希来确保唯一性，而不是简单去除字符
+  let hash = 0;
+  for (let i = 0; i < combined.length; i++) {
+    const char = combined.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // 转换为32位整数
+  }
+  
+  // 确保哈希为正数
+  const positiveHash = Math.abs(hash);
+  
+  // 转换为Base36字符串（包含数字和字母）
+  const hashString = positiveHash.toString(36);
+  
+  // 结合项目名的前几个字符（清理后）+ 哈希
+  const cleanName = projectName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 6);
+  const stableId = `${cleanName}${hashString}`.substring(0, 16);
+  
+  // 确保至少有8个字符，不足的用哈希补充
+  if (stableId.length < 8) {
+    return (stableId + hashString + '00000000').substring(0, 16);
+  }
+  
+  return stableId;
+}
+
 interface ProjectSettingsModalProps {
   project: Project;
   isOpen: boolean;
@@ -85,7 +116,9 @@ const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
   const loadPM2Data = async () => {
     try {
       if (window.electronAPI) {
-        const result = await window.electronAPI.invoke('pm2:describe', project.id);
+        // 使用与PM2Service相同的进程名称生成逻辑
+        const processName = generateStableProjectId(project.name, project.path);
+        const result = await window.electronAPI.invoke('pm2:describe', processName);
         if (result.success && result.data) {
           setPM2Data(result.data);
         } else {

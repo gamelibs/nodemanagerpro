@@ -11,8 +11,17 @@ initI18n('zh');
 
 // 🤖 自动日志监控系统
 function initAutoLogMonitoring() {
+  // 防止重复初始化
+  if ((window as any).logCollectorInitialized) {
+    console.log('⚠️ 日志监控已初始化，跳过重复初始化');
+    return;
+  }
+  
   if (typeof window !== 'undefined') {
     console.log('🤖 初始化自动日志监控...');
+    
+    // 标记已初始化
+    (window as any).logCollectorInitialized = true;
     
     // 创建日志收集器
     (window as any).logCollector = {
@@ -85,12 +94,23 @@ function initAutoLogMonitoring() {
 // 初始化监控
 initAutoLogMonitoring();
 
+// 根据开发/生产环境决定是否使用 StrictMode
+const isDevelopment = import.meta.env.MODE === 'development';
+
+const AppComponent = (
+  <AppProvider>
+    <ToastProvider>
+      <App />
+    </ToastProvider>
+  </AppProvider>
+);
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <AppProvider>
-      <ToastProvider>
-        <App />
-      </ToastProvider>
-    </AppProvider>
-  </React.StrictMode>,
-)
+  isDevelopment ? (
+    <React.StrictMode>
+      {AppComponent}
+    </React.StrictMode>
+  ) : (
+    AppComponent
+  )
+);

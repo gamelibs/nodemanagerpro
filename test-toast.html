@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toast Queue Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        
+        .test-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        .button:hover {
+            background: #0056b3;
+        }
+        
+        .button.success { background: #28a745; }
+        .button.error { background: #dc3545; }
+        .button.info { background: #17a2b8; }
+        
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            z-index: 1000;
+            min-width: 300px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .toast.success { background: #28a745; }
+        .toast.error { background: #dc3545; }
+        .toast.info { background: #17a2b8; }
+        
+        .toast.entering {
+            animation: toastEnter 0.3s ease-out forwards;
+        }
+        
+        .toast.exiting {
+            animation: toastExit 0.3s ease-in forwards;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+        
+        @keyframes toastEnter {
+            from {
+                opacity: 0;
+                transform: translateY(100%) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        @keyframes toastExit {
+            from {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+            to {
+                opacity: 0;
+                transform: translateY(-100%) scale(0.9);
+            }
+        }
+        
+        .info {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e9ecef;
+            border-radius: 5px;
+        }
+        
+        .queue-info {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Toast 队列和动画测试</h1>
+        <p>点击按钮测试Toast消息队列功能。每条消息会等待上一条结束后再显示，并包含向上淡出动画。</p>
+        
+        <div>
+            <button class="button success" onclick="showToast('操作成功完成！', 'success')">成功消息</button>
+            <button class="button error" onclick="showToast('发生了一个错误！', 'error')">错误消息</button>
+            <button class="button info" onclick="showToast('这是一条信息提示', 'info')">信息消息</button>
+        </div>
+        
+        <div>
+            <button class="button" onclick="showMultipleToasts()">连续显示多条消息</button>
+            <button class="button" onclick="clearAllToasts()">清除所有消息</button>
+        </div>
+        
+        <div class="info">
+            <h3>预期行为：</h3>
+            <ul>
+                <li>每条Toast消息显示3秒</li>
+                <li>多条消息会排队，等待上一条结束后再显示</li>
+                <li>进入时从下方滑入并缩放</li>
+                <li>退出时向上滑出并缩放</li>
+                <li>消息之间有短暂间隔</li>
+            </ul>
+            
+            <div class="queue-info">
+                当前队列长度: <span id="queueLength">0</span><br>
+                当前显示: <span id="currentToast">无</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 模拟Toast队列系统
+        let currentToast = null;
+        let toastQueue = [];
+        let processing = false;
+
+        function updateQueueInfo() {
+            document.getElementById('queueLength').textContent = toastQueue.length;
+            document.getElementById('currentToast').textContent = currentToast ? currentToast.message : '无';
+        }
+
+        function processNextToast() {
+            if (processing || toastQueue.length === 0) return;
+            
+            processing = true;
+            const nextToast = toastQueue.shift();
+            currentToast = nextToast;
+            
+            // 创建Toast元素
+            const toastEl = document.createElement('div');
+            toastEl.className = `toast ${nextToast.type} entering`;
+            toastEl.innerHTML = `
+                <span>${nextToast.message}</span>
+                <button class="close-btn" onclick="hideCurrentToast()">✕</button>
+            `;
+            
+            document.body.appendChild(toastEl);
+            updateQueueInfo();
+            
+            // 3秒后开始退出
+            setTimeout(() => {
+                toastEl.className = `toast ${nextToast.type} exiting`;
+                
+                // 退出动画完成后清理
+                setTimeout(() => {
+                    document.body.removeChild(toastEl);
+                    currentToast = null;
+                    processing = false;
+                    updateQueueInfo();
+                    
+                    // 短暂延迟后处理下一个
+                    setTimeout(processNextToast, 200);
+                }, 300);
+            }, 3000);
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = {
+                id: Date.now() + Math.random(),
+                message,
+                type
+            };
+            
+            toastQueue.push(toast);
+            updateQueueInfo();
+            
+            if (!processing) {
+                setTimeout(processNextToast, 0);
+            }
+        }
+
+        function hideCurrentToast() {
+            const toastEl = document.querySelector('.toast');
+            if (toastEl) {
+                toastEl.className = toastEl.className.replace('entering', 'exiting');
+                
+                setTimeout(() => {
+                    if (document.body.contains(toastEl)) {
+                        document.body.removeChild(toastEl);
+                    }
+                    currentToast = null;
+                    processing = false;
+                    updateQueueInfo();
+                    setTimeout(processNextToast, 200);
+                }, 300);
+            }
+        }
+
+        function showMultipleToasts() {
+            showToast('第一条消息', 'info');
+            showToast('第二条消息', 'success');
+            showToast('第三条消息', 'error');
+            showToast('第四条消息', 'info');
+        }
+
+        function clearAllToasts() {
+            toastQueue = [];
+            currentToast = null;
+            processing = false;
+            
+            const toastEl = document.querySelector('.toast');
+            if (toastEl) {
+                document.body.removeChild(toastEl);
+            }
+            
+            updateQueueInfo();
+        }
+
+        // 初始化显示
+        updateQueueInfo();
+    </script>
+</body>
+</html>

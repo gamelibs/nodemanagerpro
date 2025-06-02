@@ -1,13 +1,12 @@
 import { useState, useCallback } from 'react';
 import { PM2Service } from '../../services/PM2Service';
+import { useToastContext } from '../../store/ToastContext';
 import type { Project } from '../../types';
 
 export interface UseProjectOperationsReturn {
   isInstallingDependencies: boolean;
   isEditingPort: boolean;
   tempPort: string;
-  toastMessage: string;
-  toastType: 'success' | 'error' | 'info';
   startProject: (project: Project) => Promise<boolean>;
   stopProject: (project: Project) => Promise<boolean>;
   restartProject: (project: Project) => Promise<boolean>;
@@ -15,35 +14,20 @@ export interface UseProjectOperationsReturn {
   saveProjectPort: (project: Project, newPort: number) => Promise<boolean>;
   setIsEditingPort: (editing: boolean) => void;
   setTempPort: (port: string) => void;
-  showToast: (message: string, type: 'success' | 'error' | 'info') => void;
-  clearToast: () => void;
 }
 
-// 生成PM2进程名称的辅助函数
+// 生成PM2进程名称的辅助函数 - 使用稳定ID
 const generateProcessName = (project: Project) => {
-  return `${project.name}-${project.id}`;
+  return PM2Service.generateStableProjectId(project.name, project.path);
 };
 
 export const useProjectOperations = (): UseProjectOperationsReturn => {
   const [isInstallingDependencies, setIsInstallingDependencies] = useState(false);
   const [isEditingPort, setIsEditingPort] = useState(false);
   const [tempPort, setTempPort] = useState<string>('');
-  const [toastMessage, setToastMessage] = useState<string>('');
-  const [toastType, setToastType] = useState<'success' | 'error' | 'info'>('info');
-
-  // 显示提示信息
-  const showToast = useCallback((message: string, type: 'success' | 'error' | 'info') => {
-    setToastMessage(message);
-    setToastType(type);
-    setTimeout(() => {
-      setToastMessage('');
-    }, 3000);
-  }, []);
-
-  // 清除提示信息
-  const clearToast = useCallback(() => {
-    setToastMessage('');
-  }, []);
+  
+  // 使用全局Toast系统
+  const { showToast } = useToastContext();
 
   // 启动项目
   const startProject = useCallback(async (project: Project): Promise<boolean> => {
@@ -198,16 +182,12 @@ export const useProjectOperations = (): UseProjectOperationsReturn => {
     isInstallingDependencies,
     isEditingPort,
     tempPort,
-    toastMessage,
-    toastType,
     startProject,
     stopProject,
     restartProject,
     installDependencies,
     saveProjectPort,
     setIsEditingPort,
-    setTempPort,
-    showToast,
-    clearToast
+    setTempPort
   };
 };
