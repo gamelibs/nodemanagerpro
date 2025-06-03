@@ -22,14 +22,15 @@ export class RendererFileSystemService {
      */
     static checkElectronEnvironment(): boolean {
         const result = typeof window !== "undefined" && window.electronAPI !== undefined;
-        console.log("🔍 检查Electron环境:", result);
         if (!result) {
             console.warn("⚠️ window.electronAPI 不可用");
             console.log("window对象:", typeof window);
             console.log("window.electronAPI:", window.electronAPI);
         }
-        const timestamp = Date.now();
-        console.log(`🔍 检查Electron环境: ${result} [时间戳: ${timestamp}]`);
+        // // 显示调用栈的前几层,调试使用
+        // const stack = new Error().stack;
+        // const callerLines = stack?.split("\n").slice(1, 4); // 获取前3层调用
+        // console.log("📍 调用来源:", callerLines);
         return result;
     }
     /**
