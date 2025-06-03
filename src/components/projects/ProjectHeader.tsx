@@ -38,8 +38,9 @@ export const ProjectHeader: React.FC<ProjectHeaderProps> = () => {
   const handleSyncStatus = async () => {
     setIsSyncing(true);
     try {
+      console.log('手动同步项目状态...');
       showToast('正在同步项目状态...', 'info');
-      await synchronizeProjectStatuses();
+      await synchronizeProjectStatuses(true);
     } catch (error) {
       console.error('手动同步项目状态失败:', error);
       showToast('同步项目状态失败', 'error');

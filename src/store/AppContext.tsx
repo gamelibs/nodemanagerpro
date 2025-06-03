@@ -3,6 +3,7 @@ import type { AppState, AppAction, AppSettings } from '../types';
 import { SettingsService } from '../services/SettingsService';
 import { I18nService } from '../services/i18n';
 
+
 // 初始状态
 const initialState: AppState = {
   projects: [],
@@ -14,6 +15,7 @@ const initialState: AppState = {
 
 // Reducer
 function appReducer(state: AppState, action: AppAction): AppState {
+
   switch (action.type) {
     case 'SET_PROJECTS':
       return { ...state, projects: action.payload, isLoading: false };
@@ -62,15 +64,8 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, activeProject: action.payload };
 
     case 'UPDATE_PROJECT_STATUS':
-      console.log(`🔄 [Reducer] 更新项目状态:`, {
-        projectId: action.payload.id,
-        newStatus: action.payload.status,
-        timestamp: new Date().toISOString()
-      });
-
       const updatedProjects = state.projects.map(p => {
         if (p.id === action.payload.id) {
-          console.log(`📝 [Reducer] 项目 "${p.name}" 状态更新: ${p.status} -> ${action.payload.status}`);
           return { ...p, status: action.payload.status };
         }
         return p;
@@ -158,9 +153,15 @@ export interface AppContextValue {
     t: (key: string) => string;
     language: 'zh' | 'en';
   };
+  // 🔧 添加项目操作
+  projects: {
+    triggerSync: (manual?: boolean) => void;
+  };
+
 }
 
 export const AppContext = createContext<AppContextValue | undefined>(undefined);
+
 
 // Provider 组件
 export function AppProvider({ children }: { children: ReactNode }) {
@@ -168,6 +169,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [activeTab, setActiveTab] = useState<'settings' | 'projects'>('projects');
   const [currentSettings, setCurrentSettings] = useState<AppSettings | null>(null);
   const [currentLanguage, setCurrentLanguage] = useState<'zh' | 'en'>('zh');
+
 
   // 使用 useRef 追踪初始化状态 - 防止严格模式重复执行
   const initializationRef = useRef({
@@ -279,6 +281,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const triggerSync = (manual: boolean = false) => {
+    // Add your sync logic here
+    console.log('Sync triggered', manual);
+  };
+
   const contextValue: AppContextValue = {
     state,
     dispatch,
@@ -294,6 +301,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     i18n: {
       t: (key: string) => I18nService.t(key as any),
       language: currentLanguage
+    },
+    projects: {
+      triggerSync
     }
   };
 

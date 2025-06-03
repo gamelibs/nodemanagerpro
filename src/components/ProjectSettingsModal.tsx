@@ -73,7 +73,7 @@ const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
   const [stoppingProject, setStoppingProject] = useState(false);
   
   // Import project management functions
-  const { startProject, stopProject, synchronizeProjectStatuses } = useProjects();
+  const {  synchronizeProjectStatuses } = useProjects();//startProject, stopProject,
 
   // Load package info when dependencies tab is opened
   useEffect(() => {
@@ -246,7 +246,7 @@ const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
   const handleStartProject = async () => {
     setStartingProject(true);
     try {
-      await startProject(project);
+      // await startProject(project);
       await loadPM2Data(); // 重新加载数据
       await synchronizeProjectStatuses(); // 同步状态
     } catch (error) {
@@ -259,7 +259,7 @@ const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
   const handleStopProject = async () => {
     setStoppingProject(true);
     try {
-      await stopProject(project.id);
+      // await stopProject(project.id);
       await loadPM2Data(); // 重新加载数据
       await synchronizeProjectStatuses(); // 同步状态
     } catch (error) {

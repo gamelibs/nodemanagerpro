@@ -303,7 +303,7 @@ export class SettingsService {
         try {
             // 强制重新加载，清除缓存（临时修复）
             this.cachedSettings = null;
-            console.log("加载设置...");
+            
             // 检查是否在Electron环境中
             if (RendererFileSystemService.isInElectron()) {
                 const result = await window.electronAPI!.invoke("settings:load");
@@ -344,7 +344,7 @@ export class SettingsService {
         try {
             // 更新缓存
             this.cachedSettings = settings;
-            console.log("保存设置");
+            
             // 检查是否在Electron环境中
             if (RendererFileSystemService.isInElectron()) {
                 const result = await window.electronAPI!.invoke("settings:save", settings);
