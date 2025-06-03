@@ -10,10 +10,19 @@ export interface ToastState {
   isExiting: boolean;
 }
 
+export interface ToastWinState {
+  title: string;
+  message: string;
+  suggestions?: string[];
+  type: ToastType;
+  id: string;
+  isVisible: boolean;
+}
 
 export const useToast = () => {
   const [currentToast, setCurrentToast] = useState<ToastState | null>(null);
   const [toastQueue, setToastQueue] = useState<ToastState[]>([]);
+  const [currentToastWin, setCurrentToastWin] = useState<ToastWinState | null>(null);
   const processingRef = useRef(false);
 
   // 处理队列中的下一个Toast
@@ -105,6 +114,30 @@ export const useToast = () => {
     processingRef.current = false;
   }, []);
 
+  // ToastWin 相关功能
+  const showToastWin = useCallback((
+    title: string, 
+    message: string, 
+    suggestions: string[] = [], 
+    type: ToastType = 'info'
+  ) => {
+    const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const newToastWin: ToastWinState = { 
+      title,
+      message, 
+      suggestions,
+      type, 
+      id, 
+      isVisible: true
+    };
+    
+    setCurrentToastWin(newToastWin);
+  }, []);
+
+  const hideToastWin = useCallback(() => {
+    setCurrentToastWin(null);
+  }, []);
+
   // 为了兼容现有的ToastContainer组件，返回当前Toast作为数组
   const visibleToasts = currentToast ? [currentToast] : [];
 
@@ -114,6 +147,10 @@ export const useToast = () => {
     hideToast,
     clearAllToasts,
     currentToast,
-    queueLength: toastQueue.length
+    queueLength: toastQueue.length,
+    // ToastWin 相关
+    currentToastWin,
+    showToastWin,
+    hideToastWin
   };
 };

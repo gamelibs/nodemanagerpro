@@ -40,7 +40,12 @@ export class ProjectService {
   // 导入项目 - 现在包含完整验证和PM2状态同步
   static async importProject(
     projectPath: string, 
-    onProgress?: (message: string, level?: 'info' | 'warn' | 'error' | 'success') => void
+    onProgress?: (message: string, level?: 'info' | 'warn' | 'error' | 'success') => void,
+    portInfo?: {
+      configuredPorts: number[];
+      defaultPort?: number;
+      hasPortConfig: boolean;
+    }
   ): Promise<FileSystemResult> {
     try {
       
@@ -79,7 +84,8 @@ export class ProjectService {
         lastOpened: new Date(),
         // 根据PM2同步结果设置初始状态
         status: pm2SyncResult.exists ? pm2SyncResult.status || 'stopped' : 'stopped',
-        port: projectAnalysis.port || undefined, // 保存检测到的端口
+        // 🔧 优先使用传入的端口信息，如果没有则使用项目分析结果
+        port: portInfo?.defaultPort || projectAnalysis.port || undefined,
         // 动态检测的信息
         type: projectAnalysis.type,
         packageManager: projectAnalysis.packageManager as 'npm' | 'yarn' | 'pnpm',
@@ -96,10 +102,13 @@ export class ProjectService {
         console.warn('⚠️ 项目验证失败，但继续导入:', validationResult.error);
       }
 
-      // 记录检测到的项目信息
-      if (projectAnalysis.port !== null) {
+      // 🔧 记录端口信息（优先显示实际有效端口）
+      if (portInfo?.defaultPort) {
+        onProgress?.(`✅ 检测到实际有效端口: ${portInfo.defaultPort}`, 'success');
+        console.log(`✅ 检测到实际有效端口: ${portInfo.defaultPort} (来源: PortDetectionService)`);
+      } else if (projectAnalysis.port !== null) {
         onProgress?.(`✅ 检测到项目端口: ${projectAnalysis.port}`, 'success');
-        console.log(`✅ 检测到项目端口: ${projectAnalysis.port} (不保存，仅用于显示)`);
+        console.log(`✅ 检测到项目端口: ${projectAnalysis.port} (来源: 项目分析)`);
       } else {
         onProgress?.('⚠️ 未检测到端口配置', 'warn');
         console.log(`⚠️ 未检测到端口配置`);

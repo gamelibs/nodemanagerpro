@@ -170,6 +170,16 @@ export const useProjectData = (): UseProjectDataReturn => {
     // 读取项目端口配置
     const refreshProjectPort = useCallback(async (project: Project): Promise<number | null> => {
         try {
+            // 🔧 优先使用项目记录中的端口（应该是通过PortDetectionService检测到的实际有效端口）
+            if (project.port) {
+                console.log(`📋 使用项目记录中的端口: ${project.port}`);
+                setProjectPort(project.port);
+                return project.port;
+            }
+
+            // 如果项目记录中没有端口，才从配置文件读取（向后兼容）
+            console.log("🔍 项目记录中无端口信息，从配置文件检测...");
+
             // 尝试从 .env 文件读取端口
             const envPath = `${project.path}/.env`;
             try {
@@ -178,6 +188,7 @@ export const useProjectData = (): UseProjectDataReturn => {
                     const portMatch = result.content.match(/PORT\s*=\s*(\d+)/);
                     if (portMatch) {
                         const port = parseInt(portMatch[1]);
+                        console.log(`🔌 从 .env 文件检测到端口: ${port}`);
                         setProjectPort(port);
                         return port;
                     }
@@ -211,18 +222,19 @@ export const useProjectData = (): UseProjectDataReturn => {
                 const portMatch = configContent.match(/port:\s*(\d+)/);
                 if (portMatch) {
                     const port = parseInt(portMatch[1]);
+                    console.log(`🔌 从 Vite 配置文件检测到端口: ${port}`);
                     setProjectPort(port);
                     return port;
                 }
             }
 
-            // 返回项目记录中的端口或默认端口
-            const port = project.port || 3000;
-            setProjectPort(port);
-            return port;
+            // 如果都没有检测到，返回null（而不是默认3000）
+            console.log("⚠️ 未检测到端口配置");
+            setProjectPort(null);
+            return null;
         } catch (error) {
             console.error("读取项目端口失败:", error);
-            const port = project.port || 3000;
+            const port = project.port || null;
             setProjectPort(port);
             return port;
         }

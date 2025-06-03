@@ -50,11 +50,33 @@ module.exports = {
             opacity: '0', 
             transform: 'translateY(-100%) scale(0.9)' 
           }
+        },
+        'modal-enter': {
+          '0%': { 
+            opacity: '0', 
+            transform: 'scale(0.9) translateY(-10px)' 
+          },
+          '100%': { 
+            opacity: '1', 
+            transform: 'scale(1) translateY(0)' 
+          }
+        },
+        'modal-exit': {
+          '0%': { 
+            opacity: '1', 
+            transform: 'scale(1) translateY(0)' 
+          },
+          '100%': { 
+            opacity: '0', 
+            transform: 'scale(0.9) translateY(-10px)' 
+          }
         }
       },
       animation: {
         'toast-enter': 'toast-enter 0.15s ease-out forwards', // 更快的进入动画
-        'toast-exit': 'toast-exit 0.15s ease-in forwards'     // 更快的退出动画
+        'toast-exit': 'toast-exit 0.15s ease-in forwards',     // 更快的退出动画
+        'modal-enter': 'modal-enter 0.2s ease-out forwards',
+        'modal-exit': 'modal-exit 0.15s ease-in forwards'
       }
     }
   },

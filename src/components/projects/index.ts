@@ -11,8 +11,9 @@ export { ProjectActions } from './ProjectActions';
 export { DependencyStatus } from './DependencyStatus';
 export { Toast } from './Toast';
 export { ToastContainer } from './ToastContainer';
+export { ToastWin } from './ToastWin';
 
 // Types
 export type { UseProjectDataReturn } from './useProjectData';
 export type { UseProjectOperationsReturn } from './useProjectOperations';
-export type { ToastState } from './useToast';
+export type { ToastState, ToastWinState } from './useToast';

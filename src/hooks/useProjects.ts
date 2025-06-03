@@ -5,12 +5,11 @@ import { ProjectService } from "../services/ProjectService";
 import { useLogs } from "./useLogs";
 import type { Project, ProjectCreationConfig } from "../types";
 import { ProjectStatusService } from "../services/ProjectStatusService";
-
-
+import { PortDetectionService } from "../services/PortDetectionService";
 
 export function useProjects() {
     const { state, dispatch } = useApp();
-    const { showToast } = useToastContext();
+    const { showToast, showToastWin } = useToastContext();
     const { startLogSession, endLogSession, addLog } = useLogs();
     // const { startProject: runnerStartProject, stopProject: runnerStopProject } = usePM2ProjectRunner();
 
@@ -59,6 +58,62 @@ export function useProjects() {
     }, [dispatch]);
 
     // 导入项目 - 支持进度回调
+    // const importProject = useCallback(
+    //     async (projectPath?: string) => {
+    //         // 如果没有提供路径，显示文件选择器
+    //         if (!projectPath) {
+    //             const selectedPath = await showDirectoryPicker();
+    //             if (!selectedPath) return;
+    //             projectPath = selectedPath;
+    //         }
+
+    //         dispatch({ type: "SET_LOADING", payload: true });
+    //         dispatch({ type: "SET_ERROR", payload: null });
+
+    //         try {
+    //             // 创建进度回调函数 - 同时在控制台和Toast中显示
+    //             const onProgress = (message: string, level: "info" | "warn" | "error" | "success" = "info") => {
+    //                 console.log(`[导入进度] [${level.toUpperCase()}] ${message}`);
+    //                 // 通过Toast系统向用户显示进度，将 warn 映射为 info
+    //                 const toastType = level === "warn" ? "info" : level;
+    //                 showToast(message, toastType);
+    //             };
+
+    //                const result = await ProjectService.importProject(projectPath, onProgress, portInfo);
+
+    //             if (result.success && result.data) {
+    //                 dispatch({ type: "ADD_PROJECT", payload: result.data });
+
+    //                 // 显示成功通知
+    //                 showToast(`项目导入成功: ${result.data.name}`, "success");
+
+    //                 // 🔄 触发项目导入后的自动同步
+    //                 console.log("🔄 项目导入成功，开始自动同步PM2状态...");
+    //                 onProgress("🔄 正在同步PM2状态...", "info");
+
+    //                 // 设置自动同步标志，触发PM2状态检查
+    //                 shouldAutoSync.current = true;
+
+    //                 // 延迟一小段时间后进行状态同步，确保项目已添加到列表中
+    //                 setTimeout(() => {
+    //                     console.log("🔄 开始导入后PM2状态同步...");
+    //                 }, 500);
+    //             } else {
+    //                 const errorMsg = result.error || "导入项目失败";
+    //                 dispatch({ type: "SET_ERROR", payload: errorMsg });
+    //                 showToast(`导入失败: ${errorMsg}`, "error");
+    //             }
+    //         } catch (error) {
+    //             const errorMessage = error instanceof Error ? error.message : "导入项目时发生未知错误";
+    //             dispatch({ type: "SET_ERROR", payload: errorMessage });
+    //             showToast(`导入失败: ${errorMessage}`, "error");
+    //         } finally {
+    //             dispatch({ type: "SET_LOADING", payload: false });
+    //         }
+    //     },
+    //     [dispatch, showToast]
+    // );
+    // 🔧 增强的导入项目方法 - 集成端口检测
     const importProject = useCallback(
         async (projectPath?: string) => {
             // 如果没有提供路径，显示文件选择器
@@ -80,12 +135,136 @@ export function useProjects() {
                     showToast(message, toastType);
                 };
 
-                const result = await ProjectService.importProject(projectPath, onProgress);
+                // 🔧 1. 端口检测阶段
+                onProgress("🔍 正在检测项目端口配置...", "info");
+                console.log("🔍 开始多源端口检测...");
+
+                const portInfo = await PortDetectionService.detectProjectPorts(projectPath);
+
+                // 🔧 2. 显示端口检测结果
+                if (portInfo.hasPortConfig) {
+                    console.log(`📋 检测到 ${portInfo.configuredPorts.length} 个端口配置:`, portInfo.configuredPorts);
+                    onProgress(`📋 检测到端口配置: ${portInfo.configuredPorts.join(", ")}`, "info");
+
+                    // 显示详细的端口来源信息
+                    for (const source of portInfo.detectedSources) {
+                        const confidenceIcon = source.confidence === "high" ? "🔒" : source.confidence === "medium" ? "📋" : "💡";
+                        console.log(`  ${confidenceIcon} ${source.file}: ${source.port} (${source.confidence} confidence)`);
+                        onProgress(`  ${confidenceIcon} ${source.file}: ${source.port}`, "info");
+                    }
+
+                    // 显示默认端口
+                    if (portInfo.defaultPort) {
+                        onProgress(`🎯 默认端口: ${portInfo.defaultPort}`, "info");
+                        console.log(`🎯 确定的默认端口: ${portInfo.defaultPort}`);
+                    }
+                } else {
+                    console.log("⚠️ 未检测到端口配置");
+                    onProgress("⚠️ 未检测到端口配置", "warn");
+                    onProgress("💡 建议在 .env 文件中添加 PORT=3000", "info");
+                }
+
+                // 🔧 3. 检测与现有项目的端口冲突
+                if (portInfo.hasPortConfig && state.projects.length > 0) {
+                    onProgress("🔍 正在检测端口冲突...", "info");
+                    console.log("🔍 开始检测端口冲突...");
+
+                    const existingProjects = state.projects.map((p) => ({
+                        id: p.id,
+                        name: p.name,
+                        port: p.port, // 假设项目对象有 port 字段
+                    }));
+
+                    const conflicts = PortDetectionService.checkPortConflictsWithExisting(portInfo.configuredPorts, existingProjects);
+
+                    if (conflicts.length > 0) {
+                        console.log(`⚠️ 发现 ${conflicts.length} 个端口冲突:`, conflicts);
+                        onProgress(`⚠️ 发现 ${conflicts.length} 个端口冲突`, "warn");
+
+                        // 🔥 使用 ToastWin 显示详细的端口冲突信息
+                        const conflictDetails = conflicts.map(conflict => {
+                            const conflictNames = conflict.conflictingProjects.map(p => p.name).join(", ");
+                            return `端口 ${conflict.port} 与项目 "${conflictNames}" 冲突`;
+                        });
+
+                        const suggestions = [
+                            "在项目根目录创建或修改 .env 文件，设置不同的 PORT 值",
+                            "检查 package.json 中的脚本配置，修改端口参数",
+                            "确认 vite.config.js 或其他配置文件中的端口设置",
+                            "建议端口范围：3000-3999, 4000-4999, 5000-5999",
+                            "避免使用已知的系统端口（如 80, 443, 3306 等）"
+                        ];
+
+                        const warningMessage = `检测到端口冲突！当前项目的端口配置与已存在的项目冲突：\n\n${conflictDetails.join('\n')}\n\n请修改端口配置以避免冲突。`;
+
+                        // 显示ToastWin警告
+                        showToastWin(
+                            "⚠️ 端口冲突检测",
+                            warningMessage,
+                            suggestions,
+                            "warning"
+                        );
+                        
+                        onProgress("⚠️ 端口冲突详情已显示", "warn");
+                    } else {
+                        console.log("✅ 未发现端口冲突");
+                        onProgress("✅ 端口检测通过，无冲突", "success");
+                    }
+                } else if (portInfo.hasPortConfig) {
+                    onProgress("✅ 端口检测完成（当前无其他项目）", "success");
+                }
+
+                // 🔧 3.5. 检测 Vite 配置冲突
+                if (portInfo.viteConfigConflict?.hasConflict) {
+                    console.log("⚠️ 检测到 Vite 配置冲突:", portInfo.viteConfigConflict);
+                    onProgress("⚠️ 检测到 Vite 配置冲突", "warn");
+
+                    const viteConflict = portInfo.viteConfigConflict;
+                    const viteConflictMessage = `检测到 Vite 项目配置冲突！
+
+项目中存在不一致的端口配置：
+• Vite 配置文件中的端口：${viteConflict.vitePort}
+• .env 文件中的端口：${viteConflict.envPort}
+
+这可能导致开发服务器启动时出现意外行为。建议统一端口配置。`;
+
+                    const viteConflictSuggestions = [
+                        "删除 .env 文件中的 PORT 配置，使用 vite.config.js 中的配置",
+                        "删除 vite.config.js 中的端口配置，使用 .env 文件中的 PORT 变量",
+                        `将 .env 文件中的 PORT 改为 ${viteConflict.vitePort} 以匹配 Vite 配置`,
+                        `将 vite.config.js 中的端口改为 ${viteConflict.envPort} 以匹配环境变量`,
+                        "推荐：使用环境变量方式，在 vite.config.js 中引用 process.env.PORT"
+                    ];
+
+                    // 显示 Vite 配置冲突警告
+                    showToastWin(
+                        "⚠️ Vite 配置冲突",
+                        viteConflictMessage,
+                        viteConflictSuggestions,
+                        "warning"
+                    );
+
+                    onProgress("⚠️ Vite 配置冲突详情已显示", "warn");
+                }
+
+                // 🔧 4. 继续正常的导入流程，传递检测到的端口信息
+                onProgress("📦 开始导入项目...", "info");
+                console.log("📦 端口检测完成，开始项目导入...");
+
+                const result = await ProjectService.importProject(projectPath, onProgress, portInfo);
 
                 if (result.success && result.data) {
                     dispatch({ type: "ADD_PROJECT", payload: result.data });
 
-                    // 显示成功通知
+                    // 🔧 5. 导入成功后的端口总结
+                    if (portInfo.hasPortConfig && portInfo.defaultPort) {
+                        onProgress(`✅ 项目导入成功，实际端口: ${portInfo.defaultPort}`, "success");
+                    } else if (portInfo.hasPortConfig) {
+                        onProgress(`✅ 项目导入成功，检测到端口: ${portInfo.configuredPorts.join(", ")}`, "success");
+                    } else {
+                        onProgress(`✅ 项目导入成功，建议配置端口`, "success");
+                    }
+
                     showToast(`项目导入成功: ${result.data.name}`, "success");
 
                     // 🔄 触发项目导入后的自动同步
@@ -106,13 +285,14 @@ export function useProjects() {
                 }
             } catch (error) {
                 const errorMessage = error instanceof Error ? error.message : "导入项目时发生未知错误";
+                console.error("❌ 导入项目失败:", error);
                 dispatch({ type: "SET_ERROR", payload: errorMessage });
                 showToast(`导入失败: ${errorMessage}`, "error");
             } finally {
                 dispatch({ type: "SET_LOADING", payload: false });
             }
         },
-        [dispatch, showToast]
+        [dispatch, showToast, state.projects]
     );
 
     // 移除项目
@@ -309,8 +489,6 @@ export function useProjects() {
             window.removeEventListener("sync-project-statuses", handleSyncEvent as EventListener);
         };
     }, [synchronizeProjectStatuses]);
-
-
 
     // 创建项目
     const createProject = useCallback(
