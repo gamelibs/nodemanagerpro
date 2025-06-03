@@ -12,7 +12,7 @@ export interface UseProjectOperationsReturn {
     startProject: (project: Project) => Promise<boolean>;
     stopProject: (project: Project) => Promise<boolean>;
     restartProject: (project: Project) => Promise<boolean>;
-    installDependencies: (project: Project, packageManager: string) => Promise<boolean>;
+    installDependencies: (project: Project) => Promise<boolean>;
     saveProjectPort: (project: Project, newPort: number) => Promise<boolean>;
     setIsEditingPort: (editing: boolean) => void;
     setTempPort: (port: string) => void;
@@ -232,18 +232,14 @@ export const useProjectOperations = (): UseProjectOperationsReturn => {
 
     // 安装依赖包
     const installDependencies = useCallback(
-        async (project: Project, packageManager: string = "npm"): Promise<boolean> => {
+        async (project: Project): Promise<boolean> => {
             setIsInstallingDependencies(true);
             try {
                 console.log("📦 开始安装依赖包:", project.name);
                 showToast("正在安装依赖包...", "info");
 
-                // 使用 Electron API 执行安装命令
-                const command = `${packageManager} install`;
-                const result = await window.electronAPI?.invoke("exec:command", {
-                    command,
-                    cwd: project.path,
-                });
+                // 使用专门的项目依赖安装频道
+                const result = await window.electronAPI?.invoke("project:installDependencies", project.path);
 
                 if (result?.success) {
                     console.log("✅ 依赖包安装成功");

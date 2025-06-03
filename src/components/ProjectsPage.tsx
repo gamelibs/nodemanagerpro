@@ -123,7 +123,7 @@ export default function ProjectsPage({
 
   const handleInstallDependencies = async () => {
     if (selectedProject && packageInfo) {
-      const success = await installDependencies(selectedProject, 'npm');
+      const success = await installDependencies(selectedProject);
       if (success) {
         showToast('依赖包安装成功', 'success');
         // 重新检查依赖状态
