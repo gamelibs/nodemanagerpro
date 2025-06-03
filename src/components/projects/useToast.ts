@@ -1,12 +1,15 @@
 import { useState, useCallback, useRef } from 'react';
 
+export type ToastType = 'info' | 'success' | 'error' | 'warning'; 
+
 export interface ToastState {
   message: string;
-  type: 'success' | 'error' | 'info';
+  type: ToastType;
   id: string;
   isVisible: boolean;
   isExiting: boolean;
 }
+
 
 export const useToast = () => {
   const [currentToast, setCurrentToast] = useState<ToastState | null>(null);
@@ -51,7 +54,7 @@ export const useToast = () => {
     });
   }, []);
 
-  const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
+  const showToast = useCallback((message: string, type: ToastType = 'info') => {
     // 使用更可靠的 ID 生成方法，避免重复
     const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const newToast: ToastState = { 

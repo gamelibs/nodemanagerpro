@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { PM2Service, type PM2Process } from "../../services/PM2Service";
 import { ProjectValidationService } from "../../services/ProjectValidationService";
 import type { Project } from "../../types";
@@ -69,6 +69,30 @@ export const useProjectData = (): UseProjectDataReturn => {
         setProjectPort(null);
         setPm2Logs([]);
         setValidationResult(null);
+    }, []);
+
+    // 🔧 监听来自启动/停止操作的状态更新事件
+    useEffect(() => {
+        const handleDetailStatusUpdate = (event: CustomEvent) => {
+            const { projectId, newStatus, pm2Process } = event.detail;
+
+            console.log(`🔄 [详情页] 收到状态更新事件: ${projectId} -> ${newStatus}`);
+
+            // 更新详情页的PM2状态
+            if (pm2Process) {
+                setPm2Status(pm2Process);
+                console.log(`✅ [详情页] PM2状态已更新: ${newStatus}`);
+            } else {
+                setPm2Status(null);
+                console.log(`✅ [详情页] PM2状态已清空`);
+            }
+        };
+
+        window.addEventListener("update-project-detail-status", handleDetailStatusUpdate as EventListener);
+
+        return () => {
+            window.removeEventListener("update-project-detail-status", handleDetailStatusUpdate as EventListener);
+        };
     }, []);
 
     // 获取PM2状态

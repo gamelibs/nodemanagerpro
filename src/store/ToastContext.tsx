@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { useToast, ToastContainer } from '../components/projects';
 
 interface ToastContextType {
-  showToast: (message: string, type?: 'success' | 'error' | 'info') => void;
+  showToast: (message: string, type?: 'success' | 'error' | 'info' | 'warning') => void;
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);

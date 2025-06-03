@@ -34,7 +34,7 @@ export const useProjectOperations = (): UseProjectOperationsReturn => {
     // 🔧 获取 dispatch 来直接更新项目状态
     const { dispatch } = useApp();
 
-    // 🔧 单个项目状态同步函数
+    // 🔧 增强的单个项目状态同步函数 - 同时更新详情页状态
     const syncSingleProjectStatus = useCallback(
         async (project: Project, action: string) => {
             try {
@@ -44,7 +44,7 @@ export const useProjectOperations = (): UseProjectOperationsReturn => {
                 const statusResult = await ProjectStatusService.queryProjectStatus(project);
 
                 if (statusResult.success) {
-                    const newStatus = statusResult.mappedStatus; // 直接访问 mappedStatus
+                    const newStatus = statusResult.mappedStatus;
                     const currentStatus = project.status;
 
                     console.log(`🔍 [${action}] 项目 "${project.name}" 状态: ${currentStatus} -> ${newStatus}`);
@@ -53,7 +53,7 @@ export const useProjectOperations = (): UseProjectOperationsReturn => {
                     if (currentStatus !== newStatus) {
                         console.log(`📝 [${action}] 更新项目状态: ${project.name} (${currentStatus} -> ${newStatus})`);
 
-                        // 直接更新单个项目的状态
+                        // 🔧 1. 更新项目列表状态
                         dispatch({
                             type: "UPDATE_PROJECT_STATUS",
                             payload: {
@@ -62,7 +62,42 @@ export const useProjectOperations = (): UseProjectOperationsReturn => {
                             },
                         });
 
+                        // 🔧 2. 发送事件更新详情页状态
+                        window.dispatchEvent(
+                            new CustomEvent("update-project-detail-status", {
+                                detail: {
+                                    projectId: project.id,
+                                    newStatus: newStatus,
+                                    pm2Process: statusResult.success
+                                        ? {
+                                              name: statusResult.processName,
+                                              pid: statusResult.processId || 0,
+                                              pm_id: statusResult.processId || 0,
+                                              pm2_env: {
+                                                  status: statusResult.pm2Status || "unknown",
+                                                  pm_cwd: project.path,
+                                                  exec_mode: "fork",
+                                                  pm_exec_path: project.path,
+                                              },
+                                              monit: {
+                                                  memory: 0,
+                                                  cpu: 0,
+                                              },
+                                          }
+                                        : null,
+                                },
+                            })
+                        );
+
                         console.log(`✅ [${action}] 项目 "${project.name}" 状态已更新到UI`);
+
+                        // 🔧 特殊处理：如果启动后变成错误状态
+                        if (action === "start" && newStatus === "error") {
+                            showToast(`⚠️ 项目 ${project.name} 启动后发生错误，请检查日志`, "warning");
+                        } else if (action === "start" && newStatus === "stopped") {
+                            showToast(`⚠️ 项目 ${project.name} 启动失败，进程已停止`, "warning");
+                        }
+
                         return true;
                     } else {
                         console.log(`ℹ️ [${action}] 项目 "${project.name}" 状态无变化: ${currentStatus}`);
@@ -77,7 +112,7 @@ export const useProjectOperations = (): UseProjectOperationsReturn => {
                 return false;
             }
         },
-        [dispatch]
+        [dispatch, showToast]
     );
 
     // 🔧 状态同步辅助函数 - 使用单个项目查询
