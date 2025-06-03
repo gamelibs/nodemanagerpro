@@ -1,735 +1,839 @@
-import { useCallback, useEffect, useRef } from 'react';
-import { useApp } from '../store/AppContext';
-import { useToastContext } from '../store/ToastContext';
-import { ProjectService } from '../services/ProjectService';
-import { usePM2ProjectRunner } from '../services/PM2ProjectRunner';
-import { useLogs } from './useLogs';
-import type { Project, ProjectCreationConfig } from '../types';
+import { useCallback, useEffect, useRef } from "react";
+import { useApp } from "../store/AppContext";
+import { useToastContext } from "../store/ToastContext";
+import { ProjectService } from "../services/ProjectService";
+import { usePM2ProjectRunner } from "../services/PM2ProjectRunner";
+import { useLogs } from "./useLogs";
+import type { Project, ProjectCreationConfig } from "../types";
+import { ProjectStatusService } from "../services/ProjectStatusService";
 
 // 从PM2Service复制的进程名称生成逻辑
 function generateStableProjectId(projectName: string, projectPath: string): string {
-  // 组合名称和路径，使用分隔符确保不会混淆
-  const combined = `${projectName}|${projectPath}`;
-  
-  // 使用哈希来确保唯一性，而不是简单去除字符
-  let hash = 0;
-  for (let i = 0; i < combined.length; i++) {
-    const char = combined.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // 转换为32位整数
-  }
-  
-  // 确保哈希为正数
-  const positiveHash = Math.abs(hash);
-  
-  // 转换为Base36字符串（包含数字和字母）
-  const hashString = positiveHash.toString(36);
-  
-  // 结合项目名的前几个字符（清理后）+ 哈希
-  const cleanName = projectName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 6);
-  const stableId = `${cleanName}${hashString}`.substring(0, 16);
-  
-  // 确保至少有8个字符，不足的用哈希补充
-  if (stableId.length < 8) {
-    return (stableId + hashString + '00000000').substring(0, 16);
-  }
-  
-  return stableId;
+    // 组合名称和路径，使用分隔符确保不会混淆
+    const combined = `${projectName}|${projectPath}`;
+
+    // 使用哈希来确保唯一性，而不是简单去除字符
+    let hash = 0;
+    for (let i = 0; i < combined.length; i++) {
+        const char = combined.charCodeAt(i);
+        hash = (hash << 5) - hash + char;
+        hash = hash & hash; // 转换为32位整数
+    }
+
+    // 确保哈希为正数
+    const positiveHash = Math.abs(hash);
+
+    // 转换为Base36字符串（包含数字和字母）
+    const hashString = positiveHash.toString(36);
+
+    // 结合项目名的前几个字符（清理后）+ 哈希
+    const cleanName = projectName.replace(/[^a-zA-Z0-9]/g, "").substring(0, 6);
+    const stableId = `${cleanName}${hashString}`.substring(0, 16);
+
+    // 确保至少有8个字符，不足的用哈希补充
+    if (stableId.length < 8) {
+        return (stableId + hashString + "00000000").substring(0, 16);
+    }
+
+    return stableId;
 }
 
 export function useProjects() {
-  const { state, dispatch } = useApp();
-  const { showToast } = useToastContext();
-  const { startLogSession, endLogSession, addLog } = useLogs();
-  const { startProject: runnerStartProject, stopProject: runnerStopProject } = usePM2ProjectRunner();
+    const { state, dispatch } = useApp();
+    const { showToast } = useToastContext();
+    const { startLogSession, endLogSession, addLog } = useLogs();
+    const { startProject: runnerStartProject, stopProject: runnerStopProject } = usePM2ProjectRunner();
 
-  // 使用 ref 来追踪是否需要自动同步状态
-  const shouldAutoSync = useRef(false);
-  // 添加防重复加载标志
-  const isLoadingRef = useRef(false);
+    // 使用 ref 来追踪是否需要自动同步状态
+    const shouldAutoSync = useRef(false);
+    // 添加防重复加载标志
+    const isLoadingRef = useRef(false);
 
-  // 自动状态同步效果
-  useEffect(() => {
-    if (shouldAutoSync.current && state.projects.length > 0) {
-      console.log('🔄 检测到项目列表更新，开始自动同步状态...');
-      shouldAutoSync.current = false; // 重置标志
-      
-      // 延迟一点时间确保状态更新完毕
-      const timer = setTimeout(() => {
-        // 直接在这里调用同步逻辑，避免依赖 synchronizeProjectStatuses 函数
-        (async () => {
-          try {
-            console.log('🔄 正在同步项目状态...');
-            
-            const updates: { id: string; status: 'running' | 'stopped' | 'error'; name: string }[] = [];
-            const queryResults: string[] = []; // 收集查询结果用于弹窗
-            
-            // 🆕 添加导入后同步的特殊标记
-            const isPostImportSync = !!state.projects.find(p => p.lastOpened && 
-              (Date.now() - p.lastOpened.getTime()) < 5000); // 5秒内新增的项目
-            
-            if (isPostImportSync) {
-              console.log('🎯 [导入后同步] 检测到项目导入后同步，将提供详细反馈');
-              if (showToast) {
-                showToast('🔄 正在同步新导入项目的PM2状态...', 'info');
-              }
-            }
-            
-            for (const project of state.projects) {
-              try {
-                // 使用与PM2Service相同的进程名称生成逻辑
-                const processName = generateStableProjectId(project.name, project.path);
-                
-                // 详细日志记录查询信息
-                console.log(`🔍 [状态同步] 项目: ${project.name}`);
-                console.log(`🆔 [状态同步] 项目ID: ${project.id}`);
-                console.log(`📁 [状态同步] 项目路径: ${project.path}`);
-                console.log(`🎯 [状态同步] 查询进程名: ${processName}`);
-                console.log(`📊 [状态同步] 当前状态: ${project.status}`);
-                console.log(`🔍 [状态同步] ID匹配检查: 项目ID=${project.id}, 生成进程名=${processName}`);
-                
-                const result = await window.electronAPI?.invoke('pm2:describe', processName);
-                
-                console.log(`📡 [状态同步] PM2查询结果:`, {
-                  success: result?.success,
-                  hasStatus: !!result?.status,
-                  error: result?.error,
-                  statusDetails: result?.status ? {
-                    status: result.status.status,
-                    pid: result.status.pid,
-                    pm_id: result.status.pm_id,
-                    name: result.status.name,
-                    pm2_env_status: result.status.pm2_env?.status
-                  } : null
-                });
-                
-                // 获取实际的PM2状态
-                const actualPM2Status = result?.status?.pm2_env?.status || result?.status?.status || '未找到';
-                
-                // 收集查询结果信息
-                const queryInfo = `项目: ${project.name}\n` +
-                  `进程名: ${processName}\n` +
-                  `查询成功: ${result?.success ? '是' : '否'}\n` +
-                  `PM2状态: ${actualPM2Status}\n` +
-                  `直接状态: ${result?.status?.status || 'N/A'}\n` +
-                  `PM2环境状态: ${result?.status?.pm2_env?.status || 'N/A'}\n` +
-                  `进程ID: ${result?.status?.pid || 'N/A'}\n` +
-                  `错误信息: ${result?.error || '无'}`;
-                queryResults.push(queryInfo);
-                
-                if (result?.success && result.status) {
-                  // PM2状态在 pm2_env.status 字段中
-                  const pm2Status = result.status.pm2_env?.status || result.status.status;
-                  let projectStatus: 'running' | 'stopped' | 'error' = 'stopped';
-                  
-                  console.log(`🔍 [状态同步] 原始PM2状态数据:`, {
-                    directStatus: result.status.status,
-                    pm2EnvStatus: result.status.pm2_env?.status,
-                    finalStatus: pm2Status
-                  });
-                  
-                  if (pm2Status === 'online') {
-                    projectStatus = 'running';
-                  } else if (pm2Status === 'error' || pm2Status === 'errored') {
-                    projectStatus = 'error';
-                  }
-                  
-                  console.log(`🔄 [状态同步] PM2状态映射: ${pm2Status} -> ${projectStatus}`);
-                  
-                  if (project.status !== projectStatus) {
-                    updates.push({ id: project.id, status: projectStatus, name: project.name });
-                    console.log(`📝 [状态同步] 需要更新状态: ${project.status} -> ${projectStatus}`);
-                  } else {
-                    console.log(`✅ [状态同步] 状态一致，无需更新: ${projectStatus}`);
-                  }
-                } else {
-                  console.log(`❌ [状态同步] PM2进程不存在或查询失败`);
-                  if (project.status !== 'stopped') {
-                    updates.push({ id: project.id, status: 'stopped', name: project.name });
-                    console.log(`📝 [状态同步] 项目 ${project.name} 未在PM2中运行，状态同步: ${project.status} -> stopped`);
-                  } else {
-                    console.log(`✅ [状态同步] 状态已为stopped，无需更新`);
-                  }
-                }
-              } catch (error) {
-                console.warn(`❌ [状态同步] 检查项目 ${project.name} 状态失败:`, error);
-                const errorInfo = `项目: ${project.name}\n查询异常: ${error}`;
-                queryResults.push(errorInfo);
-              }
-            }
-            
-            // 批量更新状态
-            for (const update of updates) {
-              dispatch({
-                type: 'UPDATE_PROJECT_STATUS',
-                payload: { id: update.id, status: update.status }
-              });
-            }
-            
-            if (updates.length > 0) {
-              console.log(`✅ 自动同步完成，更新了 ${updates.length} 个项目的状态`);
-              
-              // 🆕 导入后同步的特殊处理
-              if (isPostImportSync) {
-                const syncResult = updates.length > 0 
-                  ? `🎉 导入同步完成！发现 ${updates.length} 个运行中的PM2进程已自动关联`
-                  : `✅ 导入同步完成，新项目状态已确认`;
-                
-                if (showToast) {
-                  showToast(syncResult, 'success');
-                }
-                
-                // 显示详细的导入后同步结果
-                if (updates.length > 0) {
-                  const updateDetails = updates.map(u => `${u.name}: ${u.status}`).join(', ');
-                  console.log(`🎯 [导入后同步] 状态更新详情: ${updateDetails}`);
-                  if (showToast) {
-                    setTimeout(() => {
-                      showToast(`项目状态已同步: ${updateDetails}`, 'info');
-                    }, 1000);
-                  }
-                }
-              }
-            } else {
-              console.log('✅ 所有项目状态已同步');
-              
-              // 🆕 导入后同步但无状态更新的情况
-              if (isPostImportSync && showToast) {
-                showToast('✅ 新导入项目状态同步完成，未发现运行中的PM2进程', 'info');
-              }
-            }
-            
-            // 显示查询结果弹窗（非导入后同步时）
-            if (queryResults.length > 0 && showToast && !isPostImportSync) {
-              const summaryMessage = `状态查询完成：检查了 ${queryResults.length} 个项目，更新了 ${updates.length} 个状态`;
-              showToast(summaryMessage, 'info');
-              
-              // 显示详细的查询结果弹窗
-              const detailedResults = queryResults.map((result, index) => `${index + 1}. ${result}`).join('\n\n');
-              console.log('📊 [状态同步] 详细查询结果:');
-              console.log('\n' + detailedResults);
-              
-              // 添加一个额外的详细信息弹窗（可选）
-              if (updates.length > 0) {
-                const updateDetails = updates.map(u => `${u.name}: ${u.status}`).join(', ');
-                showToast(`状态更新详情: ${updateDetails}`, 'success');
-              }
-            }
-            
-            // 🆕 始终记录详细的查询结果到控制台
-            if (queryResults.length > 0) {
-              const detailedResults = queryResults.map((result, index) => `${index + 1}. ${result}`).join('\n\n');
-              console.log('📊 [状态同步] 详细查询结果:');
-              console.log('\n' + detailedResults);
-            }
-          } catch (error) {
-            console.error('❌ 自动同步项目状态失败:', error);
-          }
-        })();
-      }, 200);
+    // 自动状态同步效果
+    // useEffect(() => {
+    //     if (shouldAutoSync.current && state.projects.length > 0) {
+    //         console.log("🔄 检测到项目列表更新，开始自动同步状态...");
+    //         shouldAutoSync.current = false; // 重置标志
 
-      return () => clearTimeout(timer);
-    }
-  }, [state.projects.length, dispatch]); // 移除showToast依赖
+    //         // 延迟一点时间确保状态更新完毕
+    //         const timer = setTimeout(() => {
+                // 直接在这里调用同步逻辑，避免依赖 synchronizeProjectStatuses 函数
+                // (async () => {
+                //     try {
+                //         console.log("🔄 正在同步项目状态...");
 
-  // 加载所有项目（带动态配置检测）
-  const loadProjects = useCallback(async () => {
-    // 防止重复加载
-    if (isLoadingRef.current) {
-      console.log('⚠️ 项目正在加载中，跳过重复请求');
-      return;
-    }
-    
-    isLoadingRef.current = true;
-    dispatch({ type: 'SET_LOADING', payload: true });
-    dispatch({ type: 'SET_ERROR', payload: null });
+                //         const updates: { id: string; status: "running" | "stopped" | "error"; name: string }[] = [];
+                //         const queryResults: string[] = []; // 收集查询结果用于弹窗
 
-    try {
-      console.log('🔄 开始加载项目...');
-      // 使用带有动态配置检测的方法
-      const result = await ProjectService.getAllProjectsWithConfig();
-      
-      if (result.success && result.data) {
-        dispatch({ type: 'SET_PROJECTS', payload: result.data });
-        
-        // 加载项目后自动检查 PM2 状态
-        console.log('🔄 项目加载完成，设置自动同步标志...');
-        shouldAutoSync.current = true;
-      } else {
-        dispatch({ type: 'SET_ERROR', payload: result.error || '加载项目失败' });
-      }
-    } catch (error) {
-      dispatch({ 
-        type: 'SET_ERROR', 
-        payload: error instanceof Error ? error.message : '加载项目时发生未知错误' 
-      });
-    } finally {
-      isLoadingRef.current = false;
-      dispatch({ type: 'SET_LOADING', payload: false });
-    }
-  }, [dispatch]);
+                //         // 🆕 添加导入后同步的特殊标记
+                //         const isPostImportSync = !!state.projects.find((p) => p.lastOpened && Date.now() - p.lastOpened.getTime() < 5000); // 5秒内新增的项目
 
-  // 导入项目 - 支持进度回调
-  const importProject = useCallback(async (projectPath?: string) => {
-    // 如果没有提供路径，显示文件选择器
-    if (!projectPath) {
-      const selectedPath = await showDirectoryPicker();
-      if (!selectedPath) return;
-      projectPath = selectedPath;
-    }
+                //         if (isPostImportSync) {
+                //             console.log("🎯 [导入后同步] 检测到项目导入后同步，将提供详细反馈");
+                //             if (showToast) {
+                //                 showToast("🔄 正在同步新导入项目的PM2状态...", "info");
+                //             }
+                //         }
 
-    dispatch({ type: 'SET_LOADING', payload: true });
-    dispatch({ type: 'SET_ERROR', payload: null });
+                //         for (const project of state.projects) {
+                //             try {
+                //                 // 使用与PM2Service相同的进程名称生成逻辑
+                //                 const processName = generateStableProjectId(project.name, project.path);
 
-    try {
-      // 创建进度回调函数 - 同时在控制台和Toast中显示
-      const onProgress = (message: string, level: 'info' | 'warn' | 'error' | 'success' = 'info') => {
-        console.log(`[导入进度] [${level.toUpperCase()}] ${message}`);
-        // 通过Toast系统向用户显示进度，将 warn 映射为 info
-        const toastType = level === 'warn' ? 'info' : level;
-        showToast(message, toastType);
-      };
+                //                 // 详细日志记录查询信息
+                //                 console.log(`🔍 [状态同步] 项目: ${project.name}`);
+                //                 console.log(`🆔 [状态同步] 项目ID: ${project.id}`);
+                //                 console.log(`📁 [状态同步] 项目路径: ${project.path}`);
+                //                 console.log(`🎯 [状态同步] 查询进程名: ${processName}`);
+                //                 console.log(`📊 [状态同步] 当前状态: ${project.status}`);
+                //                 console.log(`🔍 [状态同步] ID匹配检查: 项目ID=${project.id}, 生成进程名=${processName}`);
 
-      const result = await ProjectService.importProject(projectPath, onProgress);
-      
-      if (result.success && result.data) {
-        dispatch({ type: 'ADD_PROJECT', payload: result.data });
-        
-        // 显示成功通知
-        showToast(`项目导入成功: ${result.data.name}`, 'success');
-        
-        // 🔄 触发项目导入后的自动同步
-        console.log('🔄 项目导入成功，开始自动同步PM2状态...');
-        onProgress('🔄 正在同步PM2状态...', 'info');
-        
-        // 设置自动同步标志，触发PM2状态检查
-        shouldAutoSync.current = true;
-        
-        // 延迟一小段时间后进行状态同步，确保项目已添加到列表中
-        setTimeout(() => {
-          console.log('🔄 开始导入后PM2状态同步...');
-        }, 500);
-      } else {
-        const errorMsg = result.error || '导入项目失败';
-        dispatch({ type: 'SET_ERROR', payload: errorMsg });
-        showToast(`导入失败: ${errorMsg}`, 'error');
-      }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : '导入项目时发生未知错误';
-      dispatch({ type: 'SET_ERROR', payload: errorMessage });
-      showToast(`导入失败: ${errorMessage}`, 'error');
-    } finally {
-      dispatch({ type: 'SET_LOADING', payload: false });
-    }
-  }, [dispatch, showToast]);
+                //                 const result = await window.electronAPI?.invoke("pm2:describe", processName);
 
-  // 移除项目
-  const removeProject = useCallback(async (projectId: string) => {
-    const project = state.projects.find(p => p.id === projectId);
-    if (!project) return;
+                //                 console.log(`📡 [状态同步] PM2查询结果:`, {
+                //                     success: result?.success,
+                //                     hasStatus: !!result?.status,
+                //                     error: result?.error,
+                //                     statusDetails: result?.status
+                //                         ? {
+                //                               status: result.status.status,
+                //                               pid: result.status.pid,
+                //                               pm_id: result.status.pm_id,
+                //                               name: result.status.name,
+                //                               pm2_env_status: result.status.pm2_env?.status,
+                //                           }
+                //                         : null,
+                //                 });
 
-    // 第一次确认删除
-    const firstConfirmed = await showConfirmDialog(
-      '移除项目',
-      `确定要移除项目 "${project.name}" 吗？这不会删除项目文件，只会从列表中移除。`
-    );
-    
-    if (!firstConfirmed) return;
+                //                 // 获取实际的PM2状态
+                //                 const actualPM2Status = result?.status?.pm2_env?.status || result?.status?.status || "未找到";
 
-    // 第二次确认删除
-    const secondConfirmed = await showConfirmDialog(
-      '最终确认',
-      `再次确认：真的要移除项目 "${project.name}" 吗？此操作不可撤销。`
-    );
-    
-    if (!secondConfirmed) return;
+                //                 // 收集查询结果信息
+                //                 const queryInfo =
+                //                     `项目: ${project.name}\n` + `进程名: ${processName}\n` + `查询成功: ${result?.success ? "是" : "否"}\n` + `PM2状态: ${actualPM2Status}\n` + `直接状态: ${result?.status?.status || "N/A"}\n` + `PM2环境状态: ${result?.status?.pm2_env?.status || "N/A"}\n` + `进程ID: ${result?.status?.pid || "N/A"}\n` + `错误信息: ${result?.error || "无"}`;
+                //                 queryResults.push(queryInfo);
 
-    dispatch({ type: 'SET_LOADING', payload: true });
+                //                 if (result?.success && result.status) {
+                //                     // PM2状态在 pm2_env.status 字段中
+                //                     const pm2Status = result.status.pm2_env?.status || result.status.status;
+                //                     let projectStatus: "running" | "stopped" | "error" = "stopped";
 
-    try {
-      const result = await ProjectService.removeProject(projectId);
-      
-      if (result.success) {
-        dispatch({ type: 'REMOVE_PROJECT', payload: projectId });
-        showToast(`项目已移除: ${project.name}`, 'success');
-      } else {
-        const errorMsg = result.error || '移除项目失败';
-        dispatch({ type: 'SET_ERROR', payload: errorMsg });
-        showToast(`移除失败: ${errorMsg}`, 'error');
-      }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : '移除项目时发生未知错误';
-      dispatch({ type: 'SET_ERROR', payload: errorMessage });
-      showToast(`移除失败: ${errorMessage}`, 'error');
-    } finally {
-      dispatch({ type: 'SET_LOADING', payload: false });
-    }
-  }, [state.projects, dispatch, showToast]);
+                //                     console.log(`🔍 [状态同步] 原始PM2状态数据:`, {
+                //                         directStatus: result.status.status,
+                //                         pm2EnvStatus: result.status.pm2_env?.status,
+                //                         finalStatus: pm2Status,
+                //                     });
 
-  // 同步项目状态与PM2 - 需要在startProject和stopProject之前定义
-  const synchronizeProjectStatuses = useCallback(async () => {
-    try {
-      console.log('🔄 正在同步项目状态...');
-      
-      // 遍历所有项目，检查其实际状态
-      const updates: { id: string; status: 'running' | 'stopped' | 'error'; name: string }[] = [];
-      
-      for (const project of state.projects) {
-        console.log(`🔍 [同步状态] 检查项目: ${project.name} (ID: ${project.id})`);
-        console.log(`📊 [同步状态] 当前项目状态: ${project.status}`);
-        
+                //                     if (pm2Status === "online") {
+                //                         projectStatus = "running";
+                //                     } else if (pm2Status === "error" || pm2Status === "errored") {
+                //                         projectStatus = "error";
+                //                     }
+
+                //                     console.log(`🔄 [状态同步] PM2状态映射: ${pm2Status} -> ${projectStatus}`);
+
+                //                     if (project.status !== projectStatus) {
+                //                         updates.push({ id: project.id, status: projectStatus, name: project.name });
+                //                         console.log(`📝 [状态同步] 需要更新状态: ${project.status} -> ${projectStatus}`);
+                //                     } else {
+                //                         console.log(`✅ [状态同步] 状态一致，无需更新: ${projectStatus}`);
+                //                     }
+                //                 } else {
+                //                     console.log(`❌ [状态同步] PM2进程不存在或查询失败`);
+                //                     if (project.status !== "stopped") {
+                //                         updates.push({ id: project.id, status: "stopped", name: project.name });
+                //                         console.log(`📝 [状态同步] 项目 ${project.name} 未在PM2中运行，状态同步: ${project.status} -> stopped`);
+                //                     } else {
+                //                         console.log(`✅ [状态同步] 状态已为stopped，无需更新`);
+                //                     }
+                //                 }
+                //             } catch (error) {
+                //                 console.warn(`❌ [状态同步] 检查项目 ${project.name} 状态失败:`, error);
+                //                 const errorInfo = `项目: ${project.name}\n查询异常: ${error}`;
+                //                 queryResults.push(errorInfo);
+                //             }
+                //         }
+
+                //         // 批量更新状态
+                //         for (const update of updates) {
+                //             dispatch({
+                //                 type: "UPDATE_PROJECT_STATUS",
+                //                 payload: { id: update.id, status: update.status },
+                //             });
+                //         }
+
+                //         if (updates.length > 0) {
+                //             console.log(`✅ 自动同步完成，更新了 ${updates.length} 个项目的状态`);
+
+                //             // 🆕 导入后同步的特殊处理
+                //             if (isPostImportSync) {
+                //                 const syncResult = updates.length > 0 ? `🎉 导入同步完成！发现 ${updates.length} 个运行中的PM2进程已自动关联` : `✅ 导入同步完成，新项目状态已确认`;
+
+                //                 if (showToast) {
+                //                     showToast(syncResult, "success");
+                //                 }
+
+                //                 // 显示详细的导入后同步结果
+                //                 if (updates.length > 0) {
+                //                     const updateDetails = updates.map((u) => `${u.name}: ${u.status}`).join(", ");
+                //                     console.log(`🎯 [导入后同步] 状态更新详情: ${updateDetails}`);
+                //                     if (showToast) {
+                //                         setTimeout(() => {
+                //                             showToast(`项目状态已同步: ${updateDetails}`, "info");
+                //                         }, 1000);
+                //                     }
+                //                 }
+                //             }
+                //         } else {
+                //             console.log("✅ 所有项目状态已同步");
+
+                //             // 🆕 导入后同步但无状态更新的情况
+                //             if (isPostImportSync && showToast) {
+                //                 showToast("✅ 新导入项目状态同步完成，未发现运行中的PM2进程", "info");
+                //             }
+                //         }
+
+                //         // 显示查询结果弹窗（非导入后同步时）
+                //         if (queryResults.length > 0 && showToast && !isPostImportSync) {
+                //             const summaryMessage = `状态查询完成：检查了 ${queryResults.length} 个项目，更新了 ${updates.length} 个状态`;
+                //             showToast(summaryMessage, "info");
+
+                //             // 显示详细的查询结果弹窗
+                //             const detailedResults = queryResults.map((result, index) => `${index + 1}. ${result}`).join("\n\n");
+                //             console.log("📊 [状态同步] 详细查询结果:");
+                //             console.log("\n" + detailedResults);
+
+                //             // 添加一个额外的详细信息弹窗（可选）
+                //             if (updates.length > 0) {
+                //                 const updateDetails = updates.map((u) => `${u.name}: ${u.status}`).join(", ");
+                //                 showToast(`状态更新详情: ${updateDetails}`, "success");
+                //             }
+                //         }
+
+                //         // 🆕 始终记录详细的查询结果到控制台
+                //         if (queryResults.length > 0) {
+                //             const detailedResults = queryResults.map((result, index) => `${index + 1}. ${result}`).join("\n\n");
+                //             console.log("📊 [状态同步] 详细查询结果:");
+                //             console.log("\n" + detailedResults);
+                //         }
+                //     } catch (error) {
+                //         console.error("❌ 自动同步项目状态失败:", error);
+                //     }
+                // })();
+
+            //     synchronizeProjectStatuses(false); // false 表示自动同步
+            // }, 200);
+
+            // return () => clearTimeout(timer);
+        // }
+    // }, [state.projects.length]); // 移除showToast依赖
+
+    // 加载所有项目（带动态配置检测）
+    const loadProjects = useCallback(async () => {
+        // 防止重复加载
+        if (isLoadingRef.current) {
+            console.log("⚠️ 项目正在加载中，跳过重复请求");
+            return;
+        }
+
+        isLoadingRef.current = true;
+        dispatch({ type: "SET_LOADING", payload: true });
+        dispatch({ type: "SET_ERROR", payload: null });
+
         try {
-          // 使用与PM2Service相同的进程名称生成逻辑
-          const processName = generateStableProjectId(project.name, project.path);
-          console.log(`🎯 [同步状态] 查询PM2进程: ${processName}`);
-          
-          const result = await window.electronAPI?.invoke('pm2:describe', processName);
-          console.log(`📡 [同步状态] PM2查询结果:`, {
-            success: result?.success,
-            hasStatus: !!result?.status,
-            statusDetails: result?.status ? {
-              status: result.status.status,
-              pid: result.status.pid,
-              pm_id: result.status.pm_id
-            } : null
-          });
-          
-          if (result?.success && result.status) {
-            // PM2 进程存在且运行
-            const pm2Status = result.status.status;
-            let projectStatus: 'running' | 'stopped' | 'error' = 'stopped';
-            
-            if (pm2Status === 'online') {
-              projectStatus = 'running';
-            } else if (pm2Status === 'error' || pm2Status === 'errored') {
-              projectStatus = 'error';
-            }
-            
-            console.log(`🔄 [同步状态] PM2状态映射: ${pm2Status} -> ${projectStatus}`);
-            
-            // 如果状态不一致，记录需要更新
-            if (project.status !== projectStatus) {
-              updates.push({ id: project.id, status: projectStatus, name: project.name });
-              console.log(`📝 [同步状态] 状态不一致，需要更新: ${project.status} -> ${projectStatus}`);
+            console.log("🔄 开始加载项目...");
+            // 使用带有动态配置检测的方法
+            const result = await ProjectService.getAllProjectsWithConfig();
+
+            if (result.success && result.data) {
+                dispatch({ type: "SET_PROJECTS", payload: result.data });
+
+                // 加载项目后自动检查 PM2 状态
+                console.log("🔄 项目加载完成，设置自动同步标志...");
+                shouldAutoSync.current = true;
             } else {
-              console.log(`✅ [同步状态] 状态一致，无需更新: ${projectStatus}`);
+                dispatch({ type: "SET_ERROR", payload: result.error || "加载项目失败" });
             }
-          } else {
-            console.log(`❌ [同步状态] PM2进程不存在或查询失败`);
-            // PM2 进程不存在，应该标记为stopped
-            if (project.status !== 'stopped') {
-              updates.push({ id: project.id, status: 'stopped', name: project.name });
-              console.log(`📝 [同步状态] 项目 ${project.name} 未在PM2中运行，状态同步: ${project.status} -> stopped`);
-            } else {
-              console.log(`✅ [同步状态] 项目已是stopped状态，无需更新`);
-            }
-          }
         } catch (error) {
-          console.warn(`❌ [同步状态] 检查项目 ${project.name} 状态失败:`, error);
+            dispatch({
+                type: "SET_ERROR",
+                payload: error instanceof Error ? error.message : "加载项目时发生未知错误",
+            });
+        } finally {
+            isLoadingRef.current = false;
+            dispatch({ type: "SET_LOADING", payload: false });
         }
-      }
-      
-      // 批量更新状态
-      console.log(`📊 [同步状态] 准备更新 ${updates.length} 个项目的状态`);
-      for (const update of updates) {
-        console.log(`🔄 [同步状态] 分发状态更新: ${update.name} -> ${update.status}`);
-        dispatch({
-          type: 'UPDATE_PROJECT_STATUS',
-          payload: { id: update.id, status: update.status }
-        });
-      }
-      
-      if (updates.length > 0) {
-        const statusChangeText = updates.map(u => `${u.name}: ${u.status}`).join(', ');
-        showToast(
-          `状态同步完成: 更新了 ${updates.length} 个项目状态: ${statusChangeText}`, 
-          'success'
-        );
-        console.log(`✅ [同步状态] 同步完成，更新了 ${updates.length} 个项目的状态`);
-      } else {
-        console.log('✅ [同步状态] 所有项目状态已同步，无需更新');
-      }
-    } catch (error) {
-      console.error('❌ 同步项目状态失败:', error);
-      showToast('同步项目状态失败，请稍后重试', 'error');
-    }
-  }, [state.projects, dispatch, showToast]);
+    }, [dispatch]);
 
-  // 启动项目
-  const startProject = useCallback(async (project: Project) => {
-    try {
-      const success = await runnerStartProject(project);
-      
-      if (success) {
-        showToast(`项目已启动: ${project.name}`, 'success');
-        
-        // 启动成功后延迟同步状态，确保PM2进程完全启动
-        setTimeout(() => {
-          console.log('🔄 项目启动成功，触发状态同步...');
-          synchronizeProjectStatuses();
-        }, 1500);
-      } else {
-        showToast('启动项目失败', 'error');
-      }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : '启动项目时发生未知错误';
-      showToast(`启动失败: ${errorMessage}`, 'error');
-    }
-  }, [runnerStartProject, showToast, synchronizeProjectStatuses]);
+    // 导入项目 - 支持进度回调
+    const importProject = useCallback(
+        async (projectPath?: string) => {
+            // 如果没有提供路径，显示文件选择器
+            if (!projectPath) {
+                const selectedPath = await showDirectoryPicker();
+                if (!selectedPath) return;
+                projectPath = selectedPath;
+            }
 
-  // 停止项目
-  const stopProject = useCallback(async (projectId: string) => {
-    const project = state.projects.find(p => p.id === projectId);
-    if (!project) return;
+            dispatch({ type: "SET_LOADING", payload: true });
+            dispatch({ type: "SET_ERROR", payload: null });
 
-    try {
-      await runnerStopProject(project);
-      showToast(`项目已停止: ${project.name}`, 'success');
-      
-      // 停止成功后延迟同步状态，确保PM2进程完全停止
-      setTimeout(() => {
-        console.log('🔄 项目停止成功，触发状态同步...');
-        synchronizeProjectStatuses();
-      }, 1000);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : '停止项目时发生未知错误';
-      showToast(`停止失败: ${errorMessage}`, 'error');
-    }
-  }, [state.projects, runnerStopProject, showToast, synchronizeProjectStatuses]);
+            try {
+                // 创建进度回调函数 - 同时在控制台和Toast中显示
+                const onProgress = (message: string, level: "info" | "warn" | "error" | "success" = "info") => {
+                    console.log(`[导入进度] [${level.toUpperCase()}] ${message}`);
+                    // 通过Toast系统向用户显示进度，将 warn 映射为 info
+                    const toastType = level === "warn" ? "info" : level;
+                    showToast(message, toastType);
+                };
 
-  // 创建项目
-  const createProject = useCallback(async (projectConfig: ProjectCreationConfig) => {
-    dispatch({ type: 'SET_LOADING', payload: true });
-    dispatch({ type: 'SET_ERROR', payload: null });
+                const result = await ProjectService.importProject(projectPath, onProgress);
 
-    // 为项目创建生成临时ID
-    const tempProjectId = `creating-${Date.now()}`;
-    const projectDisplayName = `创建项目: ${projectConfig.name}`;
+                if (result.success && result.data) {
+                    dispatch({ type: "ADD_PROJECT", payload: result.data });
 
-    console.log('🔄 开始创建项目，临时ID:', tempProjectId);
+                    // 显示成功通知
+                    showToast(`项目导入成功: ${result.data.name}`, "success");
 
-    // 启动日志会话
-    startLogSession(tempProjectId, projectDisplayName);
-    
-    // 添加开始日志
-    addLog({
-      projectId: tempProjectId,
-      level: 'info',
-      message: `🏗️ 开始创建项目: ${projectConfig.name}`,
-      source: 'system'
-    });
+                    // 🔄 触发项目导入后的自动同步
+                    console.log("🔄 项目导入成功，开始自动同步PM2状态...");
+                    onProgress("🔄 正在同步PM2状态...", "info");
 
-    addLog({
-      projectId: tempProjectId,
-      level: 'info',
-      message: `📍 项目路径: ${projectConfig.path}`,
-      source: 'system'
-    });
+                    // 设置自动同步标志，触发PM2状态检查
+                    shouldAutoSync.current = true;
 
-    addLog({
-      projectId: tempProjectId,
-      level: 'info',
-      message: `🎨 使用模板: ${projectConfig.template}`,
-      source: 'system'
-    });
+                    // 延迟一小段时间后进行状态同步，确保项目已添加到列表中
+                    setTimeout(() => {
+                        console.log("🔄 开始导入后PM2状态同步...");
+                    }, 500);
+                } else {
+                    const errorMsg = result.error || "导入项目失败";
+                    dispatch({ type: "SET_ERROR", payload: errorMsg });
+                    showToast(`导入失败: ${errorMsg}`, "error");
+                }
+            } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : "导入项目时发生未知错误";
+                dispatch({ type: "SET_ERROR", payload: errorMessage });
+                showToast(`导入失败: ${errorMessage}`, "error");
+            } finally {
+                dispatch({ type: "SET_LOADING", payload: false });
+            }
+        },
+        [dispatch, showToast]
+    );
 
-    try {
-      const result = await ProjectService.createProject(projectConfig, {
-        onProgress: (message: string, level: 'info' | 'warn' | 'error' | 'success' = 'info') => {
-          console.log('📝 添加创建日志:', message);
-          addLog({
-            projectId: tempProjectId,
-            level,
-            message,
-            source: 'system'
-          });
+    // 移除项目
+    const removeProject = useCallback(
+        async (projectId: string) => {
+            const project = state.projects.find((p) => p.id === projectId);
+            if (!project) return;
+
+            // 第一次确认删除
+            const firstConfirmed = await showConfirmDialog("移除项目", `确定要移除项目 "${project.name}" 吗？这不会删除项目文件，只会从列表中移除。`);
+
+            if (!firstConfirmed) return;
+
+            // 第二次确认删除
+            const secondConfirmed = await showConfirmDialog("最终确认", `再次确认：真的要移除项目 "${project.name}" 吗？此操作不可撤销。`);
+
+            if (!secondConfirmed) return;
+
+            dispatch({ type: "SET_LOADING", payload: true });
+
+            try {
+                const result = await ProjectService.removeProject(projectId);
+
+                if (result.success) {
+                    dispatch({ type: "REMOVE_PROJECT", payload: projectId });
+                    showToast(`项目已移除: ${project.name}`, "success");
+                } else {
+                    const errorMsg = result.error || "移除项目失败";
+                    dispatch({ type: "SET_ERROR", payload: errorMsg });
+                    showToast(`移除失败: ${errorMsg}`, "error");
+                }
+            } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : "移除项目时发生未知错误";
+                dispatch({ type: "SET_ERROR", payload: errorMessage });
+                showToast(`移除失败: ${errorMessage}`, "error");
+            } finally {
+                dispatch({ type: "SET_LOADING", payload: false });
+            }
+        },
+        [state.projects, dispatch, showToast]
+    );
+
+    // 同步项目状态与PM2 - 需要在startProject和stopProject之前定义
+    // const synchronizeProjectStatuses = useCallback(async () => {
+    //   try {
+    //     console.log('🔄 正在同步项目状态...');
+
+    //     // 遍历所有项目，检查其实际状态
+    //     const updates: { id: string; status: 'running' | 'stopped' | 'error'; name: string }[] = [];
+
+    //     for (const project of state.projects) {
+    //       console.log(`🔍 [同步状态] 检查项目: ${project.name} (ID: ${project.id})`);
+    //       console.log(`📊 [同步状态] 当前项目状态: ${project.status}`);
+
+    //       try {
+    //         // 使用与PM2Service相同的进程名称生成逻辑
+    //         const processName = generateStableProjectId(project.name, project.path);
+    //         console.log(`🎯 [同步状态] 查询PM2进程: ${processName}`);
+
+    //         const result = await window.electronAPI?.invoke('pm2:describe', processName);
+    //         console.log(`📡 [同步状态] PM2查询结果:`, {
+    //           success: result?.success,
+    //           hasStatus: !!result?.status,
+    //           statusDetails: result?.status ? {
+    //             status: result.status.status,
+    //             pid: result.status.pid,
+    //             pm_id: result.status.pm_id
+    //           } : null
+    //         });
+
+    //         if (result?.success && result.status) {
+    //           // PM2 进程存在且运行
+    //           const pm2Status = result.status.status;
+    //           let projectStatus: 'running' | 'stopped' | 'error' = 'stopped';
+
+    //           if (pm2Status === 'online') {
+    //             projectStatus = 'running';
+    //           } else if (pm2Status === 'error' || pm2Status === 'errored') {
+    //             projectStatus = 'error';
+    //           }
+
+    //           console.log(`🔄 [同步状态] PM2状态映射: ${pm2Status} -> ${projectStatus}`);
+
+    //           // 如果状态不一致，记录需要更新
+    //           if (project.status !== projectStatus) {
+    //             updates.push({ id: project.id, status: projectStatus, name: project.name });
+    //             console.log(`📝 [同步状态] 状态不一致，需要更新: ${project.status} -> ${projectStatus}`);
+    //           } else {
+    //             console.log(`✅ [同步状态] 状态一致，无需更新: ${projectStatus}`);
+    //           }
+    //         } else {
+    //           console.log(`❌ [同步状态] PM2进程不存在或查询失败`);
+    //           // PM2 进程不存在，应该标记为stopped
+    //           if (project.status !== 'stopped') {
+    //             updates.push({ id: project.id, status: 'stopped', name: project.name });
+    //             console.log(`📝 [同步状态] 项目 ${project.name} 未在PM2中运行，状态同步: ${project.status} -> stopped`);
+    //           } else {
+    //             console.log(`✅ [同步状态] 项目已是stopped状态，无需更新`);
+    //           }
+    //         }
+    //       } catch (error) {
+    //         console.warn(`❌ [同步状态] 检查项目 ${project.name} 状态失败:`, error);
+    //       }
+    //     }
+
+    //     // 批量更新状态
+    //     console.log(`📊 [同步状态] 准备更新 ${updates.length} 个项目的状态`);
+    //     for (const update of updates) {
+    //       console.log(`🔄 [同步状态] 分发状态更新: ${update.name} -> ${update.status}`);
+    //       dispatch({
+    //         type: 'UPDATE_PROJECT_STATUS',
+    //         payload: { id: update.id, status: update.status }
+    //       });
+    //     }
+
+    //     if (updates.length > 0) {
+    //       const statusChangeText = updates.map(u => `${u.name}: ${u.status}`).join(', ');
+    //       showToast(
+    //         `状态同步完成: 更新了 ${updates.length} 个项目状态: ${statusChangeText}`,
+    //         'success'
+    //       );
+    //       console.log(`✅ [同步状态] 同步完成，更新了 ${updates.length} 个项目的状态`);
+    //     } else {
+    //       console.log('✅ [同步状态] 所有项目状态已同步，无需更新');
+    //     }
+    //   } catch (error) {
+    //     console.error('❌ 同步项目状态失败:', error);
+    //     showToast('同步项目状态失败，请稍后重试', 'error');
+    //   }
+    // }, [state.projects, dispatch, showToast]);
+
+    // 注释掉原有的同步逻辑，使用新的封装服务
+    const synchronizeProjectStatuses = useCallback(
+        async (manual = false) => {
+            if (isLoadingRef.current) {
+                console.log("⚠️ 项目正在加载中，跳过同步请求");
+                return;
+            }
+
+            try {
+                console.log("🔄 正在同步项目状态...");
+
+                if (manual) {
+                    console.log("🎯 [手动同步] 用户主动触发状态同步");
+                } else {
+                    console.log("🎯 [自动同步] 检测到项目列表更新，开始自动同步状态");
+                }
+
+                // 获取当前项目列表
+                const currentProjects = state.projects || [];
+                if (currentProjects.length === 0) {
+                    console.log("📋 没有项目需要同步状态");
+                    return;
+                }
+
+                // 使用新的 ProjectStatusService 进行批量状态查询
+                const batchResult = await ProjectStatusService.queryMultipleProjectStatusOptimized(currentProjects);
+
+                // 统计需要更新的项目
+                let updatedCount = 0;
+                const statusUpdates: Array<{ projectId: string; newStatus: Project["status"]; oldStatus: Project["status"] | undefined }> = [];
+
+                // 处理查询结果并更新状态
+                for (const result of batchResult.results) {
+                    const currentProject = currentProjects.find((p) => p.id === result.projectId);
+                    const currentStatus = currentProject?.status;
+                    const newStatus = result.mappedStatus;
+
+                    console.log(`🔍 [状态对比] 项目 "${result.projectName}": 当前=${currentStatus} vs 新=${newStatus}`);
+
+                    // 只有状态发生变化时才更新
+                    if (currentStatus !== newStatus) {
+                        console.log(`📝 [状态同步] 项目 "${result.projectName}" 状态更新: ${currentStatus} -> ${newStatus}`);
+
+                        dispatch({
+                            type: "UPDATE_PROJECT_STATUS",
+                            payload: {
+                                id: result.projectId,
+                                status: newStatus,
+                            },
+                        });
+
+                        updatedCount++;
+                        statusUpdates.push({
+                            projectId: result.projectId,
+                            newStatus,
+                            oldStatus: currentStatus,
+                        });
+                    } else {
+                        console.log(`✅ [状态同步] 项目 "${result.projectName}" 状态无变化: ${currentStatus}`);
+                    }
+                }
+
+                // 显示同步结果
+                if (manual) {
+                    // 手动同步显示详细结果
+                    console.log("📊 [手动同步] 详细查询结果:");
+                    console.log(ProjectStatusService.formatQueryResultsForLog(batchResult.results));
+
+                    // 显示用户友好的同步结果
+                    if (updatedCount > 0) {
+                        showToast(`✅ 手动同步完成，更新了 ${updatedCount} 个项目的状态`, "success");
+                    } else {
+                        showToast("ℹ️ 所有项目状态都是最新的", "info");
+                    }
+                } else {
+                    // 自动同步只显示简要结果
+                    if (updatedCount > 0) {
+                        console.log(`✅ 自动同步完成，更新了 ${updatedCount} 个项目的状态`);
+                        console.log("📊 [自动同步] 详细查询结果:");
+                        console.log(ProjectStatusService.formatQueryResultsForLog(batchResult.results));
+                    } else {
+                        console.log("✅ 自动同步完成，所有项目状态都是最新的");
+                    }
+                }
+            } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : "同步状态失败";
+                console.error("❌ 项目状态同步失败:", error);
+
+                if (manual) {
+                    showToast(`❌ 手动同步失败: ${errorMessage}`, "error");
+                }
+            }
+        },
+        [dispatch, showToast, state.projects]
+    );
+
+    // 启动项目
+    const startProject = useCallback(
+        async (project: Project) => {
+            try {
+                const success = await runnerStartProject(project);
+
+                if (success) {
+                    showToast(`项目已启动: ${project.name}`, "success");
+
+                    // 启动成功后延迟同步状态，确保PM2进程完全启动
+                    setTimeout(() => {
+                        console.log("🔄 项目启动成功，触发状态同步...");
+                        synchronizeProjectStatuses();
+                    }, 1500);
+                } else {
+                    showToast("启动项目失败", "error");
+                }
+            } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : "启动项目时发生未知错误";
+                showToast(`启动失败: ${errorMessage}`, "error");
+            }
+        },
+        [runnerStartProject, showToast, synchronizeProjectStatuses]
+    );
+
+    // 停止项目
+    const stopProject = useCallback(
+        async (projectId: string) => {
+            const project = state.projects.find((p) => p.id === projectId);
+            if (!project) return;
+
+            try {
+                await runnerStopProject(project);
+                showToast(`项目已停止: ${project.name}`, "success");
+
+                // 停止成功后延迟同步状态，确保PM2进程完全停止
+                setTimeout(() => {
+                    console.log("🔄 项目停止成功，触发状态同步...");
+                    synchronizeProjectStatuses();
+                }, 1000);
+            } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : "停止项目时发生未知错误";
+                showToast(`停止失败: ${errorMessage}`, "error");
+            }
+        },
+        [state.projects, runnerStopProject, showToast, synchronizeProjectStatuses]
+    );
+
+    // 创建项目
+    const createProject = useCallback(
+        async (projectConfig: ProjectCreationConfig) => {
+            dispatch({ type: "SET_LOADING", payload: true });
+            dispatch({ type: "SET_ERROR", payload: null });
+
+            // 为项目创建生成临时ID
+            const tempProjectId = `creating-${Date.now()}`;
+            const projectDisplayName = `创建项目: ${projectConfig.name}`;
+
+            console.log("🔄 开始创建项目，临时ID:", tempProjectId);
+
+            // 启动日志会话
+            startLogSession(tempProjectId, projectDisplayName);
+
+            // 添加开始日志
+            addLog({
+                projectId: tempProjectId,
+                level: "info",
+                message: `🏗️ 开始创建项目: ${projectConfig.name}`,
+                source: "system",
+            });
+
+            addLog({
+                projectId: tempProjectId,
+                level: "info",
+                message: `📍 项目路径: ${projectConfig.path}`,
+                source: "system",
+            });
+
+            addLog({
+                projectId: tempProjectId,
+                level: "info",
+                message: `🎨 使用模板: ${projectConfig.template}`,
+                source: "system",
+            });
+
+            try {
+                const result = await ProjectService.createProject(projectConfig, {
+                    onProgress: (message: string, level: "info" | "warn" | "error" | "success" = "info") => {
+                        console.log("📝 添加创建日志:", message);
+                        addLog({
+                            projectId: tempProjectId,
+                            level,
+                            message,
+                            source: "system",
+                        });
+                    },
+                });
+
+                if (result.success && result.data) {
+                    // 添加成功日志
+                    addLog({
+                        projectId: tempProjectId,
+                        level: "success",
+                        message: `✅ 项目创建成功: ${result.data.name}`,
+                        source: "system",
+                    });
+
+                    addLog({
+                        projectId: tempProjectId,
+                        level: "info",
+                        message: `🎉 项目已添加到项目列表，可以开始开发了！`,
+                        source: "system",
+                    });
+
+                    dispatch({ type: "ADD_PROJECT", payload: result.data });
+                    showToast(`项目创建成功: ${result.data.name}`, "success");
+
+                    // 添加最终提示，但不自动关闭日志会话
+                    addLog({
+                        projectId: tempProjectId,
+                        level: "info",
+                        message: `💡 提示: 日志会话将保持开启，您可以随时查看创建过程。点击其他项目或刷新页面来切换视图。`,
+                        source: "system",
+                    });
+
+                    // 不自动关闭日志会话，让用户可以继续查看创建日志
+                    // 用户可以通过选择其他项目或手动操作来切换视图
+                } else {
+                    const errorMsg = result.error || "创建项目失败";
+
+                    addLog({
+                        projectId: tempProjectId,
+                        level: "error",
+                        message: `❌ 创建失败: ${errorMsg}`,
+                        source: "system",
+                    });
+
+                    dispatch({ type: "SET_ERROR", payload: errorMsg });
+                    showToast(`创建失败: ${errorMsg}`, "error");
+
+                    // 出错时延迟关闭日志会话，让用户看到错误信息
+                    setTimeout(() => {
+                        console.log("🔚 出错后结束创建日志会话:", tempProjectId);
+                        endLogSession(tempProjectId);
+                    }, 5000);
+                }
+            } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : "创建项目时发生未知错误";
+
+                addLog({
+                    projectId: tempProjectId,
+                    level: "error",
+                    message: `💥 异常错误: ${errorMessage}`,
+                    source: "system",
+                });
+
+                dispatch({ type: "SET_ERROR", payload: errorMessage });
+                showToast(`创建失败: ${errorMessage}`, "error");
+
+                // 异常错误时延迟关闭日志会话，让用户看到错误信息
+                setTimeout(() => {
+                    console.log("🔚 异常后结束创建日志会话:", tempProjectId);
+                    endLogSession(tempProjectId);
+                }, 5000);
+            } finally {
+                dispatch({ type: "SET_LOADING", payload: false });
+            }
+        },
+        [dispatch, showToast, startLogSession, endLogSession, addLog]
+    );
+
+    // 为现有项目自动分配端口
+    const assignPortsToExisting = useCallback(async () => {
+        try {
+            const result = await ProjectService.assignPortsToExistingProjects();
+            if (result.success && result.data && result.data.updatedCount > 0) {
+                // 重新加载项目列表以反映更新
+                await loadProjects();
+                showToast(`端口分配成功: 为 ${result.data.updatedCount} 个项目自动分配了端口号`, "success");
+            }
+        } catch (error) {
+            console.error("自动分配端口失败:", error);
         }
-      });
-      
-      if (result.success && result.data) {
-        // 添加成功日志
-        addLog({
-          projectId: tempProjectId,
-          level: 'success',
-          message: `✅ 项目创建成功: ${result.data.name}`,
-          source: 'system'
-        });
+    }, [loadProjects, showToast]);
 
-        addLog({
-          projectId: tempProjectId,
-          level: 'info',
-          message: `🎉 项目已添加到项目列表，可以开始开发了！`,
-          source: 'system'
-        });
+    // 更新项目信息
+    const updateProject = useCallback(
+        async (projectId: string, updates: Partial<Project>) => {
+            try {
+                const result = await ProjectService.updateProject(projectId, updates);
 
-        dispatch({ type: 'ADD_PROJECT', payload: result.data });
-        showToast(`项目创建成功: ${result.data.name}`, 'success');
+                if (result.success) {
+                    // 更新本地状态
+                    dispatch({
+                        type: "UPDATE_PROJECT_PARTIAL",
+                        payload: { id: projectId, updates },
+                    });
 
-        // 添加最终提示，但不自动关闭日志会话
-        addLog({
-          projectId: tempProjectId,
-          level: 'info',
-          message: `💡 提示: 日志会话将保持开启，您可以随时查看创建过程。点击其他项目或刷新页面来切换视图。`,
-          source: 'system'
-        });
+                    showToast("项目信息已更新", "success");
+                    return { success: true };
+                } else {
+                    showToast(`更新项目失败: ${result.error}`, "error");
+                    return { success: false, error: result.error };
+                }
+            } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : "更新项目时发生未知错误";
+                showToast(`更新项目失败: ${errorMessage}`, "error");
+                return { success: false, error: errorMessage };
+            }
+        },
+        [dispatch, showToast]
+    );
 
-        // 不自动关闭日志会话，让用户可以继续查看创建日志
-        // 用户可以通过选择其他项目或手动操作来切换视图
-      } else {
-        const errorMsg = result.error || '创建项目失败';
-        
-        addLog({
-          projectId: tempProjectId,
-          level: 'error',
-          message: `❌ 创建失败: ${errorMsg}`,
-          source: 'system'
-        });
-
-        dispatch({ type: 'SET_ERROR', payload: errorMsg });
-        showToast(`创建失败: ${errorMsg}`, 'error');
-        
-        // 出错时延迟关闭日志会话，让用户看到错误信息
-        setTimeout(() => {
-          console.log('🔚 出错后结束创建日志会话:', tempProjectId);
-          endLogSession(tempProjectId);
-        }, 5000);
-      }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : '创建项目时发生未知错误';
-      
-      addLog({
-        projectId: tempProjectId,
-        level: 'error',
-        message: `💥 异常错误: ${errorMessage}`,
-        source: 'system'
-      });
-
-      dispatch({ type: 'SET_ERROR', payload: errorMessage });
-      showToast(`创建失败: ${errorMessage}`, 'error');
-      
-      // 异常错误时延迟关闭日志会话，让用户看到错误信息
-      setTimeout(() => {
-        console.log('🔚 异常后结束创建日志会话:', tempProjectId);
-        endLogSession(tempProjectId);
-      }, 5000);
-    } finally {
-      dispatch({ type: 'SET_LOADING', payload: false });
-    }
-  }, [dispatch, showToast, startLogSession, endLogSession, addLog]);
-
-  // 为现有项目自动分配端口
-  const assignPortsToExisting = useCallback(async () => {
-    try {
-      const result = await ProjectService.assignPortsToExistingProjects();
-      if (result.success && result.data && result.data.updatedCount > 0) {
-        // 重新加载项目列表以反映更新
-        await loadProjects();
-        showToast(`端口分配成功: 为 ${result.data.updatedCount} 个项目自动分配了端口号`, 'success');
-      }
-    } catch (error) {
-      console.error('自动分配端口失败:', error);
-    }
-  }, [loadProjects, showToast]);
-
-  // 更新项目信息
-  const updateProject = useCallback(async (projectId: string, updates: Partial<Project>) => {
-    try {
-      const result = await ProjectService.updateProject(projectId, updates);
-      
-      if (result.success) {
-        // 更新本地状态
-        dispatch({
-          type: 'UPDATE_PROJECT_PARTIAL',
-          payload: { id: projectId, updates }
-        });
-        
-        showToast('项目信息已更新', 'success');
-        return { success: true };
-      } else {
-        showToast(`更新项目失败: ${result.error}`, 'error');
-        return { success: false, error: result.error };
-      }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : '更新项目时发生未知错误';
-      showToast(`更新项目失败: ${errorMessage}`, 'error');
-      return { success: false, error: errorMessage };
-    }
-  }, [dispatch, showToast]);
-
-  return {
-    projects: state.projects,
-    isLoading: state.isLoading,
-    error: state.error,
-    loadProjects,
-    importProject,
-    removeProject,
-    startProject,
-    stopProject,
-    createProject,
-    updateProject,
-    assignPortsToExisting,
-    synchronizeProjectStatuses,
-  };
+    return {
+        projects: state.projects,
+        isLoading: state.isLoading,
+        error: state.error,
+        loadProjects,
+        importProject,
+        removeProject,
+        startProject,
+        stopProject,
+        createProject,
+        updateProject,
+        assignPortsToExisting,
+        synchronizeProjectStatuses,
+    };
 }
 
 // 工具函数（使用 Electron IPC 实现）
 async function showDirectoryPicker(): Promise<string | null> {
-  try {
-    // 检查是否在 Electron 环境中
-    if (typeof window !== 'undefined' && (window as any).electronAPI) {
-      const result = await (window as any).electronAPI.showOpenDialog({
-        title: '选择项目文件夹',
-        buttonLabel: '选择',
-        properties: ['openDirectory']
-      });
-      
-      if (result && !result.canceled && result.filePaths && result.filePaths.length > 0) {
-        return result.filePaths[0];
-      }
-      return null;
-    }
-    
-    // 降级到Web API（仅用于开发环境）
-    if ('showDirectoryPicker' in window) {
-      const dirHandle = await (window as any).showDirectoryPicker();
-      return dirHandle.name; // 返回文件夹名称，实际应用中会返回完整路径
-    }
-    
-    // 如果都不支持，使用input元素模拟
-    return new Promise((resolve) => {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.webkitdirectory = true; // 允许选择文件夹
-      input.multiple = true;
-      
-      input.onchange = (event: any) => {
-        const files = event.target.files;
-        if (files && files.length > 0) {
-          // 获取第一个文件的路径，提取文件夹路径
-          const firstFile = files[0];
-          const path = firstFile.webkitRelativePath;
-          const folderPath = path.split('/')[0];
-          resolve(`/Users/example/${folderPath}`); // 模拟完整路径
-        } else {
-          resolve(null);
+    try {
+        // 检查是否在 Electron 环境中
+        if (typeof window !== "undefined" && (window as any).electronAPI) {
+            const result = await (window as any).electronAPI.showOpenDialog({
+                title: "选择项目文件夹",
+                buttonLabel: "选择",
+                properties: ["openDirectory"],
+            });
+
+            if (result && !result.canceled && result.filePaths && result.filePaths.length > 0) {
+                return result.filePaths[0];
+            }
+            return null;
         }
-      };
-      
-      input.oncancel = () => resolve(null);
-      
-      // 触发文件选择器
-      input.click();
-    });
-  } catch (error) {
-    console.error('选择目录失败:', error);
-    
-    // 降级到简单的prompt
-    const path = prompt('请输入项目路径:', '/Users/example/my-project');
-    return path;
-  }
+
+        // 降级到Web API（仅用于开发环境）
+        if ("showDirectoryPicker" in window) {
+            const dirHandle = await (window as any).showDirectoryPicker();
+            return dirHandle.name; // 返回文件夹名称，实际应用中会返回完整路径
+        }
+
+        // 如果都不支持，使用input元素模拟
+        return new Promise((resolve) => {
+            const input = document.createElement("input");
+            input.type = "file";
+            input.webkitdirectory = true; // 允许选择文件夹
+            input.multiple = true;
+
+            input.onchange = (event: any) => {
+                const files = event.target.files;
+                if (files && files.length > 0) {
+                    // 获取第一个文件的路径，提取文件夹路径
+                    const firstFile = files[0];
+                    const path = firstFile.webkitRelativePath;
+                    const folderPath = path.split("/")[0];
+                    resolve(`/Users/example/${folderPath}`); // 模拟完整路径
+                } else {
+                    resolve(null);
+                }
+            };
+
+            input.oncancel = () => resolve(null);
+
+            // 触发文件选择器
+            input.click();
+        });
+    } catch (error) {
+        console.error("选择目录失败:", error);
+
+        // 降级到简单的prompt
+        const path = prompt("请输入项目路径:", "/Users/example/my-project");
+        return path;
+    }
 }
 
 async function showConfirmDialog(title: string, message: string): Promise<boolean> {
-  // 在真实应用中，这会显示一个自定义的确认对话框
-  return confirm(`${title}\n\n${message}`);
+    // 在真实应用中，这会显示一个自定义的确认对话框
+    return confirm(`${title}\n\n${message}`);
 }

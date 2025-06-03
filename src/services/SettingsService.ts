@@ -367,6 +367,7 @@ export class SettingsService {
     key: K,
     value: AppSettings[K]
   ): Promise<boolean> {
+    console.log(`更新设置: ${key} = ${value}`);
     try {
       const currentSettings = await this.loadSettings();
       const newSettings = { ...currentSettings, [key]: value };
@@ -382,6 +383,7 @@ export class SettingsService {
    */
   static async resetToDefaults(): Promise<boolean> {
     try {
+      console.log('重置设置为默认值');
       this.cachedSettings = null;
       return await this.saveSettings(DEFAULT_SETTINGS);
     } catch (error) {
