@@ -17,6 +17,8 @@
     "electron-main.ts",
     "src/ipc/**/*",
     "src/services/FileSystemService.ts",
+    "src/services/LoggerService.ts",
+    "src/services/ProjectConfigService.ts",
     "src/types/index.ts"
   ]
 }

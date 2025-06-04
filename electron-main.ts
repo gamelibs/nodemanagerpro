@@ -7,9 +7,9 @@ import * as path from 'path';
 // 在运行时动态导入，避免编译时的模块解析问题
 const setupFileSystemIPC = require('./src/ipc/fileSystemIPC.cjs').setupFileSystemIPC;
 const setupPM2IPC = require('./src/ipc/pm2IPC.cjs').setupPM2IPC;
+const setupPortIPC = require('./src/ipc/portIPC.cjs').setupPortIPC;
 const setupSettingsIPC = require('./src/ipc/settingsIPC.cjs').setupSettingsIPC;
 const setupLoggerIPC = require('./src/ipc/loggerIPC.cjs').setupLoggerIPC;
-const setupPortIPC = require('./src/ipc/portIPC.cjs').setupPortIPC;
 
 // 导入日志服务
 const LoggerService = require('./src/services/LoggerService.cjs').LoggerService;
@@ -63,17 +63,10 @@ function createWindow(): void {
         // 延迟一点时间确保所有初始化完成
         setTimeout(async () => {
           try {
-            const { loadSettingsFromMain } = require('./src/ipc/settingsIPC.cjs');
-            const result = await loadSettingsFromMain();
-            
-            if (result.success && result.data && result.data.devTools) {
-              console.log('🔧 根据设置打开开发者工具');
-              mainWindow.webContents.openDevTools({ mode: 'detach' });
-              LoggerService.info('根据设置自动打开开发者工具');
-            } else {
-              console.log('🔧 根据设置不打开开发者工具');
-              LoggerService.info('根据设置不自动打开开发者工具');
-            }
+            // 暂时直接在开发模式下打开开发者工具
+            console.log('🔧 开发模式：打开开发者工具');
+            mainWindow.webContents.openDevTools({ mode: 'detach' });
+            LoggerService.info('开发模式自动打开开发者工具');
           } catch (error) {
             console.warn('⚠️ 无法加载开发者工具设置，使用默认行为:', error);
             LoggerService.warn('无法加载开发者工具设置', error);
@@ -144,14 +137,6 @@ app.whenReady().then(() => {
   setupFileSystemIPC();
   LoggerService.info('文件系统 IPC 处理器已设置');
   
-  // 设置PM2 IPC处理器
-  setupPM2IPC();
-  LoggerService.info('PM2 IPC 处理器已设置');
-  
-  // 设置端口检测IPC处理器
-  setupPortIPC();
-  LoggerService.info('端口检测 IPC 处理器已设置');
-  
   // 设置设置IPC处理器
   setupSettingsIPC();
   LoggerService.info('设置 IPC 处理器已设置');
@@ -159,6 +144,14 @@ app.whenReady().then(() => {
   // 设置日志IPC处理器
   setupLoggerIPC();
   LoggerService.info('日志 IPC 处理器已设置');
+  
+  // 设置PM2 IPC处理器
+  setupPM2IPC();
+  LoggerService.info('PM2 IPC 处理器已设置');
+  
+  // 设置端口检测IPC处理器
+  setupPortIPC();
+  LoggerService.info('端口检测 IPC 处理器已设置');
   
   LoggerService.info('Shell IPC 处理器将在文件末尾设置');
   

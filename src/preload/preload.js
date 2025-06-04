@@ -45,6 +45,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'pm2:stop-log-stream',
       // 端口相关频道
       'port:check',
+      'project:update-port',
       // 日志相关频道
       'logger:getLogDirectory',
       'logger:getRecentLogFiles',

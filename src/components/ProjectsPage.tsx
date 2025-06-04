@@ -256,6 +256,33 @@ export default function ProjectsPage({
     setShowSettingsModal(false);
   };
 
+  // 端口编辑处理
+  const handlePortEdit = async (newPort: number) => {
+    if (!selectedProject) {
+      showToast('请先选择一个项目', 'error');
+      return;
+    }
+
+    try {
+      // 使用PortService更新项目端口
+      const { PortService } = await import('../services/PortService');
+      const result = await PortService.updateProjectPort(selectedProject, newPort);
+      
+      if (result.success) {
+        showToast(`端口已更新为 ${newPort}`, 'success');
+        // 重新获取项目数据以反映更新
+        if (selectedProject) {
+          fetchProjectData(selectedProject);
+        }
+      } else {
+        showToast(`端口更新失败: ${result.error}`, 'error');
+      }
+    } catch (error) {
+      console.error('端口编辑失败:', error);
+      showToast('端口编辑失败', 'error');
+    }
+  };
+
   return (
     <div className="h-full flex flex-col">
       {/* 顶部栏 (Header) */}
@@ -316,10 +343,7 @@ export default function ProjectsPage({
                   onOpenInEditor={handleOpenInEditor}
                   onOpenInFolder={handleOpenInFolder}
                   onOpenInBrowser={handleOpenInBrowser}
-                  onPortEdit={(port: number) => {
-                    // Handle port editing if needed
-                    console.log('Port edit requested:', port);
-                  }}
+                  onPortEdit={handlePortEdit}
                   onInstallDependencies={handleInstallDependencies}
                   onInstallSingleDependency={handleInstallSingleDependency}
                   onStartProject={handleStartProject}

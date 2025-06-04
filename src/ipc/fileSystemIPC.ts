@@ -547,6 +547,93 @@ export function setupFileSystemIPC() {
     }
   });
 
+  // 端口更新处理器 - 同时更新项目数据和.env文件
+  ipcMain.handle('project:update-port', async (_, { projectPath, projectId, newPort }: { 
+    projectPath: string; 
+    projectId: string; 
+    newPort: number; 
+  }) => {
+    console.log(`🔧 收到 project:update-port IPC调用: ${projectId} → ${newPort}`);
+    
+    try {
+      let success = true;
+      const results = [];
+
+      // 1. 更新项目数据文件
+      try {
+        const projects = await FileSystemService.loadProjects();
+        const projectIndex = projects.findIndex((p) => p.id === projectId);
+
+        if (projectIndex !== -1) {
+          // 更新端口
+          const updatedProject = {
+            ...projects[projectIndex],
+            port: newPort,
+          } as Project;
+
+          projects[projectIndex] = updatedProject;
+          await FileSystemService.saveProjects(projects);
+          results.push('✅ 更新项目数据成功');
+          console.log(`✅ 项目数据更新成功: ${projectId} → ${newPort}`);
+        } else {
+          results.push('❌ 未找到项目数据');
+          success = false;
+        }
+      } catch (dataError) {
+        console.error('❌ 更新项目数据失败:', dataError);
+        results.push('❌ 更新项目数据失败');
+        success = false;
+      }
+
+      // 2. 更新.env文件
+      if (projectPath) {
+        try {
+          const envPath = path.join(projectPath, '.env');
+
+          if (fs.existsSync(envPath)) {
+            let envContent = fs.readFileSync(envPath, 'utf-8');
+
+            // 替换或添加 PORT 配置
+            if (envContent.includes('PORT=')) {
+              envContent = envContent.replace(/PORT=\d+/g, `PORT=${newPort}`);
+            } else {
+              envContent += `\nPORT=${newPort}\n`;
+            }
+
+            fs.writeFileSync(envPath, envContent, 'utf-8');
+            results.push('✅ 更新 .env 文件成功');
+            console.log(`✅ .env 文件更新成功: PORT=${newPort}`);
+          } else {
+            // 创建新的 .env 文件
+            fs.writeFileSync(envPath, `PORT=${newPort}\n`, 'utf-8');
+            results.push('✅ 创建 .env 文件成功');
+            console.log(`✅ 创建 .env 文件成功: PORT=${newPort}`);
+          }
+        } catch (envError) {
+          console.error('❌ 更新 .env 文件失败:', envError);
+          results.push('❌ 更新 .env 文件失败');
+          success = false;
+        }
+      }
+
+      return {
+        success,
+        data: {
+          projectId,
+          newPort,
+          results,
+        },
+        message: results.join(', '),
+      };
+    } catch (error) {
+      console.error(`❌ 端口更新失败:`, error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : '更新端口时发生错误',
+      };
+    }
+  });
+
   isSetup = true;
   console.log('🔗 文件系统IPC处理器已设置');
 }
