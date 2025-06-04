@@ -31,6 +31,7 @@ export function setupFileSystemIPC() {
     ipcMain.removeHandler('project:createPackageJson');
     ipcMain.removeHandler('fs:readFile');
     ipcMain.removeHandler('fs:writeFile');
+    ipcMain.removeHandler('fs:exists');
     ipcMain.removeHandler('project:detectConfig');
     ipcMain.removeHandler('project:detectMultipleConfigs');
   } catch (error) {
@@ -526,6 +527,22 @@ export function setupFileSystemIPC() {
       return { 
         success: false, 
         error: error instanceof Error ? error.message : '批量检测项目配置失败' 
+      };
+    }
+  });
+
+  // 检查文件是否存在
+  ipcMain.handle('fs:exists', async (_, filePath: string) => {
+    console.log('📡 收到 fs:exists IPC调用，检查文件:', filePath);
+    try {
+      const exists = fs.existsSync(filePath);
+      console.log('📡 fs:exists 检查结果:', filePath, '存在:', exists);
+      return { success: true, data: exists };
+    } catch (error) {
+      console.error('📡 fs:exists 失败:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : '检查文件存在失败' 
       };
     }
   });

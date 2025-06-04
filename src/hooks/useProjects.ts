@@ -6,6 +6,7 @@ import { useLogs } from "./useLogs";
 import type { Project, ProjectCreationConfig } from "../types";
 import { ProjectStatusService } from "../services/ProjectStatusService";
 import { PortDetectionService } from "../services/PortDetectionService";
+import { DefaultProjectSetupService } from "../services/DefaultProjectSetupService";
 
 export function useProjects() {
     const { state, dispatch } = useApp();
@@ -113,7 +114,7 @@ export function useProjects() {
     //     },
     //     [dispatch, showToast]
     // );
-    // 🔧 增强的导入项目方法 - 集成端口检测
+    // 🔧 重构的导入项目方法 - 优化检测流程
     const importProject = useCallback(
         async (projectPath?: string) => {
             // 如果没有提供路径，显示文件选择器
@@ -127,154 +128,96 @@ export function useProjects() {
             dispatch({ type: "SET_ERROR", payload: null });
 
             try {
-                // 创建进度回调函数 - 同时在控制台和Toast中显示
+                // 创建进度回调函数
                 const onProgress = (message: string, level: "info" | "warn" | "error" | "success" = "info") => {
                     console.log(`[导入进度] [${level.toUpperCase()}] ${message}`);
-                    // 通过Toast系统向用户显示进度，将 warn 映射为 info
                     const toastType = level === "warn" ? "info" : level;
                     showToast(message, toastType);
                 };
 
-                // 🔧 1. 端口检测阶段
-                onProgress("🔍 正在检测项目端口配置...", "info");
-                console.log("🔍 开始多源端口检测...");
+                // 🔧 1. 重复导入检查
+                onProgress("🔍 检查项目是否已经导入...", "info");
+                const normalizedProjectPath = projectPath.replace(/\/+$/, "");
+                const existingProject = state.projects.find((project) => {
+                    const normalizedExistingPath = project.path.replace(/\/+$/, "");
+                    return normalizedExistingPath === normalizedProjectPath;
+                });
 
-                const portInfo = await PortDetectionService.detectProjectPorts(projectPath);
-
-                // 🔧 2. 显示端口检测结果
-                if (portInfo.hasPortConfig) {
-                    console.log(`📋 检测到 ${portInfo.configuredPorts.length} 个端口配置:`, portInfo.configuredPorts);
-                    onProgress(`📋 检测到端口配置: ${portInfo.configuredPorts.join(", ")}`, "info");
-
-                    // 显示详细的端口来源信息
-                    for (const source of portInfo.detectedSources) {
-                        const confidenceIcon = source.confidence === "high" ? "🔒" : source.confidence === "medium" ? "📋" : "💡";
-                        console.log(`  ${confidenceIcon} ${source.file}: ${source.port} (${source.confidence} confidence)`);
-                        onProgress(`  ${confidenceIcon} ${source.file}: ${source.port}`, "info");
-                    }
-
-                    // 显示默认端口
-                    if (portInfo.defaultPort) {
-                        onProgress(`🎯 默认端口: ${portInfo.defaultPort}`, "info");
-                        console.log(`🎯 确定的默认端口: ${portInfo.defaultPort}`);
-                    }
-                } else {
-                    console.log("⚠️ 未检测到端口配置");
-                    onProgress("⚠️ 未检测到端口配置", "warn");
-                    onProgress("💡 建议在 .env 文件中添加 PORT=3000", "info");
+                if (existingProject) {
+                    console.log(`⚠️ 项目已存在: ${existingProject.name}`);
+                    const duplicateMessage = buildDuplicateMessage(existingProject);
+                    showToastWin("项目重复导入", duplicateMessage, [], "warning");
+                    dispatch({ type: "SET_LOADING", payload: false });
+                    return;
                 }
 
-                // 🔧 3. 检测与现有项目的端口冲突
-                if (portInfo.hasPortConfig && state.projects.length > 0) {
-                    onProgress("🔍 正在检测端口冲突...", "info");
-                    console.log("🔍 开始检测端口冲突...");
+                onProgress("✅ 项目路径检查通过", "success");
 
-                    const existingProjects = state.projects.map((p) => ({
-                        id: p.id,
-                        name: p.name,
-                        port: p.port, // 假设项目对象有 port 字段
-                    }));
+                // 🔧 2. 基础配置检查
+                onProgress("🔍 检查项目基础配置...", "info");
+                const basicCheckResult = await checkProjectBasics(projectPath);
 
-                    const conflicts = PortDetectionService.checkPortConflictsWithExisting(portInfo.configuredPorts, existingProjects);
+                // 显示基础检查结果
+                logBasicCheckResults(basicCheckResult, onProgress);
 
-                    if (conflicts.length > 0) {
-                        console.log(`⚠️ 发现 ${conflicts.length} 个端口冲突:`, conflicts);
-                        onProgress(`⚠️ 发现 ${conflicts.length} 个端口冲突`, "warn");
+                // 🔧 3. 关键配置自动修复
+                let needsPortRedetection = false;
+                if (basicCheckResult.needsBasicSetup) {
+                    onProgress("🔧 正在修复基础配置...", "info");
+                    const setupResult = await DefaultProjectSetupService.createDefaultProjectSetup(projectPath);
 
-                        // 🔥 使用 ToastWin 显示详细的端口冲突信息
-                        const conflictDetails = conflicts.map(conflict => {
-                            const conflictNames = conflict.conflictingProjects.map(p => p.name).join(", ");
-                            return `端口 ${conflict.port} 与项目 "${conflictNames}" 冲突`;
-                        });
+                    if (setupResult.success) {
+                        onProgress("✅ 基础配置修复完成", "success");
+                        needsPortRedetection = true;
 
-                        const suggestions = [
-                            "在项目根目录创建或修改 .env 文件，设置不同的 PORT 值",
-                            "检查 package.json 中的脚本配置，修改端口参数",
-                            "确认 vite.config.js 或其他配置文件中的端口设置",
-                            "建议端口范围：3000-3999, 4000-4999, 5000-5999",
-                            "避免使用已知的系统端口（如 80, 443, 3306 等）"
-                        ];
-
-                        const warningMessage = `检测到端口冲突！当前项目的端口配置与已存在的项目冲突：\n\n${conflictDetails.join('\n')}\n\n请修改端口配置以避免冲突。`;
-
-                        // 显示ToastWin警告
-                        showToastWin(
-                            "⚠️ 端口冲突检测",
-                            warningMessage,
-                            suggestions,
-                            "warning"
-                        );
-                        
-                        onProgress("⚠️ 端口冲突详情已显示", "warn");
+                        // 显示修复详情
+                        const setupMessage = buildSetupMessage(setupResult.created, projectPath);
+                        showToastWin("已创建基础项目配置", setupMessage, [], "info");
                     } else {
-                        console.log("✅ 未发现端口冲突");
-                        onProgress("✅ 端口检测通过，无冲突", "success");
+                        onProgress("⚠️ 基础配置修复部分失败，但不影响导入", "warn");
                     }
-                } else if (portInfo.hasPortConfig) {
-                    onProgress("✅ 端口检测完成（当前无其他项目）", "success");
                 }
 
-                // 🔧 3.5. 检测 Vite 配置冲突
-                if (portInfo.viteConfigConflict?.hasConflict) {
-                    console.log("⚠️ 检测到 Vite 配置冲突:", portInfo.viteConfigConflict);
-                    onProgress("⚠️ 检测到 Vite 配置冲突", "warn");
+                // 🔧 4. 端口配置检查 (在配置修复后)
+                onProgress("🔌 检测项目端口配置...", "info");
+                let portInfo = await PortDetectionService.detectProjectPorts(projectPath);
 
-                    const viteConflict = portInfo.viteConfigConflict;
-                    const viteConflictMessage = `检测到 Vite 项目配置冲突！
-
-项目中存在不一致的端口配置：
-• Vite 配置文件中的端口：${viteConflict.vitePort}
-• .env 文件中的端口：${viteConflict.envPort}
-
-这可能导致开发服务器启动时出现意外行为。建议统一端口配置。`;
-
-                    const viteConflictSuggestions = [
-                        "删除 .env 文件中的 PORT 配置，使用 vite.config.js 中的配置",
-                        "删除 vite.config.js 中的端口配置，使用 .env 文件中的 PORT 变量",
-                        `将 .env 文件中的 PORT 改为 ${viteConflict.vitePort} 以匹配 Vite 配置`,
-                        `将 vite.config.js 中的端口改为 ${viteConflict.envPort} 以匹配环境变量`,
-                        "推荐：使用环境变量方式，在 vite.config.js 中引用 process.env.PORT"
-                    ];
-
-                    // 显示 Vite 配置冲突警告
-                    showToastWin(
-                        "⚠️ Vite 配置冲突",
-                        viteConflictMessage,
-                        viteConflictSuggestions,
-                        "warning"
-                    );
-
-                    onProgress("⚠️ Vite 配置冲突详情已显示", "warn");
+                // 🔧 如果创建了默认配置，重新检测端口确保获取最新配置
+                if (needsPortRedetection) {
+                    console.log("🔄 检测到基础配置已修复，重新检测端口配置...");
+                    onProgress("🔄 重新检测端口配置...", "info");
+                    portInfo = await PortDetectionService.detectProjectPorts(projectPath);
+                    console.log("🔄 端口重新检测完成:", portInfo);
                 }
 
-                // 🔧 4. 继续正常的导入流程，传递检测到的端口信息
+                // 显示端口检测结果
+                logPortDetectionResults(portInfo, onProgress);
+
+                // 🔧 5. 端口冲突检查
+                const conflictWarnings = await checkPortConflicts(portInfo, state.projects, onProgress);
+
+                // 🔧 6. 问题汇总 (不阻止导入)
+                const warnings = [...basicCheckResult.warnings, ...conflictWarnings];
+
+                if (warnings.length > 0) {
+                    onProgress(`⚠️ 发现 ${warnings.length} 个提醒事项，但不影响导入`, "warn");
+                    // 可以选择性地显示警告汇总
+                }
+
+                // 🔧 7. 项目导入 (始终执行)
                 onProgress("📦 开始导入项目...", "info");
-                console.log("📦 端口检测完成，开始项目导入...");
-
                 const result = await ProjectService.importProject(projectPath, onProgress, portInfo);
 
                 if (result.success && result.data) {
                     dispatch({ type: "ADD_PROJECT", payload: result.data });
 
-                    // 🔧 5. 导入成功后的端口总结
-                    if (portInfo.hasPortConfig && portInfo.defaultPort) {
-                        onProgress(`✅ 项目导入成功，实际端口: ${portInfo.defaultPort}`, "success");
-                    } else if (portInfo.hasPortConfig) {
-                        onProgress(`✅ 项目导入成功，检测到端口: ${portInfo.configuredPorts.join(", ")}`, "success");
-                    } else {
-                        onProgress(`✅ 项目导入成功，建议配置端口`, "success");
-                    }
-
+                    // 成功消息
+                    const successMessage = buildSuccessMessage(result.data, portInfo, warnings);
+                    onProgress(successMessage, "success");
                     showToast(`项目导入成功: ${result.data.name}`, "success");
 
-                    // 🔄 触发项目导入后的自动同步
-                    console.log("🔄 项目导入成功，开始自动同步PM2状态...");
-                    onProgress("🔄 正在同步PM2状态...", "info");
-
-                    // 设置自动同步标志，触发PM2状态检查
+                    // PM2状态同步
                     shouldAutoSync.current = true;
-
-                    // 延迟一小段时间后进行状态同步，确保项目已添加到列表中
                     setTimeout(() => {
                         console.log("🔄 开始导入后PM2状态同步...");
                     }, 500);
@@ -292,8 +235,216 @@ export function useProjects() {
                 dispatch({ type: "SET_LOADING", payload: false });
             }
         },
-        [dispatch, showToast, state.projects]
+        [dispatch, showToast, showToastWin, state.projects]
     );
+
+    // 🔧 检查项目基础配置
+    async function checkProjectBasics(projectPath: string): Promise<{
+        needsBasicSetup: boolean;
+        hasPackageJson: boolean;
+        hasStartScript: boolean;
+        hasStartFile: boolean;
+        warnings: string[];
+    }> {
+        const warnings: string[] = [];
+        let hasPackageJson = false;
+        let hasStartScript = false;
+        let hasStartFile = false;
+
+        try {
+            // 检查 package.json
+            const packageJsonPath = `${projectPath}/package.json`;
+            const packageResult = await window.electronAPI?.invoke("fs:readFile", packageJsonPath);
+
+            if (packageResult?.success) {
+                hasPackageJson = true;
+                const packageJson = JSON.parse(packageResult.content);
+                hasStartScript = !!packageJson.scripts?.start;
+
+                if (!hasStartScript) {
+                    warnings.push("缺少启动脚本 (package.json scripts.start)");
+                }
+            } else {
+                warnings.push("缺少 package.json 文件");
+            }
+
+            // 检查启动文件
+            const startFiles = ["server.js", "index.js", "app.js", "main.js"];
+            for (const fileName of startFiles) {
+                const filePath = `${projectPath}/${fileName}`;
+                const existsResult = await window.electronAPI?.invoke("fs:exists", filePath);
+                if (existsResult?.exists) {
+                    hasStartFile = true;
+                    break;
+                }
+            }
+
+            if (!hasStartFile) {
+                warnings.push("未找到标准的启动文件 (server.js, index.js 等)");
+            }
+        } catch (error) {
+            warnings.push("基础配置检查时发生错误");
+        }
+
+        const needsBasicSetup = !hasPackageJson || !hasStartScript || !hasStartFile;
+
+        return {
+            needsBasicSetup,
+            hasPackageJson,
+            hasStartScript,
+            hasStartFile,
+            warnings,
+        };
+    }
+
+    // 🔧 记录基础检查结果
+    function logBasicCheckResults(
+        result: {
+            hasPackageJson: boolean;
+            hasStartScript: boolean;
+            hasStartFile: boolean;
+            warnings: string[];
+        },
+        onProgress: (message: string, level?: "info" | "warn" | "error" | "success") => void
+    ) {
+        if (result.hasPackageJson) {
+            onProgress("✅ package.json 文件存在", "info");
+        }
+
+        if (result.hasStartScript) {
+            onProgress("✅ 启动脚本配置正常", "info");
+        }
+
+        if (result.hasStartFile) {
+            onProgress("✅ 检测到启动文件", "info");
+        }
+
+        if (result.warnings.length > 0) {
+            onProgress(`⚠️ 检测到 ${result.warnings.length} 个配置问题，将自动修复`, "warn");
+            result.warnings.forEach((warning) => {
+                onProgress(`  • ${warning}`, "info");
+            });
+        }
+    }
+
+    // 🔧 记录端口检测结果
+    function logPortDetectionResults(portInfo: any, onProgress: (message: string, level?: "info" | "warn" | "error" | "success") => void) {
+        if (portInfo.hasPortConfig) {
+            onProgress(`📋 检测到端口配置: ${portInfo.configuredPorts.join(", ")}`, "info");
+
+            if (portInfo.defaultPort) {
+                onProgress(`🎯 默认端口: ${portInfo.defaultPort}`, "info");
+            }
+        } else {
+            onProgress("⚠️ 未检测到端口配置", "warn");
+        }
+    }
+
+    // 🔧 检查端口冲突
+    async function checkPortConflicts(portInfo: any, existingProjects: any[], onProgress: (message: string, level?: "info" | "warn" | "error" | "success") => void): Promise<string[]> {
+        const warnings: string[] = [];
+
+        if (!portInfo.hasPortConfig || existingProjects.length === 0) {
+            return warnings;
+        }
+
+        onProgress("🔍 检查端口冲突...", "info");
+
+        // 项目间端口冲突检查
+        const existingProjectsMap = existingProjects.map((p) => ({
+            id: p.id,
+            name: p.name,
+            port: p.port,
+        }));
+
+        const conflicts = PortDetectionService.checkPortConflictsWithExisting(portInfo.configuredPorts, existingProjectsMap);
+
+        if (conflicts.length > 0) {
+            onProgress(`⚠️ 发现 ${conflicts.length} 个端口冲突`, "warn");
+
+            const conflictMessage = buildConflictMessage(conflicts);
+            showToastWin("检测到端口冲突", conflictMessage, [], "warning");
+
+            warnings.push(`端口冲突: ${conflicts.length} 个`);
+        } else {
+            onProgress("✅ 无端口冲突", "success");
+        }
+
+        // Vite 配置冲突检查
+        if (portInfo.viteConfigConflict?.hasConflict) {
+            onProgress("⚠️ 检测到 Vite 配置冲突", "warn");
+
+            const viteMessage = buildViteConflictMessage(portInfo.viteConfigConflict.vitePort, portInfo.viteConfigConflict.envPort);
+            showToastWin("Vite 配置冲突", viteMessage, [], "warning");
+
+            warnings.push("Vite 配置冲突");
+        }
+
+        return warnings;
+    }
+
+    // 🔧 构建消息的辅助函数
+    function buildDuplicateMessage(existingProject: any): string {
+        return `该项目已经在项目列表中了！
+
+项目名称：${existingProject.name}
+项目路径：${existingProject.path}
+项目ID：${existingProject.id}
+最后打开：${new Date(existingProject.lastOpened).toLocaleString()}
+
+如果您想重新配置这个项目，可以先删除现有项目再重新导入。`;
+    }
+
+    function buildSetupMessage(created: { serverJs: boolean; packageJsonScripts: boolean; envFile: boolean }, projectPath: string): string {
+        let message = "检测到项目缺少基础配置，已自动创建：\n\n";
+
+        const createdFiles = [];
+        if (created.serverJs) createdFiles.push("✅ server.js - 默认 Express 服务器");
+        if (created.packageJsonScripts) createdFiles.push("✅ package.json scripts - 启动脚本");
+        if (created.envFile) createdFiles.push("✅ .env - 环境配置 (端口: 2222)");
+
+        message += createdFiles.join("\n") + "\n\n";
+        message += "💡 项目现在可以使用 'npm start' 启动";
+
+        return message;
+    }
+
+    function buildConflictMessage(conflicts: any[]): string {
+        let message = `发现 ${conflicts.length} 个端口冲突：\n\n`;
+
+        conflicts.forEach((conflict) => {
+            const projectNames = conflict.conflictingProjects.map((p: any) => p.name).join("、");
+            message += `🔥 端口 ${conflict.port} 与项目冲突：${projectNames}\n`;
+        });
+
+        message += "\n💡 建议修改 .env 文件中的 PORT 值以避免冲突";
+        return message;
+    }
+
+    function buildViteConflictMessage(vitePort: number, envPort: number): string {
+        return `Vite 项目配置不一致：
+
+🔧 vite.config.js: ${vitePort}
+📋 .env 文件: ${envPort}
+
+Vite 将使用配置文件中的端口 ${vitePort}
+
+💡 建议统一配置以避免混淆`;
+    }
+
+    function buildSuccessMessage(project: any, portInfo: any, warnings: string[]): string {
+        let message = `✅ 项目导入成功: ${project.name}`;
+
+        if (portInfo.defaultPort) {
+            message += ` (端口: ${portInfo.defaultPort})`;
+        }
+
+        if (warnings.length > 0) {
+            message += ` [${warnings.length}个提醒]`;
+        }
+
+        return message;
+    }
 
     // 移除项目
     const removeProject = useCallback(
