@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useToastContext } from '../../store/ToastContext';
-import type { Project } from '../../types';
+import type { Project, DetailedProjectType } from '../../types';
 import type { PM2Process } from '../../services/PM2Service';
 
 interface ProjectDetailsProps {
@@ -56,6 +56,46 @@ export function ProjectDetails({
 
   // 使用全局 Toast 系统
   const { showToast } = useToastContext();
+
+  // 获取项目类型图标
+  const getProjectTypeIcon = (projectType: DetailedProjectType | undefined): string => {
+    switch (projectType) {
+      case 'vite': return '⚡';
+      case 'react': return '⚛️';
+      case 'nextjs': return '▲';
+      case 'vue': return '💚';
+      case 'nuxt': return '💚';
+      case 'angular': return '🅰️';
+      case 'node-backend': return '🟢';
+      case 'express': return '🚂';
+      case 'nestjs': return '🐱';
+      case 'fastify': return '⚡';
+      case 'electron': return '⚛️';
+      case 'tauri': return '🦀';
+      default: return '📦';
+    }
+  };
+
+  // 获取项目类型标签
+  const getProjectTypeLabel = (projectType: DetailedProjectType | string | undefined): string => {
+    switch (projectType) {
+      case 'vite': return 'Vite';
+      case 'react': return 'React';
+      case 'nextjs': return 'Next.js';
+      case 'vue': return 'Vue';
+      case 'nuxt': return 'Nuxt';
+      case 'angular': return 'Angular';
+      case 'node-backend': return 'Node.js Backend';
+      case 'express': return 'Express';
+      case 'nestjs': return 'NestJS';
+      case 'fastify': return 'Fastify';
+      case 'electron': return 'Electron';
+      case 'tauri': return 'Tauri';
+      case 'node': return 'Node.js';
+      case 'other': return '其他';
+      default: return projectType?.toString() || '未知';
+    }
+  };
 
   // 检查项目是否可以启动
   const canStartProject = () => {
@@ -193,14 +233,41 @@ export function ProjectDetails({
                   </button>
                 </div>
               </div>
-              <div className="flex justify-between">
+              <div className="flex justify-between items-center">
                 <span className="theme-text-muted text-xs">项目类型:</span>
-                <span className="theme-text-primary text-xs">{project.type}</span>
+                <div className="flex items-center gap-1">
+                  <span className="text-xs">{getProjectTypeIcon(project.projectType)}</span>
+                  <span className="theme-text-primary text-xs">{getProjectTypeLabel(project.projectType || project.type)}</span>
+                </div>
               </div>
+              
+              {/* 推荐脚本显示 */}
+              {project.hasCustomScript && project.recommendedScript && (
+                <div className="flex justify-between items-center">
+                  <span className="theme-text-muted text-xs">推荐脚本:</span>
+                  <div className="flex items-center gap-1">
+                    <span className="theme-text-primary text-xs font-mono bg-gray-100 px-1 rounded">
+                      {project.recommendedScript}
+                    </span>
+                    <span className="text-xs" title="该项目有推荐的启动脚本">💡</span>
+                  </div>
+                </div>
+              )}
+                <span className="theme-text-muted text-xs">Git状态:</span>
+                {project.hasGit ? (
+                  <span className="text-green-600 text-xs flex items-center gap-1">
+                    ✅ 已初始化Git
+                  </span>
+                ) : (
+                  <span className="text-orange-500 text-xs flex items-center gap-1">
+                    ⚠️ 未使用Git跟踪
+                  </span>
+                )}
               <div className="flex justify-between">
                 <span className="theme-text-muted text-xs">包管理器:</span>
                 <span className="theme-text-primary text-xs">{project.packageManager}</span>
               </div>
+             
               {isLoadingPackage ? (
                 <div className="flex items-center justify-center py-2">
                   <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-500"></div>

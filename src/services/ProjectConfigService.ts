@@ -1,4 +1,4 @@
-import type { Project, CoreProject, ProjectScript } from '../types';
+import type { Project, CoreProject, ProjectScript, DetailedProjectType } from '../types';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -20,6 +20,9 @@ export class ProjectConfigService {
       // 检测项目类型和包管理器
       const { type, packageManager } = await this.detectProjectTypeAndPackageManager(projectPath);
       
+      // 🔧 新增：智能项目类型检测
+      const { projectType, hasCustomScript, recommendedScript } = await this.detectDetailedProjectType(projectPath);
+      
       // 检测脚本
       const scripts = await this.detectScripts(projectPath, packageManager);
       
@@ -28,25 +31,35 @@ export class ProjectConfigService {
       
       // 检测项目描述和版本
       const { description, version } = await this.detectProjectInfo(projectPath);
+
+      // 🔧 添加简单的Git检测
+      const hasGit = this.hasGitRepository(projectPath);
       
       // 构建完整项目对象
       const fullProject: Project = {
         ...coreProject,
         type,
+        projectType,
+        hasCustomScript,
+        recommendedScript,
         packageManager,
         scripts,
         port,
         description,
-        version
+        version,
+        hasGit
         // 不再强制设置 status，让UI层处理显示逻辑
       };
 
       console.log(`✅ 项目配置检测完成: ${coreProject.name}`, {
         type,
+        projectType,
         packageManager,
         scriptsCount: scripts.length,
         port,
-        description
+        description,
+        hasCustomScript,
+        recommendedScript
       });
 
       return fullProject;
@@ -57,12 +70,155 @@ export class ProjectConfigService {
       return {
         ...coreProject,
         type: 'other',
+        projectType: 'other',
         packageManager: 'npm',
         scripts: []
         // 不再强制设置默认 status
       };
     }
   }
+
+  /**
+   * 检测项目是否有Git仓库
+   */
+  private static hasGitRepository(projectPath: string): boolean {
+    try {
+      const gitDir = path.join(projectPath, '.git');
+      return fs.existsSync(gitDir);
+    } catch (error) {
+      console.warn(`⚠️ 检测Git仓库失败: ${projectPath}`, error);
+      return false;
+    }
+  }
+
+  /**
+   * 🔧 智能检测详细项目类型和推荐脚本
+   */
+  private static async detectDetailedProjectType(projectPath: string): Promise<{
+    projectType: DetailedProjectType;
+    hasCustomScript: boolean;
+    recommendedScript?: string;
+  }> {
+    const packageJsonPath = path.join(projectPath, 'package.json');
+    
+    // 默认值
+    let projectType: DetailedProjectType = 'other';
+    let hasCustomScript = false;
+    let recommendedScript: string | undefined;
+
+    if (!fs.existsSync(packageJsonPath)) {
+      return { projectType, hasCustomScript, recommendedScript };
+    }
+
+    try {
+      const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+      const dependencies = { ...packageJson.dependencies, ...packageJson.devDependencies };
+      const scripts = packageJson.scripts || {};
+
+      // 🎯 检测具体的项目类型
+      
+      // Vite 项目检测
+      if (dependencies.vite || fs.existsSync(path.join(projectPath, 'vite.config.js')) || fs.existsSync(path.join(projectPath, 'vite.config.ts'))) {
+        projectType = 'vite';
+        hasCustomScript = true;
+        recommendedScript = scripts.dev ? 'dev' : (scripts.start ? 'start' : undefined);
+      }
+      // Next.js 项目检测
+      else if (dependencies.next || fs.existsSync(path.join(projectPath, 'next.config.js'))) {
+        projectType = 'nextjs';
+        hasCustomScript = true;
+        recommendedScript = scripts.dev ? 'dev' : (scripts.start ? 'start' : undefined);
+      }
+      // Nuxt 项目检测
+      else if (dependencies.nuxt || dependencies['@nuxt/core'] || fs.existsSync(path.join(projectPath, 'nuxt.config.js'))) {
+        projectType = 'nuxt';
+        hasCustomScript = true;
+        recommendedScript = scripts.dev ? 'dev' : (scripts.start ? 'start' : undefined);
+      }
+      // Angular 项目检测
+      else if (dependencies['@angular/core'] || fs.existsSync(path.join(projectPath, 'angular.json'))) {
+        projectType = 'angular';
+        hasCustomScript = true;
+        recommendedScript = scripts.serve ? 'serve' : (scripts.start ? 'start' : undefined);
+      }
+      // Vue CLI 项目检测
+      else if (dependencies['@vue/cli-service'] || dependencies.vue) {
+        projectType = 'vue';
+        hasCustomScript = true;
+        recommendedScript = scripts.serve ? 'serve' : (scripts.dev ? 'dev' : (scripts.start ? 'start' : undefined));
+      }
+      // React 项目检测（但不是 Next.js）
+      else if (dependencies.react && !dependencies.next) {
+        projectType = 'react';
+        hasCustomScript = true;
+        recommendedScript = scripts.dev ? 'dev' : (scripts.start ? 'start' : undefined);
+      }
+      // Electron 项目检测
+      else if (dependencies.electron) {
+        projectType = 'electron';
+        hasCustomScript = true;
+        recommendedScript = scripts['electron:serve'] ? 'electron:serve' : (scripts.dev ? 'dev' : (scripts.start ? 'start' : undefined));
+      }
+      // Tauri 项目检测
+      else if (dependencies['@tauri-apps/api'] || fs.existsSync(path.join(projectPath, 'src-tauri'))) {
+        projectType = 'tauri';
+        hasCustomScript = true;
+        recommendedScript = scripts['tauri:serve'] ? 'tauri:serve' : (scripts.dev ? 'dev' : undefined);
+      }
+      // NestJS 项目检测
+      else if (dependencies['@nestjs/core']) {
+        projectType = 'nestjs';
+        hasCustomScript = true;
+        recommendedScript = scripts['start:dev'] ? 'start:dev' : (scripts.dev ? 'dev' : (scripts.start ? 'start' : undefined));
+      }
+      // Express 项目检测
+      else if (dependencies.express) {
+        projectType = 'express';
+        hasCustomScript = true;
+        recommendedScript = scripts.dev ? 'dev' : (scripts.start ? 'start' : undefined);
+      }
+      // Fastify 项目检测
+      else if (dependencies.fastify) {
+        projectType = 'fastify';
+        hasCustomScript = true;
+        recommendedScript = scripts.dev ? 'dev' : (scripts.start ? 'start' : undefined);
+      }
+      // 通用 Node.js 后端项目
+      else if (this.isNodeBackendProject(dependencies, scripts)) {
+        projectType = 'node-backend';
+        hasCustomScript = true;
+        recommendedScript = scripts.dev ? 'dev' : (scripts.start ? 'start' : undefined);
+      }
+
+      console.log(`🎯 检测到项目类型: ${projectType}，推荐脚本: ${recommendedScript || '无'}`);
+
+    } catch (error) {
+      console.warn(`⚠️ 检测详细项目类型失败: ${projectPath}`, error);
+    }
+
+    return { projectType, hasCustomScript, recommendedScript };
+  }
+
+  /**
+   * 判断是否为 Node.js 后端项目
+   */
+  private static isNodeBackendProject(dependencies: Record<string, string>, scripts: Record<string, string>): boolean {
+    // 检查常见的后端依赖
+    const backendDeps = ['koa', '@koa/router', 'hapi', 'restify', 'apollo-server', 'graphql'];
+    const hasBackendDep = backendDeps.some(dep => dependencies[dep]);
+
+    // 检查是否有典型的服务器脚本
+    const serverScripts = ['server', 'serve', 'start:server'];
+    const hasServerScript = serverScripts.some(script => scripts[script]);
+
+    // 检查脚本中是否包含 node 启动命令
+    const hasNodeScript = Object.values(scripts).some(script => 
+      script.includes('node ') || script.includes('nodemon ') || script.includes('ts-node ')
+    );
+
+    return hasBackendDep || hasServerScript || hasNodeScript;
+  }
+
 
   /**
    * 检测项目类型和包管理器

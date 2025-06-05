@@ -12,9 +12,20 @@ export interface CoreProject {
   lastOpened: Date;
 }
 
+// 项目类型详细分类
+export type DetailedProjectType = 
+  | 'vite' | 'react' | 'nextjs' | 'vue' | 'nuxt' | 'angular'  // 前端框架
+  | 'node-backend' | 'express' | 'nestjs' | 'fastify'        // 后端框架
+  | 'electron' | 'tauri'                                     // 桌面应用
+  | 'pure-api' | 'static-app' | 'full-stack'                // 自定义模板
+  | 'other';                                                 // 其他
+
 // 完整项目信息（包含动态检测的信息）
 export interface Project extends CoreProject {
   type: 'node' | 'react' | 'vue' | 'electron' | 'other' | 'pure-api' | 'static-app' | 'full-stack';
+  projectType?: DetailedProjectType; // 详细的项目类型
+  hasCustomScript?: boolean; // 是否有推荐的启动脚本
+  recommendedScript?: string; // 推荐的启动脚本名称
   status?: 'running' | 'stopped' | 'error';
   port?: number;
   packageManager: 'npm' | 'yarn' | 'pnpm';
@@ -29,6 +40,8 @@ export interface Project extends CoreProject {
     processId?: number; // PM2进程ID（pm_id）
     pid?: number; // 系统进程ID
   };
+  git?: GitStatus;
+  hasGit?: boolean; // 🔧 简单的布尔值，表示是否有Git
 }
 
 export interface ProjectScript {
@@ -115,6 +128,19 @@ export interface ProjectCreationConfig {
     envConfig: boolean;
     autoInstall: boolean;
     git: boolean;
+  };
+}
+
+export interface GitStatus {
+  isGitRepo: boolean;
+  currentBranch?: string;
+  hasUncommittedChanges?: boolean;
+  remoteUrl?: string;
+  lastCommit?: {
+    hash: string;
+    message: string;
+    author: string;
+    date: string;
   };
 }
 
