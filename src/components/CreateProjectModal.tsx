@@ -136,7 +136,13 @@ export default function CreateProjectModal({ isOpen, onClose, onConfirm }: Creat
       jest: false,
       envConfig: false,
       autoInstall: false,
-      git: false
+      git: false,
+      typescript: false,
+      tailwindcss: false,
+      husky: false,
+      commitlint: false,
+      editorconfig: false,
+      vscode: false
     }
   });
 
@@ -170,16 +176,76 @@ export default function CreateProjectModal({ isOpen, onClose, onConfirm }: Creat
   const packageManagers = getPackageManagers();
   const selectedTemplate = templates.find(template => template.id === formData.template);
 
+  // 根据模板类型设置默认工具选择
+  const getDefaultToolsForTemplate = (template: TemplateInfo) => {
+    const isBasicTemplate = ['pure-api', 'static-app', 'full-stack'].includes(template.id);
+    
+    if (isBasicTemplate) {
+      // 基础模板保持用户手动选择
+      return formData.tools;
+    }
+    
+    // 非基础模板（企业级、Yarn生态模板）默认选择所有工具
+    return {
+      eslint: true,
+      prettier: true,
+      jest: true,
+      envConfig: true,
+      autoInstall: true,
+      git: true,
+      typescript: true,
+      tailwindcss: !!(template.isPremium || template.isYarnTemplate), // 企业级和Yarn生态默认包含
+      husky: true,
+      commitlint: true,
+      editorconfig: true,
+      vscode: true
+    };
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     // 检查是否选择了企业级模板
     const isEnterpriseTemplate = selectedTemplate?.isPremium;
     
+    // 测试阶段：跳过付费验证，直接创建企业级模板
     if (isEnterpriseTemplate && !enterpriseConfig) {
-      // 显示企业级模板选择器
-      setShowEnterpriseSelector(true);
-      return;
+      // 在测试阶段，为企业级模板设置默认配置以跳过付费流程
+      const defaultEnterpriseConfig: EnterpriseProjectConfig = {
+        ...formData,
+        template: selectedTemplate.id,
+        enterpriseFeatures: {
+          internationalization: {
+            enabled: true,
+            defaultLocale: 'zh-CN',
+            supportedLocales: ['zh-CN', 'en-US']
+          },
+          authentication: {
+            provider: 'custom',
+            enabled: false
+          },
+          database: {
+            type: 'postgresql',
+            enabled: false
+          },
+          deployment: {
+            platform: 'vercel',
+            cicd: true
+          },
+          monitoring: {
+            errorTracking: true,
+            analytics: true,
+            performance: true
+          },
+          ui: {
+            designSystem: 'tailwind',
+            responsive: true,
+            darkMode: true
+          }
+        }
+      };
+      setEnterpriseConfig(defaultEnterpriseConfig);
+      // 继续执行，不返回到付费弹窗
     }
     
     // 验证表单
@@ -232,7 +298,13 @@ export default function CreateProjectModal({ isOpen, onClose, onConfirm }: Creat
         jest: false,
         envConfig: false,
         autoInstall: false,
-        git: false
+        git: false,
+        typescript: false,
+        tailwindcss: false,
+        husky: false,
+        commitlint: false,
+        editorconfig: false,
+        vscode: false
       }
     });
     setErrors({});
@@ -249,6 +321,13 @@ export default function CreateProjectModal({ isOpen, onClose, onConfirm }: Creat
     }
 
     handleInputChange('template', template.id);
+    
+    // 根据模板类型设置默认工具选择
+    const defaultTools = getDefaultToolsForTemplate(template);
+    setFormData(prev => ({
+      ...prev,
+      tools: defaultTools
+    }));
     
     // 如果切换到非企业级模板，重置企业级配置
     if (!template.isPremium) {
@@ -618,6 +697,32 @@ export default function CreateProjectModal({ isOpen, onClose, onConfirm }: Creat
               <label className="flex items-center space-x-2">
                 <input
                   type="checkbox"
+                  checked={formData.tools.typescript}
+                  onChange={(e) => handleToolChange('typescript', e.target.checked)}
+                  className="rounded"
+                />
+                <div>
+                  <span className="text-sm font-medium theme-text-primary">{t('projects.createModal.tools.typescript.name')}</span>
+                  <p className="text-xs theme-text-secondary">{t('projects.createModal.tools.typescript.description')}</p>
+                </div>
+              </label>
+
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={formData.tools.tailwindcss}
+                  onChange={(e) => handleToolChange('tailwindcss', e.target.checked)}
+                  className="rounded"
+                />
+                <div>
+                  <span className="text-sm font-medium theme-text-primary">{t('projects.createModal.tools.tailwindcss.name')}</span>
+                  <p className="text-xs theme-text-secondary">{t('projects.createModal.tools.tailwindcss.description')}</p>
+                </div>
+              </label>
+
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
                   checked={formData.tools.jest}
                   onChange={(e) => handleToolChange('jest', e.target.checked)}
                   className="rounded"
@@ -625,6 +730,58 @@ export default function CreateProjectModal({ isOpen, onClose, onConfirm }: Creat
                 <div>
                   <span className="text-sm font-medium theme-text-primary">{t('projects.createModal.tools.jest.name')}</span>
                   <p className="text-xs theme-text-secondary">{t('projects.createModal.tools.jest.description')}</p>
+                </div>
+              </label>
+
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={formData.tools.husky}
+                  onChange={(e) => handleToolChange('husky', e.target.checked)}
+                  className="rounded"
+                />
+                <div>
+                  <span className="text-sm font-medium theme-text-primary">{t('projects.createModal.tools.husky.name')}</span>
+                  <p className="text-xs theme-text-secondary">{t('projects.createModal.tools.husky.description')}</p>
+                </div>
+              </label>
+
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={formData.tools.commitlint}
+                  onChange={(e) => handleToolChange('commitlint', e.target.checked)}
+                  className="rounded"
+                />
+                <div>
+                  <span className="text-sm font-medium theme-text-primary">{t('projects.createModal.tools.commitlint.name')}</span>
+                  <p className="text-xs theme-text-secondary">{t('projects.createModal.tools.commitlint.description')}</p>
+                </div>
+              </label>
+
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={formData.tools.editorconfig}
+                  onChange={(e) => handleToolChange('editorconfig', e.target.checked)}
+                  className="rounded"
+                />
+                <div>
+                  <span className="text-sm font-medium theme-text-primary">{t('projects.createModal.tools.editorconfig.name')}</span>
+                  <p className="text-xs theme-text-secondary">{t('projects.createModal.tools.editorconfig.description')}</p>
+                </div>
+              </label>
+
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={formData.tools.vscode}
+                  onChange={(e) => handleToolChange('vscode', e.target.checked)}
+                  className="rounded"
+                />
+                <div>
+                  <span className="text-sm font-medium theme-text-primary">{t('projects.createModal.tools.vscode.name')}</span>
+                  <p className="text-xs theme-text-secondary">{t('projects.createModal.tools.vscode.description')}</p>
                 </div>
               </label>
 

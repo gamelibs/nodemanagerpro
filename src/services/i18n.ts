@@ -156,6 +156,30 @@ const zh = {
         git: {
           name: 'Git初始化',
           description: '自动初始化Git仓库'
+        },
+        typescript: {
+          name: 'TypeScript',
+          description: '类型安全的JavaScript开发'
+        },
+        tailwindcss: {
+          name: 'Tailwind CSS',
+          description: '实用优先的CSS框架'
+        },
+        husky: {
+          name: 'Husky',
+          description: 'Git hooks管理工具'
+        },
+        commitlint: {
+          name: 'Commitlint',
+          description: '提交信息规范检查'
+        },
+        editorconfig: {
+          name: 'EditorConfig',
+          description: '编辑器配置标准化'
+        },
+        vscode: {
+          name: 'VS Code配置',
+          description: '推荐扩展和工作区设置'
         }
       },
       validation: {
@@ -773,6 +797,30 @@ const en = {
         git: {
           name: 'Git Initialize',
           description: 'Automatically initialize Git repository'
+        },
+        typescript: {
+          name: 'TypeScript',
+          description: 'Type-safe JavaScript development'
+        },
+        tailwindcss: {
+          name: 'Tailwind CSS',
+          description: 'Utility-first CSS framework'
+        },
+        husky: {
+          name: 'Husky',
+          description: 'Git hooks management tool'
+        },
+        commitlint: {
+          name: 'Commitlint',
+          description: 'Commit message convention validation'
+        },
+        editorconfig: {
+          name: 'EditorConfig',
+          description: 'Editor configuration standardization'
+        },
+        vscode: {
+          name: 'VS Code Config',
+          description: 'Recommended extensions and workspace settings'
         }
       },
       validation: {

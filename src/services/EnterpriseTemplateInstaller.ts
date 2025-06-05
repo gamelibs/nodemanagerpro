@@ -8,7 +8,6 @@ import { promises as fs } from 'fs';
 import { spawn } from 'child_process';
 import type { ProjectCreationConfig, EnterpriseTemplate } from '../types';
 import { TemplateVariableService, type TemplateVariables } from './TemplateVariableService';
-import { EnterpriseTemplateService } from './EnterpriseTemplateService';
 
 export interface InstallationOptions {
   skipDependencies?: boolean;
@@ -169,14 +168,6 @@ export class EnterpriseTemplateInstaller {
     
     if (!metadataExists) {
       throw new Error(`模板元数据文件不存在: ${metadataPath}`);
-    }
-
-    // 验证许可证（如果是付费模板）
-    if (template.isPremium) {
-      const hasValidLicense = await EnterpriseTemplateService.validateLicense(template.id);
-      if (!hasValidLicense) {
-        throw new Error(`没有有效的企业级许可证来使用模板: ${template.name}`);
-      }
     }
 
     // 验证项目路径

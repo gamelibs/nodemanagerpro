@@ -41,7 +41,7 @@ export class TemplateVariableService {
       PROJECT_NAME_CAMEL: this.toCamelCase(projectName),
       PROJECT_NAME_KEBAB: this.toKebabCase(projectName),
       PROJECT_NAME_SNAKE: this.toSnakeCase(projectName),
-      PROJECT_DESCRIPTION: config.description || `A professional ${config.template} application`,
+      PROJECT_DESCRIPTION: `A professional ${config.template} application`,
       AUTHOR_NAME: process.env.GIT_AUTHOR_NAME || process.env.USER || 'Developer',
       AUTHOR_EMAIL: process.env.GIT_AUTHOR_EMAIL || 'developer@example.com',
       CURRENT_YEAR: currentDate.getFullYear().toString(),

@@ -129,6 +129,12 @@ export interface ProjectCreationConfig {
     envConfig: boolean;
     autoInstall: boolean;
     git: boolean;
+    typescript: boolean;
+    tailwindcss: boolean;
+    husky: boolean;
+    commitlint: boolean;
+    editorconfig: boolean;
+    vscode: boolean;
   };
   // 企业级配置（可选）
   enterpriseConfig?: EnterpriseProjectConfig;
