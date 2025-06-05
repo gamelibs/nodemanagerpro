@@ -20,6 +20,7 @@ export interface TemplateVariables {
   CURRENT_DATE: string;
   PORT: string;
   PACKAGE_MANAGER: string;
+  PACKAGE_MANAGER_VERSION: string;
   NODE_VERSION: string;
   LICENSE: string;
   TEMPLATE_VERSION: string;
@@ -34,6 +35,7 @@ export class TemplateVariableService {
   static generateVariables(config: ProjectCreationConfig): TemplateVariables {
     const projectName = config.name;
     const currentDate = new Date();
+    const packageManager = config.packageManager || 'pnpm';
     
     return {
       PROJECT_NAME: projectName,
@@ -47,7 +49,8 @@ export class TemplateVariableService {
       CURRENT_YEAR: currentDate.getFullYear().toString(),
       CURRENT_DATE: currentDate.toISOString().split('T')[0],
       PORT: config.port?.toString() || '3000',
-      PACKAGE_MANAGER: config.packageManager || 'pnpm',
+      PACKAGE_MANAGER: packageManager,
+      PACKAGE_MANAGER_VERSION: this.getPackageManagerVersion(packageManager),
       NODE_VERSION: process.version.replace('v', ''),
       LICENSE: 'MIT',
       TEMPLATE_VERSION: '1.0.0',
@@ -83,7 +86,7 @@ export class TemplateVariableService {
   private static replaceConditionalBlocks(content: string, variables: TemplateVariables): string {
     const ifRegex = /\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{\/if\}\}/g;
     
-    return content.replace(ifRegex, (match, condition, block) => {
+    return content.replace(ifRegex, (_match, condition, block) => {
       // 检查条件是否为真
       const value = variables[condition as keyof TemplateVariables];
       if (value && value !== 'false' && value !== '0') {
@@ -96,10 +99,10 @@ export class TemplateVariableService {
   /**
    * 处理循环块替换
    */
-  private static replaceLoopBlocks(content: string, variables: TemplateVariables): string {
+  private static replaceLoopBlocks(content: string, _variables: TemplateVariables): string {
     const eachRegex = /\{\{#each\s+(\w+)\}\}([\s\S]*?)\{\{\/each\}\}/g;
     
-    return content.replace(eachRegex, (match, arrayName, block) => {
+    return content.replace(eachRegex, (_match, _arrayName, _block) => {
       // 这里可以扩展支持数组数据
       // 暂时返回空字符串，因为当前模板主要使用简单变量替换
       return '';
@@ -212,6 +215,23 @@ export class TemplateVariableService {
   }
 
   /**
+   * 获取包管理器的版本字符串（用于 packageManager 字段）
+   */
+  private static getPackageManagerVersion(packageManager: string): string {
+    // 根据包管理器返回合适的版本号
+    switch (packageManager) {
+      case 'npm':
+        return 'npm@9.8.1';
+      case 'yarn':
+        return 'yarn@3.6.4';
+      case 'pnpm':
+        return 'pnpm@8.10.0';
+      default:
+        return 'pnpm@8.10.0';
+    }
+  }
+
+  /**
    * 验证模板变量
    */
   static validateVariables(variables: TemplateVariables): { isValid: boolean; errors: string[] } {
@@ -263,6 +283,7 @@ export class TemplateVariableService {
       CURRENT_DATE: currentDate.toISOString().split('T')[0],
       PORT: '3000',
       PACKAGE_MANAGER: 'pnpm',
+      PACKAGE_MANAGER_VERSION: this.getPackageManagerVersion('pnpm'),
       NODE_VERSION: process.version.replace('v', ''),
       LICENSE: 'MIT',
       TEMPLATE_VERSION: '1.0.0',

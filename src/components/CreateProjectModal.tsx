@@ -3,6 +3,7 @@ import type { ProjectCreationConfig, FrontendFramework, PackageManagerInfo, Temp
 import { t, tArray } from '../services/i18n';
 import { EnterpriseTemplateSelector } from './EnterpriseTemplateSelector';
 import { DevelopmentNoticeModal } from './DevelopmentNoticeModal';
+import { ProjectCreationProgressModal } from './ProjectCreationProgressModal';
 
 interface CreateProjectModalProps {
   isOpen: boolean;
@@ -151,6 +152,10 @@ export default function CreateProjectModal({ isOpen, onClose, onConfirm }: Creat
   const [enterpriseConfig, setEnterpriseConfig] = useState<EnterpriseProjectConfig | null>(null);
   const [showDevelopmentNotice, setShowDevelopmentNotice] = useState(false);
   const [developmentNoticeTemplate, setDevelopmentNoticeTemplate] = useState<string>('');
+  
+  // 进度提示相关状态
+  const [showProgress, setShowProgress] = useState(false);
+  const [progressConfig, setProgressConfig] = useState<ProjectCreationConfig | null>(null);
 
   // 添加 ESC 键监听
   useEffect(() => {
@@ -282,34 +287,9 @@ export default function CreateProjectModal({ isOpen, onClose, onConfirm }: Creat
       ...(enterpriseConfig && { enterpriseConfig })
     };
     
-    onConfirm(finalConfig);
-    
-    // 重置表单
-    setFormData({
-      name: '',
-      path: '',
-      template: 'pure-api',
-      frontendFramework: 'vanilla-ts',
-      port: 8000,
-      packageManager: 'npm',
-      tools: {
-        eslint: false,
-        prettier: false,
-        jest: false,
-        envConfig: false,
-        autoInstall: false,
-        git: false,
-        typescript: false,
-        tailwindcss: false,
-        husky: false,
-        commitlint: false,
-        editorconfig: false,
-        vscode: false
-      }
-    });
-    setErrors({});
-    setShowEnterpriseSelector(false);
-    setEnterpriseConfig(null);
+    // 设置进度配置并显示进度模态框
+    setProgressConfig(finalConfig);
+    setShowProgress(true);
   };
 
   const handleTemplateSelect = (template: TemplateInfo) => {
@@ -421,6 +401,43 @@ export default function CreateProjectModal({ isOpen, onClose, onConfirm }: Creat
       }
       // 用户取消选择是正常行为，不显示错误
     }
+  };
+
+  // 进度模态框处理函数
+  const handleProgressClose = () => {
+    setShowProgress(false);
+    setProgressConfig(null);
+    // 重置表单
+    resetForm();
+    onClose();
+  };
+
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      path: '',
+      template: 'pure-api',
+      frontendFramework: 'vanilla-ts',
+      port: 8000,
+      packageManager: 'npm',
+      tools: {
+        eslint: false,
+        prettier: false,
+        jest: false,
+        envConfig: false,
+        autoInstall: false,
+        git: false,
+        typescript: false,
+        tailwindcss: false,
+        husky: false,
+        commitlint: false,
+        editorconfig: false,
+        vscode: false
+      }
+    });
+    setErrors({});
+    setShowEnterpriseSelector(false);
+    setEnterpriseConfig(null);
   };
 
   return (
@@ -862,6 +879,14 @@ export default function CreateProjectModal({ isOpen, onClose, onConfirm }: Creat
           isOpen={showDevelopmentNotice}
           onClose={() => setShowDevelopmentNotice(false)}
           templateName={developmentNoticeTemplate}
+        />
+
+        {/* 项目创建进度模态框 */}
+        <ProjectCreationProgressModal
+          isOpen={showProgress}
+          onClose={handleProgressClose}
+          config={progressConfig}
+          onConfirm={onConfirm}
         />
       </div>
     </div>

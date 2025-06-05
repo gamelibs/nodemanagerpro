@@ -85,5 +85,5 @@
     "node": ">=18.0.0",
     "pnpm": ">=8.0.0"
   },
-  "packageManager": "{{PACKAGE_MANAGER}}@latest"
+  "packageManager": "{{PACKAGE_MANAGER_VERSION}}"
 }

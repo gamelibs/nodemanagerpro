@@ -19,6 +19,7 @@
     "src/services/FileSystemService.ts",
     "src/services/LoggerService.ts",
     "src/services/ProjectConfigService.ts",
+    "src/services/TemplateVariableService.ts",
     "src/types/index.ts"
   ]
 }

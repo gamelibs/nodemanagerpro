@@ -8,6 +8,7 @@ import { promises as fs } from 'fs';
 import { spawn } from 'child_process';
 import type { ProjectCreationConfig, EnterpriseTemplate } from '../types';
 import { TemplateVariableService, type TemplateVariables } from './TemplateVariableService';
+import { ToolsPackageMapper } from './ToolsPackageMapper';
 
 export interface InstallationOptions {
   skipDependencies?: boolean;
@@ -85,61 +86,60 @@ export class EnterpriseTemplateInstaller {
       const templateDir = path.join(this.TEMPLATES_DIR, template.id);
       await this.copyAndProcessTemplate(templateDir, projectPath, variables);
 
-      // 步骤5: 安装依赖
+      // 步骤5: 生成工具包配置和文件
+      this.reportProgress(onProgress, {
+        step: 'tools',
+        progress: 50,
+        message: '配置开发工具包...'
+      });
+
+      await this.setupDevelopmentTools(projectPath, config);
+
+      // 步骤6: 安装依赖
       if (!options.skipDependencies) {
         this.reportProgress(onProgress, {
           step: 'dependencies',
-          progress: 60,
+          progress: 70,
           message: '安装项目依赖...'
         });
 
         await this.installDependencies(projectPath, config.packageManager, options.timeoutMs);
       }
 
-      // 步骤6: 初始化Git仓库
+      // 步骤7: 初始化Git仓库
       if (!options.skipGitInit) {
         this.reportProgress(onProgress, {
           step: 'git',
-          progress: 80,
+          progress: 85,
           message: '初始化Git仓库...'
         });
 
         await this.initializeGit(projectPath);
       }
 
-      // 步骤7: 设置环境配置
-      if (!options.skipEnvSetup) {
-        this.reportProgress(onProgress, {
-          step: 'environment',
-          progress: 90,
-          message: '配置开发环境...'
-        });
-
-        await this.setupEnvironment(projectPath, config, template);
-      }
-
-      // 步骤8: 完成安装
+      // 步骤8: 项目特定配置
       this.reportProgress(onProgress, {
-        step: 'completion',
-        progress: 100,
-        message: '安装完成！'
+        step: 'configuration',
+        progress: 95,
+        message: '完成项目配置...'
       });
 
-      const endTime = Date.now();
-      const duration = Math.round((endTime - startTime) / 1000);
-      
-      if (options.verbose) {
-        console.log(`✅ 企业级模板安装完成，耗时 ${duration} 秒`);
-        console.log(`📂 项目路径: ${projectPath}`);
-        console.log(`🚀 运行命令开始开发:`);
-        console.log(`   cd ${config.name}`);
-        console.log(`   ${config.packageManager} dev`);
-      }
+      await this.setupProjectSpecificConfig(projectPath, config, template);
+
+      // 完成
+      this.reportProgress(onProgress, {
+        step: 'completed',
+        progress: 100,
+        message: '模板安装完成！'
+      });
+
+      const duration = Date.now() - startTime;
+      console.log(`✅ 企业级模板安装完成: ${template.id} (${duration}ms)`);
 
     } catch (error) {
       this.reportProgress(onProgress, {
         step: 'error',
-        progress: -1,
+        progress: 0,
         message: `安装失败: ${error instanceof Error ? error.message : '未知错误'}`,
         isError: true
       });
@@ -558,6 +558,69 @@ export class EnterpriseTemplateInstaller {
       }
     } catch (error) {
       console.warn('清理失败安装时出错:', error);
+    }
+  }
+
+  /**
+   * 设置开发工具包
+   */
+  private static async setupDevelopmentTools(
+    projectPath: string,
+    config: ProjectCreationConfig
+  ): Promise<void> {
+    try {
+      // 使用ToolsPackageMapper生成工具包配置
+      const toolsConfig = ToolsPackageMapper.generatePackagesAndConfig(config.tools);
+
+      // 读取现有的package.json
+      const packageJsonPath = path.join(projectPath, 'package.json');
+      let packageJson: any = {};
+
+      try {
+        const content = await fs.readFile(packageJsonPath, 'utf-8');
+        packageJson = JSON.parse(content);
+      } catch (error) {
+        // package.json不存在，创建基础结构
+        packageJson = {
+          name: config.name,
+          version: '1.0.0',
+          description: '',
+          scripts: {},
+          dependencies: {},
+          devDependencies: {}
+        };
+      }
+
+      // 合并依赖包
+      packageJson.dependencies = {
+        ...packageJson.dependencies,
+        ...Object.fromEntries(toolsConfig.dependencies.map(dep => [dep, 'latest']))
+      };
+
+      packageJson.devDependencies = {
+        ...packageJson.devDependencies,
+        ...Object.fromEntries(toolsConfig.devDependencies.map(dep => [dep, 'latest']))
+      };
+
+      // 合并脚本
+      packageJson.scripts = {
+        ...packageJson.scripts,
+        ...toolsConfig.scripts
+      };
+
+      // 写回package.json
+      await fs.writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8');
+
+      // 创建工具配置文件
+      for (const configFile of toolsConfig.configFiles) {
+        const filePath = path.join(projectPath, configFile.name);
+        await fs.writeFile(filePath, configFile.content, 'utf-8');
+      }
+
+      console.log('✅ 开发工具包配置完成');
+    } catch (error) {
+      console.error('❌ 开发工具包设置失败:', error);
+      throw new Error(`开发工具包设置失败: ${error instanceof Error ? error.message : '未知错误'}`);
     }
   }
 }

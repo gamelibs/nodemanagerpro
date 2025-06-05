@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { app } from 'electron';
 import type { CoreProject } from '../types';
+import { TemplateVariableService } from './TemplateVariableService';
 
 export class FileSystemService {
   private static readonly DATA_DIR = 'temp';
@@ -245,7 +246,7 @@ export class FileSystemService {
    * 从模板创建项目文件
    */
   static async createProjectFromTemplate(projectConfig: any): Promise<void> {
-    const { template, path: projectPath, name: projectName } = projectConfig;
+    const { template, path: projectPath, name: projectName, packageManager = 'npm', tools = {} } = projectConfig;
     
     // 确定模板源目录
     const templateSrcDir = path.join(process.cwd(), 'templates', template);
@@ -267,6 +268,20 @@ export class FileSystemService {
     await this.copyDirectory(templateSrcDir, projectPath, projectConfig);
     
     console.log(`✅ 项目模板复制完成: ${projectName}`);
+
+    // 安装依赖包（如果启用了自动安装）
+    if (tools.autoInstall !== false) { // 默认启用自动安装
+      console.log(`📦 开始安装依赖包 (${packageManager})...`);
+      try {
+        await this.installProjectDependencies(projectPath, packageManager);
+        console.log(`✅ 依赖包安装完成: ${projectName}`);
+      } catch (error) {
+        console.error(`❌ 依赖包安装失败:`, error);
+        throw new Error(`依赖包安装失败: ${error instanceof Error ? error.message : '未知错误'}`);
+      }
+    } else {
+      console.log(`⏭️ 跳过依赖包安装 (autoInstall: false)`);
+    }
   }
 
   /**
@@ -299,16 +314,59 @@ export class FileSystemService {
   private static async copyFileWithTemplateReplacement(srcPath: string, destPath: string, projectConfig: any): Promise<void> {
     let content = fs.readFileSync(srcPath, 'utf8');
     
-    // 替换模板变量
-    content = content
-      .replace(/\{\{PROJECT_NAME\}\}/g, projectConfig.name)
-      .replace(/\{\{PROJECT_PATH\}\}/g, projectConfig.path)
-      .replace(/\{\{PORT\}\}/g, projectConfig.port?.toString() || '// PORT_NOT_SET')
-      .replace(/\{\{PACKAGE_MANAGER\}\}/g, projectConfig.packageManager || 'npm')
-      .replace(/\{\{DESCRIPTION\}\}/g, projectConfig.description || `A new ${projectConfig.template} project`);
+    // 使用 TemplateVariableService 生成变量并替换
+    const variables = TemplateVariableService.generateVariables(projectConfig);
+    content = TemplateVariableService.replaceVariables(content, variables);
     
     // 写入目标文件
     fs.writeFileSync(destPath, content, 'utf8');
     console.log(`📄 复制文件: ${path.relative(process.cwd(), destPath)}`);
+  }
+
+  /**
+   * 安装项目依赖包
+   */
+  private static async installProjectDependencies(projectPath: string, packageManager: string = 'npm'): Promise<void> {
+    const { exec } = require('child_process');
+    const { promisify } = require('util');
+    const execAsync = promisify(exec);
+
+    // 检查 package.json 是否存在
+    const packageJsonPath = path.join(projectPath, 'package.json');
+    if (!fs.existsSync(packageJsonPath)) {
+      throw new Error('package.json 文件不存在，无法安装依赖');
+    }
+
+    console.log(`📦 使用 ${packageManager} 安装依赖...`);
+    
+    // 执行安装命令
+    const installCommand = packageManager === 'yarn' ? 'yarn install' : 
+                          packageManager === 'pnpm' ? 'pnpm install' : 
+                          'npm install';
+
+    try {
+      const { stdout, stderr } = await execAsync(installCommand, { 
+        cwd: projectPath,
+        timeout: 300000 // 5分钟超时
+      });
+
+      if (stdout) {
+        console.log('依赖安装输出:', stdout);
+      }
+      if (stderr) {
+        console.warn('依赖安装警告:', stderr);
+      }
+
+      // 验证 node_modules 是否创建成功
+      const nodeModulesPath = path.join(projectPath, 'node_modules');
+      if (!fs.existsSync(nodeModulesPath)) {
+        throw new Error('依赖安装完成但 node_modules 目录未创建');
+      }
+
+      console.log(`✅ 依赖安装成功，node_modules 目录已创建`);
+    } catch (error) {
+      console.error('依赖安装失败:', error);
+      throw error;
+    }
   }
 }
