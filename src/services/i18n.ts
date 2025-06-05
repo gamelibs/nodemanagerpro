@@ -78,6 +78,16 @@ const zh = {
           description: '现代全栈应用，支持前端框架集成',
           features: ['TypeScript支持', 'Vite构建工具', 'Express后端', '热重载', 'API代理', '现代前端框架']
         },
+        createReactApp: {
+          name: 'Create React App',
+          description: '官方React应用脚手架，快速创建React项目',
+          features: ['React 18', 'TypeScript支持', 'Webpack配置', '开发服务器', '测试框架', '生产构建']
+        },
+        gatsbyApp: {
+          name: 'Gatsby网站',
+          description: '现代化静态网站生成器，支持GraphQL',
+          features: ['Gatsby 5', 'GraphQL', '静态生成', 'MDX支持', '插件系统', 'PWA支持']
+        },
         enterpriseNextjs: {
           name: '企业级Next.js网站',
           description: '高性能的企业级Next.js应用模板',
@@ -152,6 +162,19 @@ const zh = {
         nameRequired: '请输入项目名称',
         pathRequired: '请选择项目路径',
         portRange: '端口号必须在1000-65535之间'
+      },
+      developmentNotice: {
+        title: '模板开发中',
+        subtitle: '即将推出',
+        message: '{{templateName}} 模板正在积极开发中，我们将很快为您提供完整的功能体验。',
+        comingSoon: '即将包含的特性：',
+        features: {
+          completeSetup: '完整的项目设置和配置',
+          bestPractices: '行业最佳实践和代码规范',
+          fullDocumentation: '详细的文档和使用指南',
+          advancedFeatures: '高级功能和开发工具集成'
+        },
+        understood: '我知道了'
       },
       cancel: '取消',
       create: '创建'
@@ -672,6 +695,16 @@ const en = {
           description: 'Modern full-stack application with frontend framework integration',
           features: ['TypeScript Support', 'Vite Build Tool', 'Express Backend', 'Hot Reload', 'API Proxy', 'Modern Frontend']
         },
+        createReactApp: {
+          name: 'Create React App',
+          description: 'Official React scaffolding tool for quick React project setup',
+          features: ['React 18', 'TypeScript Support', 'Webpack Config', 'Dev Server', 'Testing Framework', 'Production Build']
+        },
+        gatsbyApp: {
+          name: 'Gatsby Website',
+          description: 'Modern static site generator with GraphQL support',
+          features: ['Gatsby 5', 'GraphQL', 'Static Generation', 'MDX Support', 'Plugin System', 'PWA Support']
+        },
         enterpriseNextjs: {
           name: 'Enterprise Next.js Website',
           description: 'High-performance enterprise Next.js application template',
@@ -746,6 +779,19 @@ const en = {
         nameRequired: 'Please enter project name',
         pathRequired: 'Please select project path',
         portRange: 'Port number must be between 1000-65535'
+      },
+      developmentNotice: {
+        title: 'Template Under Development',
+        subtitle: 'Coming Soon',
+        message: 'The {{templateName}} template is actively under development. We will provide a complete feature experience for you soon.',
+        comingSoon: 'Features coming soon:',
+        features: {
+          completeSetup: 'Complete project setup and configuration',
+          bestPractices: 'Industry best practices and code standards',
+          fullDocumentation: 'Detailed documentation and usage guides',
+          advancedFeatures: 'Advanced features and development tools integration'
+        },
+        understood: 'Got it'
       },
       cancel: 'Cancel',
       create: 'Create'

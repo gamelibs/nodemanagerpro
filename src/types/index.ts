@@ -1,5 +1,5 @@
 // 项目模板类型
-export type ProjectTemplate = 'pure-api' | 'static-app' | 'full-stack' | 'enterprise-nextjs' | 'enterprise-react-spa' | 'enterprise-vue-app';
+export type ProjectTemplate = 'pure-api' | 'static-app' | 'full-stack' | 'create-react-app' | 'gatsby-app' | 'enterprise-nextjs' | 'enterprise-react-spa' | 'enterprise-vue-app';
 
 // 前端框架类型（仅用于 vite-express 模板）
 export type FrontendFramework = 'vanilla-ts' | 'react' | 'vue';
@@ -163,6 +163,8 @@ export interface TemplateInfo {
   features: string[];
   supportsFrontendFramework: boolean;
   isPremium?: boolean; // 是否为付费模板
+  isYarnTemplate?: boolean; // 是否为 Yarn 生态模板
+  inDevelopment?: boolean; // 是否正在开发中
   category?: 'basic' | 'enterprise' | 'custom'; // 模板分类
   estimatedSetupTime?: string; // 预计搭建时间
   complexity?: 'beginner' | 'intermediate' | 'advanced'; // 复杂度

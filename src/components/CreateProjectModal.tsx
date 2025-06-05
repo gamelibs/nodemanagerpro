@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import type { ProjectCreationConfig, FrontendFramework, PackageManagerInfo, TemplateInfo, EnterpriseProjectConfig, ProjectTemplate, EnterpriseTemplate } from '../types';
 import { t, tArray } from '../services/i18n';
 import { EnterpriseTemplateSelector } from './EnterpriseTemplateSelector';
+import { DevelopmentNoticeModal } from './DevelopmentNoticeModal';
 
 interface CreateProjectModalProps {
   isOpen: boolean;
@@ -32,6 +33,25 @@ const getTemplates = (): TemplateInfo[] => [
     features: tArray('projects.createModal.templates.fullStack.features'),
     supportsFrontendFramework: true
   },
+  // Yarn 生态模板
+  {
+    id: 'create-react-app',
+    name: t('projects.createModal.templates.createReactApp.name'),
+    description: t('projects.createModal.templates.createReactApp.description'),
+    features: tArray('projects.createModal.templates.createReactApp.features'),
+    supportsFrontendFramework: false,
+    isYarnTemplate: true,
+    inDevelopment: true
+  },
+  {
+    id: 'gatsby-app',
+    name: t('projects.createModal.templates.gatsbyApp.name'),
+    description: t('projects.createModal.templates.gatsbyApp.description'),
+    features: tArray('projects.createModal.templates.gatsbyApp.features'),
+    supportsFrontendFramework: false,
+    isYarnTemplate: true,
+    inDevelopment: true
+  },
   // 企业级模板
   {
     id: 'enterprise-nextjs',
@@ -47,7 +67,8 @@ const getTemplates = (): TemplateInfo[] => [
     description: t('projects.createModal.templates.enterpriseReactSpa.description'),
     features: tArray('projects.createModal.templates.enterpriseReactSpa.features'),
     supportsFrontendFramework: false,
-    isPremium: true
+    isPremium: true,
+    inDevelopment: true
   },
   {
     id: 'enterprise-vue-app',
@@ -55,7 +76,8 @@ const getTemplates = (): TemplateInfo[] => [
     description: t('projects.createModal.templates.enterpriseVueApp.description'),
     features: tArray('projects.createModal.templates.enterpriseVueApp.features'),
     supportsFrontendFramework: false,
-    isPremium: true
+    isPremium: true,
+    inDevelopment: true
   }
 ];
 
@@ -121,6 +143,8 @@ export default function CreateProjectModal({ isOpen, onClose, onConfirm }: Creat
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [showEnterpriseSelector, setShowEnterpriseSelector] = useState(false);
   const [enterpriseConfig, setEnterpriseConfig] = useState<EnterpriseProjectConfig | null>(null);
+  const [showDevelopmentNotice, setShowDevelopmentNotice] = useState(false);
+  const [developmentNoticeTemplate, setDevelopmentNoticeTemplate] = useState<string>('');
 
   // 添加 ESC 键监听
   useEffect(() => {
@@ -216,14 +240,29 @@ export default function CreateProjectModal({ isOpen, onClose, onConfirm }: Creat
     setEnterpriseConfig(null);
   };
 
-  const handleTemplateSelect = (templateId: string) => {
-    handleInputChange('template', templateId);
+  const handleTemplateSelect = (template: TemplateInfo) => {
+    // 如果模板正在开发中，显示开发通知模态框
+    if (template.inDevelopment) {
+      setDevelopmentNoticeTemplate(template.name);
+      setShowDevelopmentNotice(true);
+      return;
+    }
+
+    handleInputChange('template', template.id);
     
     // 如果切换到非企业级模板，重置企业级配置
-    const template = templates.find(t => t.id === templateId);
-    if (!template?.isPremium) {
+    if (!template.isPremium) {
       setEnterpriseConfig(null);
       setShowEnterpriseSelector(false);
+    }
+
+    // 如果选择了 Yarn 生态模板，自动设置包管理器为 yarn
+    if (template.isYarnTemplate) {
+      handleInputChange('packageManager', 'yarn');
+    }
+    // 如果选择了企业级模板，推荐使用 pnpm
+    else if (template.isPremium && template.id === 'enterprise-nextjs') {
+      handleInputChange('packageManager', 'pnpm');
     }
   };
 
@@ -385,22 +424,37 @@ export default function CreateProjectModal({ isOpen, onClose, onConfirm }: Creat
                     formData.template === template.id 
                       ? 'border-blue-500 theme-bg-accent' 
                       : 'theme-border hover:theme-border-hover'
-                  }`}
-                  onClick={() => handleTemplateSelect(template.id)}
+                  } ${template.inDevelopment ? 'opacity-75' : ''}`}
+                  onClick={() => handleTemplateSelect(template)}
                 >
-                  {template.isPremium && (
-                    <div className="absolute top-2 right-2 px-2 py-1 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-xs font-bold rounded-full">
-                      PREMIUM
-                    </div>
-                  )}
+                  {/* 模板标识 */}
+                  <div className="absolute top-2 right-2 flex gap-1">
+                    {template.isPremium && (
+                      <div className="px-2 py-1 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-xs font-bold rounded-full">
+                        PREMIUM
+                      </div>
+                    )}
+                    {template.isYarnTemplate && (
+                      <div className="px-2 py-1 bg-blue-500 text-white text-xs font-bold rounded-full flex items-center gap-1">
+                        🐱 YARN
+                      </div>
+                    )}
+                    {template.inDevelopment && (
+                      <div className="px-2 py-1 bg-gray-500 text-white text-xs font-bold rounded-full">
+                        开发中
+                      </div>
+                    )}
+                  </div>
+                  
                   <div className="flex items-start space-x-3">
                     <input
                       type="radio"
                       name="template"
                       value={template.id}
                       checked={formData.template === template.id}
-                      onChange={() => handleTemplateSelect(template.id)}
+                      onChange={() => handleTemplateSelect(template)}
                       className="mt-1"
+                      disabled={template.inDevelopment}
                     />
                     <div className="flex-1">
                       <h5 className="font-medium theme-text-primary flex items-center gap-2">
@@ -410,15 +464,29 @@ export default function CreateProjectModal({ isOpen, onClose, onConfirm }: Creat
                             ⭐ ENTERPRISE
                           </span>
                         )}
+                        {template.isYarnTemplate && !template.isPremium && (
+                          <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-medium">
+                            Yarn 生态
+                          </span>
+                        )}
                       </h5>
-                      <p className="text-sm theme-text-secondary mt-1">{template.description}</p>
+                      <p className="text-sm theme-text-secondary mt-1">
+                        {template.description}
+                        {template.inDevelopment && (
+                          <span className="ml-2 text-orange-500 font-medium">
+                            (模板开发中，敬请期待)
+                          </span>
+                        )}
+                      </p>
                       <div className="flex flex-wrap gap-2 mt-2">
                         {template.features.map((feature, index) => (
                           <span 
                             key={index}
                             className={`px-2 py-1 text-xs rounded-md ${
                               template.isPremium 
-                                ? 'bg-gradient-to-r from-yellow-100 to-orange-100 text-orange-800 dark:from-yellow-900 dark:to-orange-900 dark:text-yellow-200' 
+                                ? 'bg-gradient-to-r from-yellow-100 to-orange-100 text-orange-800 dark:from-yellow-900 dark:to-orange-900 dark:text-yellow-200'
+                                : template.isYarnTemplate
+                                ? 'bg-blue-50 text-blue-700 dark:bg-blue-900 dark:text-blue-200'
                                 : 'theme-bg-tertiary theme-text-secondary'
                             }`}
                           >
@@ -426,6 +494,20 @@ export default function CreateProjectModal({ isOpen, onClose, onConfirm }: Creat
                           </span>
                         ))}
                       </div>
+                      
+                      {/* 包管理器推荐 */}
+                      {template.isYarnTemplate && (
+                        <div className="mt-2 text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                          <span>💡</span>
+                          <span>推荐使用 Yarn 包管理器以获得最佳体验</span>
+                        </div>
+                      )}
+                      {template.isPremium && template.id === 'enterprise-nextjs' && (
+                        <div className="mt-2 text-xs text-orange-600 dark:text-orange-400 flex items-center gap-1">
+                          <span>⚡</span>
+                          <span>推荐使用 pnpm 包管理器以获得企业级性能</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -617,6 +699,13 @@ export default function CreateProjectModal({ isOpen, onClose, onConfirm }: Creat
             </div>
           </div>
         )}
+
+        {/* 开发中模板通知模态框 */}
+        <DevelopmentNoticeModal
+          isOpen={showDevelopmentNotice}
+          onClose={() => setShowDevelopmentNotice(false)}
+          templateName={developmentNoticeTemplate}
+        />
       </div>
     </div>
   );
