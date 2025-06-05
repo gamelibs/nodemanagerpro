@@ -1,0 +1,115 @@
+{
+  "Header": {
+    "nav": {
+      "home": "Home",
+      "features": "Features",
+      "about": "About",
+      "contact": "Contact"
+    }
+  },
+  "Hero": {
+    "badge": "✨ Modern Enterprise Solution",
+    "title": {
+      "line1": "Build Next-Generation",
+      "line2": "Enterprise Web Apps"
+    },
+    "description": "A modern enterprise web application template built with Next.js, TypeScript, and Tailwind CSS, providing complete internationalization, theme system, and responsive design.",
+    "cta": {
+      "primary": "Get Started",
+      "secondary": "View Demo"
+    },
+    "stats": {
+      "uptime": "Uptime",
+      "response": "Response Time",
+      "users": "Active Users"
+    }
+  },
+  "Features": {
+    "title": "Powerful Features",
+    "subtitle": "Complete solutions for modern enterprise applications",
+    "items": {
+      "responsive": {
+        "title": "Responsive Design",
+        "description": "Perfect adaptation to various devices and screen sizes"
+      },
+      "i18n": {
+        "title": "Internationalization",
+        "description": "Built-in multi-language support for global users"
+      },
+      "themes": {
+        "title": "Theme System",
+        "description": "Support for light/dark theme switching for better UX"
+      },
+      "performance": {
+        "title": "Performance Optimized",
+        "description": "Based on Next.js best practices for optimal performance"
+      },
+      "typescript": {
+        "title": "TypeScript",
+        "description": "Complete type safety for enhanced development experience"
+      },
+      "components": {
+        "title": "Component Library",
+        "description": "Rich UI component library and design system"
+      }
+    }
+  },
+  "Testimonials": {
+    "title": "User Reviews",
+    "subtitle": "See what users say about our product",
+    "items": [
+      {
+        "content": "This template saved us a lot of development time, feature-complete and easy to customize.",
+        "author": "John Smith",
+        "role": "CTO",
+        "company": "ABC Tech"
+      },
+      {
+        "content": "The internationalization feature is fantastic, helping us quickly expand to overseas markets.",
+        "author": "Jane Doe",
+        "role": "Product Manager",
+        "company": "XYZ Company"
+      },
+      {
+        "content": "Excellent performance and great user experience.",
+        "author": "Bob Johnson",
+        "role": "Frontend Engineer",
+        "company": "DEF Team"
+      }
+    ]
+  },
+  "CTA": {
+    "title": "Ready to Get Started?",
+    "subtitle": "Use our enterprise template now to accelerate your project development",
+    "primary": "Get Started Now",
+    "secondary": "Contact Us"
+  },
+  "Footer": {
+    "description": "Modern enterprise web application solutions to boost your business growth.",
+    "sections": {
+      "product": "Product",
+      "company": "Company",
+      "support": "Support",
+      "legal": "Legal"
+    },
+    "links": {
+      "features": "Features",
+      "pricing": "Pricing",
+      "docs": "Documentation",
+      "api": "API",
+      "about": "About Us",
+      "blog": "Blog",
+      "careers": "Careers",
+      "contact": "Contact",
+      "help": "Help Center",
+      "community": "Community",
+      "status": "Status",
+      "privacy": "Privacy Policy",
+      "terms": "Terms of Service",
+      "security": "Security"
+    },
+    "copyright": "All rights reserved.",
+    "builtWith": "Built with",
+    "using": "and Tailwind CSS"
+  }
+}

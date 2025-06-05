@@ -28,6 +28,7 @@
     "dist": "npm run build && electron-builder"
   },
   "dependencies": {
+    "lucide-react": "^0.513.0",
     "pm2": "^5.3.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
@@ -77,11 +78,17 @@
       "target": [
         {
           "target": "dmg",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         },
         {
           "target": "zip",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         }
       ],
       "hardenedRuntime": false,
@@ -99,7 +106,9 @@
         "CFBundleURLTypes": [
           {
             "CFBundleURLName": "Node App Manager",
-            "CFBundleURLSchemes": ["nodeappmanager"]
+            "CFBundleURLSchemes": [
+              "nodeappmanager"
+            ]
           }
         ]
       }
@@ -129,11 +138,17 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64", "ia32"]
+          "arch": [
+            "x64",
+            "ia32"
+          ]
         },
         {
           "target": "portable",
-          "arch": ["x64", "ia32"]
+          "arch": [
+            "x64",
+            "ia32"
+          ]
         }
       ]
     },
@@ -150,11 +165,15 @@
       "target": [
         {
           "target": "AppImage",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "deb",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "category": "Development"

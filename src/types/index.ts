@@ -1,5 +1,5 @@
 // 项目模板类型
-export type ProjectTemplate = 'pure-api' | 'static-app' | 'full-stack';
+export type ProjectTemplate = 'pure-api' | 'static-app' | 'full-stack' | 'enterprise-nextjs' | 'enterprise-react-spa' | 'enterprise-vue-app';
 
 // 前端框架类型（仅用于 vite-express 模板）
 export type FrontendFramework = 'vanilla-ts' | 'react' | 'vue';
@@ -18,6 +18,7 @@ export type DetailedProjectType =
   | 'node-backend' | 'express' | 'nestjs' | 'fastify'        // 后端框架
   | 'electron' | 'tauri'                                     // 桌面应用
   | 'pure-api' | 'static-app' | 'full-stack'                // 自定义模板
+  | 'enterprise-nextjs' | 'enterprise-react-spa' | 'enterprise-vue-app' // 企业级模板
   | 'other';                                                 // 其他
 
 // 完整项目信息（包含动态检测的信息）
@@ -129,6 +130,8 @@ export interface ProjectCreationConfig {
     autoInstall: boolean;
     git: boolean;
   };
+  // 企业级配置（可选）
+  enterpriseConfig?: EnterpriseProjectConfig;
 }
 
 export interface GitStatus {
@@ -159,6 +162,10 @@ export interface TemplateInfo {
   description: string;
   features: string[];
   supportsFrontendFramework: boolean;
+  isPremium?: boolean; // 是否为付费模板
+  category?: 'basic' | 'enterprise' | 'custom'; // 模板分类
+  estimatedSetupTime?: string; // 预计搭建时间
+  complexity?: 'beginner' | 'intermediate' | 'advanced'; // 复杂度
 }
 
 // 应用设置类型
@@ -341,3 +348,78 @@ export type SettingsAction =
   | { type: 'UPDATE_THEME'; payload: 'dark' | 'light' }
   | { type: 'UPDATE_LANGUAGE'; payload: 'zh' | 'en' }
   | { type: 'UPDATE_SETTING'; payload: { key: keyof AppSettings; value: any } };
+
+// 企业级模板相关类型定义
+export interface EnterpriseTemplateFeature {
+  id: string;
+  name: string;
+  description: string;
+  included: boolean;
+  premium?: boolean; // 是否为付费功能
+}
+
+export interface EnterpriseTemplate {
+  id: string;
+  name: string;
+  description: string;
+  category: 'frontend' | 'fullstack' | 'backend' | 'mobile';
+  tier: 'free' | 'pro' | 'enterprise'; // 模板等级
+  price?: number; // 价格（仅付费模板）
+  features: EnterpriseTemplateFeature[];
+  technologies: string[];
+  preview?: string; // 预览图片URL
+  demoUrl?: string; // 在线演示URL
+  documentation?: string; // 文档链接
+  minNodeVersion?: string;
+  estimatedSetupTime?: string; // 预计搭建时间
+  complexity: 'beginner' | 'intermediate' | 'advanced';
+  downloads?: number; // 下载次数
+  rating?: number; // 评分
+  lastUpdated?: Date;
+}
+
+// 企业级项目配置
+export interface EnterpriseProjectConfig extends ProjectCreationConfig {
+  template: ProjectTemplate;
+  enterpriseFeatures?: {
+    internationalization?: {
+      enabled: boolean;
+      defaultLocale: string;
+      supportedLocales: string[];
+    };
+    authentication?: {
+      provider: 'auth0' | 'firebase' | 'custom' | 'supabase';
+      enabled: boolean;
+    };
+    database?: {
+      type: 'postgresql' | 'mysql' | 'mongodb' | 'supabase' | 'firebase';
+      enabled: boolean;
+    };
+    deployment?: {
+      platform: 'vercel' | 'netlify' | 'aws' | 'docker' | 'custom';
+      cicd: boolean;
+    };
+    monitoring?: {
+      errorTracking: boolean;
+      analytics: boolean;
+      performance: boolean;
+    };
+    ui?: {
+      designSystem: 'tailwind' | 'material-ui' | 'ant-design' | 'chakra' | 'custom';
+      responsive: boolean;
+      darkMode: boolean;
+    };
+  };
+}
+
+// 模板许可证和计费相关
+export interface TemplateLicense {
+  type: 'open-source' | 'commercial' | 'enterprise';
+  permissions: string[];
+  limitations: string[];
+  price?: {
+    amount: number;
+    currency: string;
+    period: 'one-time' | 'monthly' | 'yearly';
+  };
+}

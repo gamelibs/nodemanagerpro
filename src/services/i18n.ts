@@ -77,6 +77,21 @@ const zh = {
           name: '全栈应用',
           description: '现代全栈应用，支持前端框架集成',
           features: ['TypeScript支持', 'Vite构建工具', 'Express后端', '热重载', 'API代理', '现代前端框架']
+        },
+        enterpriseNextjs: {
+          name: '企业级Next.js网站',
+          description: '高性能的企业级Next.js应用模板',
+          features: ['Next.js 14', 'TypeScript', 'Tailwind CSS', '国际化支持', '主题系统', 'SEO优化']
+        },
+        enterpriseReactSpa: {
+          name: '企业级React SPA',
+          description: '专业的React单页面应用模板',
+          features: ['React 18', 'TypeScript', 'Vite构建', '状态管理', '路由系统', '组件库']
+        },
+        enterpriseVueApp: {
+          name: '企业级Vue应用',
+          description: '现代化的Vue.js企业级应用模板',
+          features: ['Vue 3', 'TypeScript', 'Vite构建', 'Pinia状态管理', 'Vue Router', 'Element Plus']
         }
       },
       frameworks: {
@@ -656,6 +671,21 @@ const en = {
           name: 'Full Stack Application',
           description: 'Modern full-stack application with frontend framework integration',
           features: ['TypeScript Support', 'Vite Build Tool', 'Express Backend', 'Hot Reload', 'API Proxy', 'Modern Frontend']
+        },
+        enterpriseNextjs: {
+          name: 'Enterprise Next.js Website',
+          description: 'High-performance enterprise Next.js application template',
+          features: ['Next.js 14', 'TypeScript', 'Tailwind CSS', 'Internationalization', 'Theme System', 'SEO Optimized']
+        },
+        enterpriseReactSpa: {
+          name: 'Enterprise React SPA',
+          description: 'Professional React single page application template',
+          features: ['React 18', 'TypeScript', 'Vite Build', 'State Management', 'Routing System', 'Component Library']
+        },
+        enterpriseVueApp: {
+          name: 'Enterprise Vue Application',
+          description: 'Modern Vue.js enterprise application template',
+          features: ['Vue 3', 'TypeScript', 'Vite Build', 'Pinia State Management', 'Vue Router', 'Element Plus']
         }
       },
       frameworks: {

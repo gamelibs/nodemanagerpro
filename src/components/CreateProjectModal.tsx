@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import type { ProjectCreationConfig, FrontendFramework, PackageManagerInfo, TemplateInfo } from '../types';
+import type { ProjectCreationConfig, FrontendFramework, PackageManagerInfo, TemplateInfo, EnterpriseProjectConfig, ProjectTemplate, EnterpriseTemplate } from '../types';
 import { t, tArray } from '../services/i18n';
+import { EnterpriseTemplateSelector } from './EnterpriseTemplateSelector';
 
 interface CreateProjectModalProps {
   isOpen: boolean;
@@ -30,6 +31,31 @@ const getTemplates = (): TemplateInfo[] => [
     description: t('projects.createModal.templates.fullStack.description'),
     features: tArray('projects.createModal.templates.fullStack.features'),
     supportsFrontendFramework: true
+  },
+  // 企业级模板
+  {
+    id: 'enterprise-nextjs',
+    name: t('projects.createModal.templates.enterpriseNextjs.name'),
+    description: t('projects.createModal.templates.enterpriseNextjs.description'),
+    features: tArray('projects.createModal.templates.enterpriseNextjs.features'),
+    supportsFrontendFramework: false,
+    isPremium: true
+  },
+  {
+    id: 'enterprise-react-spa',
+    name: t('projects.createModal.templates.enterpriseReactSpa.name'),
+    description: t('projects.createModal.templates.enterpriseReactSpa.description'),
+    features: tArray('projects.createModal.templates.enterpriseReactSpa.features'),
+    supportsFrontendFramework: false,
+    isPremium: true
+  },
+  {
+    id: 'enterprise-vue-app',
+    name: t('projects.createModal.templates.enterpriseVueApp.name'),
+    description: t('projects.createModal.templates.enterpriseVueApp.description'),
+    features: tArray('projects.createModal.templates.enterpriseVueApp.features'),
+    supportsFrontendFramework: false,
+    isPremium: true
   }
 ];
 
@@ -93,6 +119,8 @@ export default function CreateProjectModal({ isOpen, onClose, onConfirm }: Creat
   });
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [showEnterpriseSelector, setShowEnterpriseSelector] = useState(false);
+  const [enterpriseConfig, setEnterpriseConfig] = useState<EnterpriseProjectConfig | null>(null);
 
   // 添加 ESC 键监听
   useEffect(() => {
@@ -120,6 +148,15 @@ export default function CreateProjectModal({ isOpen, onClose, onConfirm }: Creat
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // 检查是否选择了企业级模板
+    const isEnterpriseTemplate = selectedTemplate?.isPremium;
+    
+    if (isEnterpriseTemplate && !enterpriseConfig) {
+      // 显示企业级模板选择器
+      setShowEnterpriseSelector(true);
+      return;
+    }
     
     // 验证表单
     const newErrors: { [key: string]: string } = {};
@@ -150,7 +187,9 @@ export default function CreateProjectModal({ isOpen, onClose, onConfirm }: Creat
       ...formData,
       path: fullPath,
       // 如果不支持前端框架，则移除该属性
-      ...(selectedTemplate?.supportsFrontendFramework ? {} : { frontendFramework: undefined })
+      ...(selectedTemplate?.supportsFrontendFramework ? {} : { frontendFramework: undefined }),
+      // 添加企业级配置
+      ...(enterpriseConfig && { enterpriseConfig })
     };
     
     onConfirm(finalConfig);
@@ -173,6 +212,52 @@ export default function CreateProjectModal({ isOpen, onClose, onConfirm }: Creat
       }
     });
     setErrors({});
+    setShowEnterpriseSelector(false);
+    setEnterpriseConfig(null);
+  };
+
+  const handleTemplateSelect = (templateId: string) => {
+    handleInputChange('template', templateId);
+    
+    // 如果切换到非企业级模板，重置企业级配置
+    const template = templates.find(t => t.id === templateId);
+    if (!template?.isPremium) {
+      setEnterpriseConfig(null);
+      setShowEnterpriseSelector(false);
+    }
+  };
+
+  const handleEnterpriseTemplateConfirm = (template: EnterpriseTemplate) => {
+    // 基于选择的企业级模板构建配置
+    const config: EnterpriseProjectConfig = {
+      ...formData,
+      template: template.id as ProjectTemplate,
+      enterpriseFeatures: {
+        internationalization: {
+          enabled: template.features.some(f => f.id === 'i18n'),
+          defaultLocale: 'zh-CN',
+          supportedLocales: ['zh-CN', 'en-US']
+        },
+        authentication: {
+          provider: 'custom',
+          enabled: template.features.some(f => f.id === 'auth')
+        },
+        database: {
+          type: 'postgresql',
+          enabled: template.features.some(f => f.id === 'database')
+        },
+        deployment: {
+          platform: 'vercel',
+          cicd: true
+        }
+      }
+    };
+    
+    setEnterpriseConfig(config);
+    setShowEnterpriseSelector(false);
+    
+    // 提交表单
+    handleSubmit(new Event('submit') as any);
   };
 
   const handleInputChange = (field: keyof ProjectCreationConfig, value: any) => {
@@ -296,30 +381,46 @@ export default function CreateProjectModal({ isOpen, onClose, onConfirm }: Creat
               {templates.map((template) => (
                 <div 
                   key={template.id}
-                  className={`p-4 border rounded-lg cursor-pointer transition-all ${
+                  className={`p-4 border rounded-lg cursor-pointer transition-all relative ${
                     formData.template === template.id 
                       ? 'border-blue-500 theme-bg-accent' 
                       : 'theme-border hover:theme-border-hover'
                   }`}
-                  onClick={() => handleInputChange('template', template.id)}
+                  onClick={() => handleTemplateSelect(template.id)}
                 >
+                  {template.isPremium && (
+                    <div className="absolute top-2 right-2 px-2 py-1 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-xs font-bold rounded-full">
+                      PREMIUM
+                    </div>
+                  )}
                   <div className="flex items-start space-x-3">
                     <input
                       type="radio"
                       name="template"
                       value={template.id}
                       checked={formData.template === template.id}
-                      onChange={() => handleInputChange('template', template.id)}
+                      onChange={() => handleTemplateSelect(template.id)}
                       className="mt-1"
                     />
                     <div className="flex-1">
-                      <h5 className="font-medium theme-text-primary">{template.name}</h5>
+                      <h5 className="font-medium theme-text-primary flex items-center gap-2">
+                        {template.name}
+                        {template.isPremium && (
+                          <span className="text-xs bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent font-bold">
+                            ⭐ ENTERPRISE
+                          </span>
+                        )}
+                      </h5>
                       <p className="text-sm theme-text-secondary mt-1">{template.description}</p>
                       <div className="flex flex-wrap gap-2 mt-2">
                         {template.features.map((feature, index) => (
                           <span 
                             key={index}
-                            className="px-2 py-1 theme-bg-tertiary theme-text-secondary text-xs rounded-md"
+                            className={`px-2 py-1 text-xs rounded-md ${
+                              template.isPremium 
+                                ? 'bg-gradient-to-r from-yellow-100 to-orange-100 text-orange-800 dark:from-yellow-900 dark:to-orange-900 dark:text-yellow-200' 
+                                : 'theme-bg-tertiary theme-text-secondary'
+                            }`}
                           >
                             {feature}
                           </span>
@@ -503,6 +604,19 @@ export default function CreateProjectModal({ isOpen, onClose, onConfirm }: Creat
             </button>
           </div>
         </form>
+
+        {/* 企业级模板选择器 */}
+        {showEnterpriseSelector && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="theme-bg-secondary border theme-border rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
+              <EnterpriseTemplateSelector
+                selectedTemplateId={formData.template}
+                onSelect={handleEnterpriseTemplateConfirm}
+                onCancel={() => setShowEnterpriseSelector(false)}
+              />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

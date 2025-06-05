@@ -62,11 +62,10 @@ export const ProjectHeader: React.FC<ProjectHeaderProps> = () => {
           <button
             onClick={handleSyncStatus}
             disabled={isSyncing || isLoading}
-            className="theme-text-muted hover:theme-text-primary bg-transparent px-3 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            title="同步项目状态"
+            className="theme-text-muted hover:theme-text-primary bg-transparent px-3 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+            title={isSyncing ? '同步中...' : '同步项目状态'}
           >
             <span className={isSyncing ? 'animate-spin' : ''}>🔄</span>
-            <span className="text-sm">{isSyncing ? '同步中...' : '同步状态'}</span>
           </button>
           
           <button

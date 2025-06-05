@@ -1,0 +1,288 @@
+{
+  "id": "enterprise-nextjs",
+  "version": "1.0.0",
+  "name": "Enterprise Next.js Website",
+  "displayName": "企业级 Next.js 网站",
+  "description": "功能完整的企业级 Next.js 网站模板，包含国际化、主题系统、响应式设计等现代化功能",
+  "category": "enterprise",
+  "tier": "pro",
+  "price": 299,
+  "currency": "CNY",
+  "author": "NodeAppManager Team",
+  "license": "Commercial",
+  "tags": [
+    "nextjs",
+    "typescript",
+    "tailwindcss",
+    "enterprise",
+    "i18n",
+    "responsive",
+    "seo",
+    "performance"
+  ],
+  "preview": {
+    "images": [
+      "preview/hero-section.png",
+      "preview/features-section.png",
+      "preview/mobile-responsive.png",
+      "preview/dark-theme.png"
+    ],
+    "demoUrl": "https://enterprise-nextjs-demo.vercel.app"
+  },
+  "requirements": {
+    "nodeVersion": ">=18.0.0",
+    "packageManager": "pnpm",
+    "minDiskSpace": "500MB"
+  },
+  "features": [
+    {
+      "id": "nextjs-14",
+      "name": "Next.js 14",
+      "description": "最新版本的 Next.js 框架，支持 App Router",
+      "included": true,
+      "category": "framework"
+    },
+    {
+      "id": "typescript",
+      "name": "TypeScript",
+      "description": "完整的类型安全支持",
+      "included": true,
+      "category": "language"
+    },
+    {
+      "id": "tailwindcss",
+      "name": "Tailwind CSS",
+      "description": "现代化的 CSS 框架",
+      "included": true,
+      "category": "styling"
+    },
+    {
+      "id": "internationalization",
+      "name": "国际化支持",
+      "description": "内置多语言支持（中文/英文/日文）",
+      "included": true,
+      "category": "feature",
+      "premium": true
+    },
+    {
+      "id": "theme-system",
+      "name": "主题系统",
+      "description": "明暗主题切换支持",
+      "included": true,
+      "category": "feature"
+    },
+    {
+      "id": "responsive-design",
+      "name": "响应式设计",
+      "description": "移动端优先的响应式布局",
+      "included": true,
+      "category": "design"
+    },
+    {
+      "id": "component-library",
+      "name": "组件库",
+      "description": "丰富的 UI 组件库和设计系统",
+      "included": true,
+      "category": "component"
+    },
+    {
+      "id": "seo-optimization",
+      "name": "SEO 优化",
+      "description": "搜索引擎优化配置",
+      "included": true,
+      "category": "seo"
+    },
+    {
+      "id": "performance-optimization",
+      "name": "性能优化",
+      "description": "代码分割、懒加载等性能优化",
+      "included": true,
+      "category": "performance"
+    },
+    {
+      "id": "testing-suite",
+      "name": "测试套件",
+      "description": "Jest + Testing Library 完整测试环境",
+      "included": true,
+      "category": "testing"
+    },
+    {
+      "id": "storybook",
+      "name": "Storybook",
+      "description": "组件文档和开发环境",
+      "included": true,
+      "category": "documentation",
+      "premium": true
+    },
+    {
+      "id": "analytics-integration",
+      "name": "数据分析集成",
+      "description": "Google Analytics 和其他分析工具集成",
+      "included": true,
+      "category": "analytics",
+      "premium": true
+    },
+    {
+      "id": "error-tracking",
+      "name": "错误跟踪",
+      "description": "Sentry 错误跟踪集成",
+      "included": true,
+      "category": "monitoring",
+      "premium": true
+    },
+    {
+      "id": "ci-cd",
+      "name": "CI/CD 配置",
+      "description": "GitHub Actions 和 Vercel 部署配置",
+      "included": true,
+      "category": "deployment",
+      "premium": true
+    }
+  ],
+  "technologies": [
+    {
+      "name": "Next.js",
+      "version": "^14.0.0",
+      "type": "framework"
+    },
+    {
+      "name": "React",
+      "version": "^18.2.0",
+      "type": "library"
+    },
+    {
+      "name": "TypeScript",
+      "version": "^5.2.2",
+      "type": "language"
+    },
+    {
+      "name": "Tailwind CSS",
+      "version": "^3.3.0",
+      "type": "styling"
+    },
+    {
+      "name": "next-intl",
+      "version": "^3.0.0",
+      "type": "i18n"
+    },
+    {
+      "name": "next-themes",
+      "version": "^0.2.1",
+      "type": "theming"
+    },
+    {
+      "name": "Framer Motion",
+      "version": "^10.16.0",
+      "type": "animation"
+    }
+  ],
+  "customization": {
+    "variables": [
+      {
+        "key": "PROJECT_NAME",
+        "name": "项目名称",
+        "description": "项目的显示名称",
+        "type": "string",
+        "default": "My Enterprise App",
+        "required": true
+      },
+      {
+        "key": "PROJECT_NAME_INITIAL",
+        "name": "项目名称首字母",
+        "description": "用于 Logo 显示的首字母",
+        "type": "string",
+        "default": "M",
+        "required": true
+      },
+      {
+        "key": "PACKAGE_MANAGER",
+        "name": "包管理器",
+        "description": "选择的包管理器",
+        "type": "select",
+        "options": ["npm", "yarn", "pnpm"],
+        "default": "pnpm",
+        "required": true
+      },
+      {
+        "key": "DEFAULT_LOCALE",
+        "name": "默认语言",
+        "description": "网站的默认语言",
+        "type": "select",
+        "options": ["zh-CN", "en-US", "ja-JP"],
+        "default": "zh-CN",
+        "required": true
+      },
+      {
+        "key": "ENABLE_ANALYTICS",
+        "name": "启用数据分析",
+        "description": "是否集成 Google Analytics",
+        "type": "boolean",
+        "default": false,
+        "required": false
+      }
+    ]
+  },
+  "setupSteps": [
+    {
+      "id": "install-dependencies",
+      "name": "安装依赖",
+      "description": "安装项目所需的所有依赖包",
+      "command": "{{PACKAGE_MANAGER}} install",
+      "estimatedTime": "2-3分钟"
+    },
+    {
+      "id": "setup-environment",
+      "name": "设置环境",
+      "description": "创建环境变量文件",
+      "commands": [
+        "cp .env.example .env.local"
+      ],
+      "estimatedTime": "10秒"
+    },
+    {
+      "id": "setup-git",
+      "name": "初始化 Git",
+      "description": "初始化 Git 仓库",
+      "command": "git init && git add . && git commit -m \"Initial commit\"",
+      "estimatedTime": "30秒",
+      "optional": true
+    },
+    {
+      "id": "install-husky",
+      "name": "设置 Git Hooks",
+      "description": "安装和配置 Husky",
+      "command": "{{PACKAGE_MANAGER}} run prepare",
+      "estimatedTime": "20秒"
+    }
+  ],
+  "documentation": {
+    "readme": "README.md",
+    "changelog": "CHANGELOG.md",
+    "contributing": "CONTRIBUTING.md",
+    "license": "LICENSE"
+  },
+  "support": {
+    "documentation": "https://docs.nodeappmanager.com/templates/enterprise-nextjs",
+    "examples": "https://github.com/nodeappmanager/enterprise-nextjs-examples",
+    "community": "https://discord.gg/nodeappmanager",
+    "email": "support@nodeappmanager.com"
+  },
+  "compatibility": {
+    "os": ["windows", "macos", "linux"],
+    "browsers": ["chrome", "firefox", "safari", "edge"],
+    "deployments": ["vercel", "netlify", "aws", "docker"]
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2024-12-01",
+      "changes": [
+        "Initial release",
+        "Complete Next.js 14 setup",
+        "Internationalization support",
+        "Theme system implementation",
+        "Responsive design components"
+      ]
+    }
+  ]
+}
