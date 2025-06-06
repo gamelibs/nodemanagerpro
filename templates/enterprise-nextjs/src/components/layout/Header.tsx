@@ -1,23 +1,40 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { useTranslations } from 'next-intl'
-import { useTheme } from 'next-themes'
-import { Menu, X, Sun, Moon, Globe } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
-import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher'
+import { useState } from 'react';
+import Link from 'next/link';
+import { useTranslations, useLocale } from 'next-intl';
+import { usePathname } from 'next/navigation';
+import { useTheme } from 'next-themes';
+import { Button } from '@/components/ui/Button';
+import { Sun, Moon, Menu, X } from 'lucide-react';
+import { LanguageSwitcher } from './LanguageSwitcher';
+import { projectConfig } from '@/config/project';
+
+interface NavigationItem {
+  name: string;
+  href: string;
+}
 
 export function Header() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const { theme, setTheme } = useTheme()
-  const t = useTranslations('Header')
+  const t = useTranslations('navigation');
+  const locale = useLocale();
+  const pathname = usePathname();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { theme, setTheme } = useTheme();
 
   const navigation = [
-    { name: t('nav.home'), href: '#home' },
-    { name: t('nav.features'), href: '#features' },
-    { name: t('nav.about'), href: '#about' },
-    { name: t('nav.contact'), href: '#contact' },
-  ]
+    { name: t('home'), href: `/${locale}` },
+    { name: t('games'), href: `/${locale}/games` },
+    { name: t('categories'), href: `/${locale}/categories` },
+    { name: t('about'), href: `/${locale}/about` }
+  ];
+
+  const isActive = (href: string) => {
+    if (href === `/${locale}`) {
+      return pathname === `/${locale}` || pathname === '/';
+    }
+    return pathname.startsWith(href);
+  };
 
   return (
     <header className="fixed top-0 z-50 w-full bg-white/80 backdrop-blur-md border-b border-gray-200/50 dark:bg-gray-900/80 dark:border-gray-800/50">
@@ -25,23 +42,27 @@ export function Header() {
         {/* Logo */}
         <div className="flex items-center space-x-2">
           <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">{{PROJECT_NAME_INITIAL}}</span>
+            <span className="text-white font-bold text-sm">{projectConfig.nameInitial}</span>
           </div>
           <span className="font-bold text-xl text-gray-900 dark:text-white">
-            {{PROJECT_NAME}}
+            {projectConfig.name}
           </span>
         </div>
 
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center space-x-8">
           {navigation.map((item) => (
-            <a
+            <Link
               key={item.name}
-              href={item.href}
-              className="text-gray-600 hover:text-primary-600 dark:text-gray-300 dark:hover:text-primary-400 transition-colors duration-200"
+              href={item.href as any}
+              className={`transition-colors duration-200 ${
+                isActive(item.href)
+                  ? 'text-primary-600 dark:text-primary-400'
+                  : 'text-gray-600 hover:text-primary-600 dark:text-gray-300 dark:hover:text-primary-400'
+              }`}
             >
               {item.name}
-            </a>
+            </Link>
           ))}
         </div>
 
@@ -83,18 +104,22 @@ export function Header() {
         <div className="md:hidden bg-white/95 backdrop-blur-md border-t border-gray-200/50 dark:bg-gray-900/95 dark:border-gray-800/50">
           <div className="container py-4 space-y-4">
             {navigation.map((item) => (
-              <a
+              <Link
                 key={item.name}
-                href={item.href}
-                className="block text-gray-600 hover:text-primary-600 dark:text-gray-300 dark:hover:text-primary-400 transition-colors duration-200"
+                href={item.href as any}
+                className={`block transition-colors duration-200 ${
+                  isActive(item.href)
+                    ? 'text-primary-600 dark:text-primary-400'
+                    : 'text-gray-600 hover:text-primary-600 dark:text-gray-300 dark:hover:text-primary-400'
+                }`}
                 onClick={() => setIsMenuOpen(false)}
               >
                 {item.name}
-              </a>
+              </Link>
             ))}
           </div>
         </div>
       )}
     </header>
-  )
+  );
 }

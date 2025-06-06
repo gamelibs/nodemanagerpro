@@ -22,7 +22,7 @@ export function LanguageSwitcher() {
 
   const handleLanguageChange = (langCode: string) => {
     const newPath = pathname.replace(/^\/[a-z]{2}-[A-Z]{2}/, `/${langCode.toLowerCase()}`)
-    router.push(newPath)
+    router.push(newPath as any)
     setIsOpen(false)
   }
 

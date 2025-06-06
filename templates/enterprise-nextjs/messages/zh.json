@@ -1,0 +1,101 @@
+{
+  "common": {
+    "loading": "加载中...",
+    "loadMore": "加载更多",
+    "search": "搜索",
+    "searchPlaceholder": "搜索游戏...",
+    "category": "分类",
+    "all": "全部",
+    "playNow": "立即游戏",
+    "difficulty": "难度",
+    "rating": "评分",
+    "playCount": "游戏次数",
+    "reviews": "评价",
+    "noResults": "没有找到相关游戏",
+    "featured": "精选"
+  },
+  "navigation": {
+    "home": "首页",
+    "games": "游戏",
+    "categories": "分类",
+    "about": "关于我们",
+    "contact": "联系我们",
+    "privacy": "隐私政策",
+    "terms": "服务条款"
+  },
+  "home": {
+    "title": "精选小游戏平台",
+    "subtitle": "发现和体验最佳小游戏",
+    "description": "我们提供丰富多样的小游戏，包括益智、动作、街机和休闲游戏。所有游戏都经过精心挑选，为您提供最佳游戏体验。",
+    "searchGames": "搜索游戏",
+    "featuredGames": "精选游戏",
+    "allGames": "全部游戏",
+    "categories": "游戏分类",
+    "popularGames": "热门游戏",
+    "latestGames": "最新游戏"
+  },
+  "games": {
+    "title": "游戏大全",
+    "subtitle": "探索我们的游戏收藏",
+    "filterBy": "筛选",
+    "sortBy": "排序",
+    "sortOptions": {
+      "popular": "热门",
+      "latest": "最新",
+      "rating": "评分",
+      "name": "名称"
+    }
+  },
+  "gameDetail": {
+    "backToGames": "返回游戏列表",
+    "gameInfo": "游戏信息",
+    "howToPlay": "游戏说明",
+    "relatedGames": "相关游戏",
+    "tags": "标签",
+    "share": "分享游戏"
+  },
+  "categories": {
+    "puzzle": "益智游戏",
+    "action": "动作游戏",
+    "arcade": "街机游戏",
+    "casual": "休闲游戏",
+    "strategy": "策略游戏"
+  },
+  "difficulty": {
+    "easy": "简单",
+    "medium": "中等",
+    "hard": "困难"
+  },
+  "footer": {
+    "description": "提供最佳小游戏体验的专业平台",
+    "quickLinks": "快速链接",
+    "categories": "游戏分类",
+    "legal": "法律信息",
+    "followUs": "关注我们",
+    "copyright": "版权所有"
+  },
+  "legal": {
+    "privacy": {
+      "title": "隐私政策",
+      "lastUpdated": "最后更新时间"
+    },
+    "terms": {
+      "title": "服务条款",
+      "lastUpdated": "最后更新时间"
+    },
+    "about": {
+      "title": "关于我们",
+      "description": "我们致力于为用户提供最佳的小游戏体验"
+    }
+  },
+  "seo": {
+    "home": {
+      "title": "精选小游戏平台 - 最佳在线游戏体验",
+      "description": "发现和体验最佳小游戏。我们提供益智、动作、街机和休闲游戏，所有游戏都经过精心挑选。"
+    },
+    "games": {
+      "title": "游戏大全 - 探索我们的游戏收藏",
+      "description": "浏览我们完整的游戏收藏，包含各种类型的精选小游戏。"
+    }
+  }
+}

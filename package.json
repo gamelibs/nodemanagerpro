@@ -2,7 +2,7 @@
   "name": "node-app-manager",
   "productName": "Node App Manager",
   "description": "企业级 Node.js 项目管理桌面应用",
-  "version": "0.1.0-beta",
+  "version": "0.1.1-beta",
   "author": "Node App Manager Team",
   "homepage": "https://github.com/gamelibs/nodemanagerpro",
   "repository": {
@@ -114,7 +114,7 @@
       }
     },
     "dmg": {
-      "title": "Node App Manager ${version}",
+      "title": "Node App Manager",
       "backgroundColor": "#1a1a1a",
       "window": {
         "width": 540,

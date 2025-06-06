@@ -1,0 +1,166 @@
+{
+  "games": [
+    {
+      "id": "puzzle-blocks",
+      "slug": "puzzle-blocks",
+      "title": {
+        "zh-CN": "方块拼图",
+        "en-US": "Puzzle Blocks"
+      },
+      "description": {
+        "zh-CN": "经典的方块拼图游戏，挑战你的空间思维能力。将各种形状的方块放置到正确位置。",
+        "en-US": "Classic block puzzle game that challenges your spatial thinking. Place various shaped blocks in the correct positions."
+      },
+      "category": "puzzle",
+      "thumbnail": "/games/thumbnails/puzzle-blocks.jpg",
+      "gameUrl": "https://example.com/games/puzzle-blocks",
+      "difficulty": "easy",
+      "tags": ["puzzle", "logic", "blocks", "brain"],
+      "rating": 4.6,
+      "ratingCount": 892,
+      "playCount": 15420,
+      "isFeatured": true,
+      "isHot": false,
+      "featured": true,
+      "reviewCount": 892,
+      "createdAt": "2023-10-01T00:00:00Z",
+      "publishedAt": "2023-10-01T00:00:00Z",
+      "updatedAt": "2024-01-15T00:00:00Z"
+    },
+    {
+      "id": "space-shooter",
+      "slug": "space-shooter",
+      "title": {
+        "zh-CN": "太空射击",
+        "en-US": "Space Shooter"
+      },
+      "description": {
+        "zh-CN": "驾驶你的飞船在浩瀚太空中战斗，击败外星敌人，保卫地球！",
+        "en-US": "Pilot your spaceship in the vast cosmos, defeat alien enemies and defend Earth!"
+      },
+      "category": "action",
+      "thumbnail": "/games/thumbnails/space-shooter.jpg",
+      "gameUrl": "https://example.com/games/space-shooter",
+      "difficulty": "medium",
+      "tags": ["action", "shooting", "space", "arcade"],
+      "rating": 4.8,
+      "ratingCount": 1205,
+      "playCount": 23150,
+      "isFeatured": true,
+      "isHot": true,
+      "featured": true,
+      "reviewCount": 1205,
+      "createdAt": "2023-09-15T00:00:00Z",
+      "publishedAt": "2023-09-15T00:00:00Z",
+      "updatedAt": "2024-01-10T00:00:00Z"
+    },
+    {
+      "id": "memory-cards",
+      "slug": "memory-cards",
+      "title": {
+        "zh-CN": "记忆翻牌",
+        "en-US": "Memory Cards"
+      },
+      "description": {
+        "zh-CN": "训练你的记忆力！翻开卡片找到相同的图案，挑战你的记忆极限。",
+        "en-US": "Train your memory! Flip cards to find matching patterns and challenge your memory limits."
+      },
+      "category": "puzzle",
+      "thumbnail": "/games/thumbnails/memory-cards.jpg",
+      "gameUrl": "https://example.com/games/memory-cards",
+      "difficulty": "easy",
+      "tags": ["memory", "cards", "brain", "casual"],
+      "rating": 4.3,
+      "ratingCount": 456,
+      "playCount": 8960,
+      "isFeatured": false,
+      "isHot": false,
+      "featured": false,
+      "reviewCount": 456,
+      "createdAt": "2023-08-20T00:00:00Z",
+      "publishedAt": "2023-08-20T00:00:00Z",
+      "updatedAt": "2023-12-05T00:00:00Z"
+    },
+    {
+      "id": "racing-rush",
+      "slug": "racing-rush",
+      "title": {
+        "zh-CN": "极速赛车",
+        "en-US": "Racing Rush"
+      },
+      "description": {
+        "zh-CN": "在高速公路上驰骋，避开障碍物，收集金币，成为最快的赛车手！",
+        "en-US": "Race on the highway, avoid obstacles, collect coins, and become the fastest racer!"
+      },
+      "category": "arcade",
+      "thumbnail": "/games/thumbnails/racing-rush.jpg",
+      "gameUrl": "https://example.com/games/racing-rush",
+      "difficulty": "medium",
+      "tags": ["racing", "speed", "cars", "arcade"],
+      "rating": 4.5,
+      "ratingCount": 967,
+      "playCount": 19230,
+      "isFeatured": true,
+      "isHot": false,
+      "featured": true,
+      "reviewCount": 967,
+      "createdAt": "2023-11-10T00:00:00Z",
+      "publishedAt": "2023-11-10T00:00:00Z",
+      "updatedAt": "2024-01-20T00:00:00Z"
+    },
+    {
+      "id": "bubble-pop",
+      "slug": "bubble-pop",
+      "title": {
+        "zh-CN": "泡泡消除",
+        "en-US": "Bubble Pop"
+      },
+      "description": {
+        "zh-CN": "轻松休闲的泡泡消除游戏，瞄准同色泡泡射击，享受解压时光。",
+        "en-US": "Relaxing bubble shooter game. Aim and shoot same-colored bubbles for a stress-free experience."
+      },
+      "category": "casual",
+      "thumbnail": "/games/thumbnails/bubble-pop.jpg",
+      "gameUrl": "https://example.com/games/bubble-pop",
+      "difficulty": "easy",
+      "tags": ["casual", "bubbles", "relaxing", "shooter"],
+      "rating": 4.2,
+      "ratingCount": 623,
+      "playCount": 12750,
+      "isFeatured": false,
+      "isHot": false,
+      "featured": false,
+      "reviewCount": 623,
+      "createdAt": "2023-07-30T00:00:00Z",
+      "publishedAt": "2023-07-30T00:00:00Z",
+      "updatedAt": "2023-11-25T00:00:00Z"
+    },
+    {
+      "id": "word-search",
+      "slug": "word-search",
+      "title": {
+        "zh-CN": "单词搜索",
+        "en-US": "Word Search"
+      },
+      "description": {
+        "zh-CN": "在字母网格中找到隐藏的单词，提升你的词汇量和观察力。",
+        "en-US": "Find hidden words in the letter grid, improve your vocabulary and observation skills."
+      },
+      "category": "puzzle",
+      "thumbnail": "/games/thumbnails/word-search.jpg",
+      "gameUrl": "https://example.com/games/word-search",
+      "difficulty": "medium",
+      "tags": ["word", "puzzle", "vocabulary", "brain"],
+      "rating": 4.4,
+      "ratingCount": 345,
+      "playCount": 7830,
+      "isFeatured": false,
+      "isHot": false,
+      "featured": false,
+      "reviewCount": 345,
+      "createdAt": "2023-09-05T00:00:00Z",
+      "publishedAt": "2023-09-05T00:00:00Z",
+      "updatedAt": "2023-12-18T00:00:00Z"
+    }
+  ]
+}

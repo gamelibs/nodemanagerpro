@@ -1,0 +1,84 @@
+{
+  "categories": [
+    {
+      "id": "all",
+      "slug": "all",
+      "name": {
+        "zh-CN": "全部游戏",
+        "en-US": "All Games"
+      },
+      "icon": "🎮",
+      "color": "gray",
+      "description": {
+        "zh-CN": "浏览所有可用的游戏",
+        "en-US": "Browse all available games"
+      },
+      "gameCount": 6,
+      "isPopular": true
+    },
+    {
+      "id": "puzzle",
+      "slug": "puzzle",
+      "name": {
+        "zh-CN": "益智游戏",
+        "en-US": "Puzzle Games"
+      },
+      "icon": "🧩",
+      "color": "teal",
+      "description": {
+        "zh-CN": "锻炼大脑的益智类游戏",
+        "en-US": "Brain-training puzzle games"
+      },
+      "gameCount": 3,
+      "isPopular": true
+    },
+    {
+      "id": "action",
+      "slug": "action",
+      "name": {
+        "zh-CN": "动作游戏",
+        "en-US": "Action Games"
+      },
+      "icon": "⚡",
+      "color": "red",
+      "description": {
+        "zh-CN": "刺激的动作冒险游戏",
+        "en-US": "Exciting action and adventure games"
+      },
+      "gameCount": 1,
+      "isPopular": true
+    },
+    {
+      "id": "arcade",
+      "slug": "arcade",
+      "name": {
+        "zh-CN": "街机游戏",
+        "en-US": "Arcade Games"
+      },
+      "icon": "🕹️",
+      "color": "yellow",
+      "description": {
+        "zh-CN": "经典的街机风格游戏",
+        "en-US": "Classic arcade-style games"
+      },
+      "gameCount": 1,
+      "isPopular": false
+    },
+    {
+      "id": "casual",
+      "slug": "casual",
+      "name": {
+        "zh-CN": "休闲游戏",
+        "en-US": "Casual Games"
+      },
+      "icon": "☀️",
+      "color": "green",
+      "description": {
+        "zh-CN": "轻松休闲的娱乐游戏",
+        "en-US": "Relaxing and casual entertainment games"
+      },
+      "gameCount": 1,
+      "isPopular": false
+    }
+  ]
+}
