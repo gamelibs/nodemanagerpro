@@ -12,6 +12,7 @@ import {
   useProjectData,
   useProjectOperations
 } from './projects';
+import { useProjects } from '../hooks/useProjects';
 
 interface ProjectsPageProps {
   projects: Project[];
@@ -30,6 +31,14 @@ export default function ProjectsPage({
 
   // Toast提示系统 - 使用全局的 ToastContext
   const { showToast } = useToastContext();
+
+  // 项目管理 hook
+  const { importProjectsFromJson } = useProjects();
+
+  // 导入JSON文件处理
+  const handleImportJson = async () => {
+    await importProjectsFromJson();
+  };
 
   // 项目数据管理
   const {
@@ -296,7 +305,17 @@ export default function ProjectsPage({
         <div className="w-1/4 border-r theme-border theme-bg-secondary flex flex-col">
           {/* 项目列表头部 */}
           <div className="p-3 border-b theme-border flex items-center justify-between">
-            <h2 className="text-base font-semibold theme-text-primary">{t('projects.listHeader')}</h2>
+            <div className="flex items-center gap-2">
+              {/* 导入项目按钮 */}
+              <button
+                onClick={handleImportJson}
+                className="w-6 h-6 rounded-full bg-blue-500 text-white hover:bg-blue-600 transition-colors duration-200 flex items-center justify-center text-sm"
+                title="从JSON文件导入项目"
+              >
+                +
+              </button>
+              <h2 className="text-base font-semibold theme-text-primary">{t('projects.listHeader')}</h2>
+            </div>
             <span className="text-sm theme-text-secondary">{t('projects.list.totalCount', { count: projects.length.toString() })}</span>
           </div>
 
@@ -352,6 +371,12 @@ export default function ProjectsPage({
                   onRefreshLogs={() => {
                     if (selectedProject) {
                       fetchPM2Logs(selectedProject);
+                    }
+                  }}
+                  onConfigUpdate={() => {
+                    if (selectedProject) {
+                      // 刷新项目的所有相关数据
+                      fetchProjectData(selectedProject);
                     }
                   }}
                 />

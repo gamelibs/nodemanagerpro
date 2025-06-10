@@ -7,9 +7,9 @@ import * as path from 'path';
 // 在运行时动态导入，避免编译时的模块解析问题
 const setupFileSystemIPC = require('./src/ipc/fileSystemIPC.cjs').setupFileSystemIPC;
 const setupPM2IPC = require('./src/ipc/pm2IPC.cjs').setupPM2IPC;
-const setupPortIPC = require('./src/ipc/portIPC.cjs').setupPortIPC;
 const setupSettingsIPC = require('./src/ipc/settingsIPC.cjs').setupSettingsIPC;
 const setupLoggerIPC = require('./src/ipc/loggerIPC.cjs').setupLoggerIPC;
+const setupPortIPC = require('./src/ipc/portIPC.cjs').setupPortIPC;
 
 // 导入日志服务
 const LoggerService = require('./src/services/LoggerService.cjs').LoggerService;
@@ -42,7 +42,7 @@ function createWindow(): void {
       nodeIntegration: false, // 关闭node集成以提高安全性
       contextIsolation: true, // 启用上下文隔离
       webSecurity: !isDev, // 开发模式下关闭 web 安全性检查
-      preload: path.join(__dirname, '../src/preload/preload.js'), // 设置preload脚本
+      preload: path.join(__dirname, 'src/preload/preload.js'), // 设置preload脚本
     },
     backgroundColor: '#0F172A',
     titleBarStyle: 'default',

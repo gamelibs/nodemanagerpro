@@ -20,6 +20,8 @@ export function setupPortIPC() {
   // 清除可能存在的旧处理器
   try {
     ipcMain.removeHandler('port:check');
+    ipcMain.removeHandler('check-port');
+    ipcMain.removeHandler('kill-port');
     ipcMain.removeHandler('project:update-port');
   } catch (error) {
     // 忽略移除不存在处理器的错误
@@ -82,6 +84,144 @@ export function setupPortIPC() {
       return {
         available: false,
         error: error instanceof Error ? error.message : '检查端口时发生错误'
+      };
+    }
+  });
+
+  // 检查端口占用状态（别名处理器，与PM2Service兼容）
+  ipcMain.handle('check-port', async (_, port: number) => {
+    try {
+      console.log(`🔍 检查端口 ${port} 占用状态...`);
+      
+      const command = process.platform === 'win32' 
+        ? `netstat -ano | findstr :${port}`
+        : `lsof -ti :${port}`;
+
+      try {
+        const { stdout } = await execAsync(command);
+        
+        if (stdout.trim()) {
+          return {
+            occupied: true,
+            available: false,
+            pids: stdout.trim().split('\n').filter(pid => pid.trim())
+          };
+        } else {
+          return {
+            occupied: false,
+            available: true
+          };
+        }
+      } catch (cmdError) {
+        return {
+          occupied: false,
+          available: true
+        };
+      }
+    } catch (error) {
+      console.error(`❌ 检查端口 ${port} 占用状态时发生错误:`, error);
+      return {
+        occupied: false,
+        available: true,
+        error: error instanceof Error ? error.message : '检查端口时发生错误'
+      };
+    }
+  });
+
+  // 清理端口占用
+  ipcMain.handle('kill-port', async (_, port: number) => {
+    try {
+      console.log(`🛑 开始清理端口 ${port} 的占用进程...`);
+      
+      if (process.platform === 'win32') {
+        // Windows 平台
+        try {
+          const { stdout } = await execAsync(`netstat -ano | findstr :${port}`);
+          const lines = stdout.split('\n').filter(line => line.trim());
+          
+          for (const line of lines) {
+            const parts = line.trim().split(/\s+/);
+            const pid = parts[parts.length - 1];
+            if (pid && !isNaN(parseInt(pid))) {
+              await execAsync(`taskkill /F /PID ${pid}`);
+              console.log(`✅ 已终止 Windows 进程 PID: ${pid}`);
+            }
+          }
+        } catch (winError) {
+          console.log(`⚠️ Windows 端口清理命令执行失败，可能端口未被占用`);
+        }
+      } else {
+        // macOS/Linux 平台
+        try {
+          // 先获取占用端口的进程PID
+          const { stdout: pidOutput } = await execAsync(`lsof -ti :${port}`);
+          const pids = pidOutput.trim().split('\n').filter(pid => pid.trim());
+          
+          if (pids.length > 0) {
+            // 依次终止进程
+            for (const pid of pids) {
+              try {
+                // 先尝试温和终止
+                await execAsync(`kill ${pid}`);
+                console.log(`✅ 已发送终止信号给进程 PID: ${pid}`);
+                
+                // 等待一段时间后检查进程是否还存在
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                try {
+                  await execAsync(`kill -0 ${pid}`);
+                  // 如果进程还存在，强制终止
+                  await execAsync(`kill -9 ${pid}`);
+                  console.log(`✅ 已强制终止进程 PID: ${pid}`);
+                } catch (checkError) {
+                  // 进程已经被终止
+                  console.log(`✅ 进程 PID: ${pid} 已成功终止`);
+                }
+              } catch (killError) {
+                console.warn(`⚠️ 终止进程 PID: ${pid} 失败:`, killError);
+              }
+            }
+          } else {
+            console.log(`ℹ️ 端口 ${port} 未被占用`);
+          }
+        } catch (nixError) {
+          console.log(`⚠️ Unix/Linux 端口清理命令执行失败，可能端口未被占用`);
+        }
+      }
+      
+      // 等待端口释放
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // 再次检查端口状态
+      const command = process.platform === 'win32' 
+        ? `netstat -ano | findstr :${port}`
+        : `lsof -ti :${port}`;
+        
+      try {
+        const { stdout } = await execAsync(command);
+        if (stdout.trim()) {
+          console.log(`⚠️ 端口 ${port} 仍被占用，清理可能不完全`);
+          return {
+            success: true,
+            warning: '端口清理完成，但可能仍有进程占用'
+          };
+        } else {
+          console.log(`✅ 端口 ${port} 清理成功`);
+          return {
+            success: true
+          };
+        }
+      } catch (checkError) {
+        console.log(`✅ 端口 ${port} 清理成功`);
+        return {
+          success: true
+        };
+      }
+    } catch (error) {
+      console.error(`❌ 清理端口 ${port} 时发生错误:`, error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : '清理端口时发生错误'
       };
     }
   });

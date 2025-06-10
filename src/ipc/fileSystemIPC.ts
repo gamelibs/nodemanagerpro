@@ -29,6 +29,7 @@ export function setupFileSystemIPC() {
     ipcMain.removeHandler('project:installDependencies');
     ipcMain.removeHandler('project:installSpecificPackages');
     ipcMain.removeHandler('project:createPackageJson');
+    ipcMain.removeHandler('project:updateStartupConfig');
     ipcMain.removeHandler('fs:readFile');
     ipcMain.removeHandler('fs:writeFile');
     ipcMain.removeHandler('fs:exists');
@@ -89,6 +90,49 @@ export function setupFileSystemIPC() {
       return { 
         success: false, 
         error: error instanceof Error ? error.message : '移除项目失败' 
+      };
+    }
+  });
+
+  // 导入项目JSON文件
+  ipcMain.handle('fs:importProjectsFromJson', async (_, jsonData: any[]) => {
+    try {
+      const importedProjects = [];
+      const errors = [];
+      
+      for (const projectData of jsonData) {
+        try {
+          // 验证必需字段
+          if (!projectData.id || !projectData.name || !projectData.path) {
+            errors.push(`项目数据缺少必需字段: ${JSON.stringify(projectData)}`);
+            continue;
+          }
+          
+          // 设置默认的lastOpened
+          const project = {
+            ...projectData,
+            lastOpened: projectData.lastOpened || new Date().toISOString()
+          };
+          
+          // 添加项目（FileSystemService会处理重复检查）
+          await FileSystemService.addProject(project);
+          importedProjects.push(project);
+        } catch (error) {
+          errors.push(`导入项目 "${projectData.name}" 失败: ${error instanceof Error ? error.message : '未知错误'}`);
+        }
+      }
+      
+      return { 
+        success: true, 
+        data: { 
+          imported: importedProjects, 
+          errors 
+        } 
+      };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : '导入项目JSON失败' 
       };
     }
   });
@@ -353,9 +397,9 @@ export function setupFileSystemIPC() {
   });
 
   // 创建基础的 package.json 文件
-  ipcMain.handle('project:createPackageJson', async (_, projectPath: string, projectName?: string) => {
+  ipcMain.handle('project:createPackageJson', async (_, projectPath: string, packageJsonConfig?: any) => {
     try {
-      console.log('📡 收到 project:createPackageJson IPC调用:', projectPath, projectName);
+      console.log('📡 收到 project:createPackageJson IPC调用:', projectPath, packageJsonConfig);
       const packageJsonPath = path.join(projectPath, 'package.json');
       
       if (fs.existsSync(packageJsonPath)) {
@@ -365,22 +409,29 @@ export function setupFileSystemIPC() {
         };
       }
 
-      // 创建基础的 package.json
-      const folderName = projectName || path.basename(projectPath);
-      const packageJson = {
-        name: folderName,
-        version: "1.0.0",
-        description: "",
-        main: "index.js",
-        scripts: {
-          test: "echo \"Error: no test specified\" && exit 1"
-        },
-        keywords: [],
-        author: "",
-        license: "ISC",
-        dependencies: {},
-        devDependencies: {}
-      };
+      let packageJson;
+      
+      if (packageJsonConfig && typeof packageJsonConfig === 'object') {
+        // 使用传入的完整配置
+        packageJson = packageJsonConfig;
+      } else {
+        // 创建基础的 package.json（向后兼容）
+        const folderName = (typeof packageJsonConfig === 'string' ? packageJsonConfig : null) || path.basename(projectPath);
+        packageJson = {
+          name: folderName,
+          version: "1.0.0",
+          description: "",
+          main: "index.js",
+          scripts: {
+            test: "echo \"Error: no test specified\" && exit 1"
+          },
+          keywords: [],
+          author: "",
+          license: "ISC",
+          dependencies: {},
+          devDependencies: {}
+        };
+      }
 
       fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8');
       
@@ -630,6 +681,67 @@ export function setupFileSystemIPC() {
       return {
         success: false,
         error: error instanceof Error ? error.message : '更新端口时发生错误',
+      };
+    }
+  });
+
+  // 更新项目启动配置
+  ipcMain.handle('project:updateStartupConfig', async (_, projectPath: string, config: { startFile: string; startCommand: string }) => {
+    try {
+      console.log('📡 收到 project:updateStartupConfig IPC调用:', projectPath, config);
+      
+      const packageJsonPath = path.join(projectPath, 'package.json');
+      
+      if (!fs.existsSync(packageJsonPath)) {
+        return {
+          success: false,
+          error: 'package.json 文件不存在'
+        };
+      }
+
+      // 读取现有的 package.json
+      const packageContent = fs.readFileSync(packageJsonPath, 'utf-8');
+      const packageJson = JSON.parse(packageContent);
+
+      // 更新配置
+      let updated = false;
+
+      if (config.startFile) {
+        packageJson.main = config.startFile;
+        updated = true;
+      }
+
+      if (config.startCommand) {
+        if (!packageJson.scripts) {
+          packageJson.scripts = {};
+        }
+        packageJson.scripts.start = config.startCommand;
+        updated = true;
+      }
+
+      if (updated) {
+        // 写回 package.json，保持格式化
+        fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8');
+        console.log('✅ 启动配置已保存到 package.json');
+        
+        return {
+          success: true,
+          data: {
+            main: packageJson.main,
+            startScript: packageJson.scripts?.start
+          }
+        };
+      }
+
+      return {
+        success: false,
+        error: '没有提供有效的配置信息'
+      };
+    } catch (error) {
+      console.error('📡 project:updateStartupConfig 失败:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : '保存启动配置失败'
       };
     }
   });

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useToastContext } from '../../store/ToastContext';
 import type { Project, DetailedProjectType } from '../../types';
 import type { PM2Process } from '../../services/PM2Service';
+import { StartupConfig } from './StartupConfig';
 
 interface ProjectDetailsProps {
   project: Project;
@@ -25,6 +26,7 @@ interface ProjectDetailsProps {
   onStopProject: () => void;
   onRestartProject: () => void;
   onRefreshLogs: () => void;
+  onConfigUpdate?: () => void;
 }
 
 export function ProjectDetails({
@@ -49,6 +51,7 @@ export function ProjectDetails({
   onStopProject,
   onRestartProject,
   onRefreshLogs,
+  onConfigUpdate,
 }: ProjectDetailsProps) {
   // 端口编辑状态
   const [isEditingPort, setIsEditingPort] = useState(false);
@@ -520,6 +523,14 @@ export function ProjectDetails({
         </div>
       </div>
       </div>
+      
+      {/* 启动配置 - 在依赖包信息上方 */}
+      <StartupConfig
+        project={project}
+        packageInfo={packageInfo}
+        isLoadingPackage={isLoadingPackage}
+        onConfigUpdate={onConfigUpdate}
+      />
       
       {/* 依赖包信息 - 独立在两栏下面，与日志并列 */}
       {packageInfo && (packageInfo.dependencies || packageInfo.devDependencies) && (

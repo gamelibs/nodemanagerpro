@@ -3,6 +3,7 @@ import { useProjects } from '../../hooks/useProjects';
 import { useApp } from '../../store/AppContext';
 import { useToastContext } from '../../store/ToastContext';
 import CreateProjectModal from '../CreateProjectModal';
+import ProjectImportConfigModal from '../ProjectImportConfigModal';
 
 interface ProjectHeaderProps {
   // selectedProject 不再需要，因为删除按钮移到了列表中
@@ -17,9 +18,40 @@ export const ProjectHeader: React.FC<ProjectHeaderProps> = () => {
   
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  
+  // 配置分析模态框状态
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [configAnalysisData, setConfigAnalysisData] = useState<{
+    analysis: any;
+    projectPath: string;
+    proceedWithImport: () => Promise<any>;
+  } | null>(null);
 
   const handleImportProject = async () => {
-    await importProject();
+    const result = await importProject();
+    
+    // 如果需要显示配置分析
+    if (result?.requiresConfigAnalysis && result.analysis && result.projectPath) {
+      setConfigAnalysisData({
+        analysis: result.analysis,
+        projectPath: result.projectPath,
+        proceedWithImport: result.proceedWithImport
+      });
+      setShowConfigModal(true);
+    }
+  };
+
+  const handleConfigModalClose = () => {
+    setShowConfigModal(false);
+    setConfigAnalysisData(null);
+  };
+
+  const handleConfigModalConfirm = async () => {
+    if (configAnalysisData?.proceedWithImport) {
+      await configAnalysisData.proceedWithImport();
+    }
+    setShowConfigModal(false);
+    setConfigAnalysisData(null);
   };
 
   const handleCreateProject = () => {
@@ -101,6 +133,16 @@ export const ProjectHeader: React.FC<ProjectHeaderProps> = () => {
         onClose={() => setShowCreateModal(false)}
         onConfirm={handleCreateConfirm}
       />
+      
+      {/* 配置分析模态框 */}
+      {configAnalysisData && (
+        <ProjectImportConfigModal
+          isOpen={showConfigModal}
+          onClose={handleConfigModalClose}
+          onConfirm={handleConfigModalConfirm}
+          projectPath={configAnalysisData.projectPath}
+        />
+      )}
     </>
   );
 };

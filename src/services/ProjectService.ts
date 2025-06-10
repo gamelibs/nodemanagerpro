@@ -2,6 +2,7 @@ import type { Project, ProjectScript, FileSystemResult, ProjectCreationConfig, P
 import { RendererFileSystemService } from './RendererFileSystemService';
 import { ProjectValidationService } from './ProjectValidationService';
 import { PM2Service } from './PM2Service';
+import { ProjectConfigAnalysisService } from './ProjectConfigAnalysisService';
 
 // 项目服务类
 export class ProjectService {
@@ -147,6 +148,56 @@ export class ProjectService {
           pm2Sync: pm2SyncResult,
           note: '验证失败，状态信息需要后续重新检测'
         });
+      }
+
+      // 🔧 新增：分析项目配置完整性
+      onProgress?.('🔧 分析项目配置完整性...', 'info');
+      const configAnalysis = await ProjectConfigAnalysisService.analyzeProjectConfiguration(projectPath);
+      
+      if (configAnalysis.success) {
+        const { configStatus, analysis } = configAnalysis;
+        
+        // 显示配置状态
+        switch (configStatus) {
+          case 'complete':
+            onProgress?.('✅ 项目配置完整，所有必要文件都存在', 'success');
+            
+            // 显示配置详情
+            if (analysis.portInfo) {
+              onProgress?.(`🔌 检测到端口配置: ${analysis.portInfo.defaultPort} (来源: ${analysis.portInfo.sources.join(', ')})`, 'info');
+            }
+            if (analysis.mainFileInfo) {
+              onProgress?.(`📄 检测到主文件: ${analysis.mainFileInfo.recommended}`, 'info');
+            }
+            break;
+            
+          case 'incomplete':
+            onProgress?.(`⚠️ 项目配置不完整，缺少 ${analysis.missingConfigs.length} 项配置`, 'warn');
+            onProgress?.(`💡 缺少的配置: ${analysis.missingConfigs.join(', ')}`, 'info');
+            
+            // 显示建议
+            if (analysis.recommendations.length > 0) {
+              onProgress?.(`💡 建议: ${analysis.recommendations.join('; ')}`, 'info');
+            }
+            break;
+            
+          case 'missing':
+            onProgress?.('⚠️ 项目缺少基础配置文件', 'warn');
+            onProgress?.(`💡 需要配置: ${analysis.missingConfigs.join(', ')}`, 'info');
+            onProgress?.('💡 可以在项目详情页面手动配置这些文件', 'info');
+            break;
+        }
+        
+        console.log('🔍 项目配置分析结果:', {
+          configStatus,
+          missingConfigs: analysis.missingConfigs,
+          hasPortConfig: analysis.hasPortConfig,
+          portInfo: analysis.portInfo,
+          recommendations: analysis.recommendations
+        });
+      } else {
+        onProgress?.(`⚠️ 配置分析失败: ${configAnalysis.error}`, 'warn');
+        console.warn('⚠️ 项目配置分析失败:', configAnalysis.error);
       }
 
       // 使用文件系统服务保存（只保存核心信息）
@@ -904,4 +955,5 @@ export class ProjectService {
       };
     }
   }
+
 }

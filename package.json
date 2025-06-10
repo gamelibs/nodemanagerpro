@@ -1,9 +1,9 @@
 {
-  "name": "node-app-manager",
-  "productName": "Node App Manager",
+  "name": "nodehub-pro",
+  "productName": "NodeHub Pro",
   "description": "企业级 Node.js 项目管理桌面应用",
   "version": "0.1.1-beta",
-  "author": "Node App Manager Team",
+  "author": "NodeHub Pro Team",
   "homepage": "https://github.com/gamelibs/nodemanagerpro",
   "repository": {
     "type": "git",
@@ -14,12 +14,14 @@
   "main": "dist/electron-main.cjs",
   "scripts": {
     "dev": "vite --port 9966",
+    "start": "./smart-start.sh",
+    "start:smart": "./smart-start.sh",
     "build": "vite build && npm run electron:compile",
     "lint": "eslint .",
     "preview": "vite preview",
     "electron:dev": "concurrently -k \"npm run dev\" \"npm run electron:wait-and-start\"",
     "electron:wait-and-start": "sleep 4 && npm run electron:compile && cross-env NODE_ENV=development electron ./dist/electron-main.cjs",
-    "electron:compile": "tsc -p tsconfig.electron.json && find ./dist/src -name '*.js' -exec bash -c 'mv \"$1\" \"${1%.js}.cjs\"' _ {} \\; && mv ./dist/electron-main.js ./dist/electron-main.cjs && ./fix-cjs-paths.sh",
+    "electron:compile": "tsc -p tsconfig.electron.json && find ./dist/src -name '*.js' -exec bash -c 'mv \"$1\" \"${1%.js}.cjs\"' _ {} \\; && mv ./dist/electron-main.js ./dist/electron-main.cjs && cp -r src/preload dist/src/ && ./fix-cjs-paths.sh",
     "electron:build": "npm run build && npm run electron:start",
     "electron:start": "electron ./dist/electron-main.cjs",
     "build:mac": "npm run build && electron-builder --mac",
@@ -44,6 +46,7 @@
     "cross-env": "^7.0.3",
     "electron": "^24.3.0",
     "electron-builder": "^26.0.12",
+    "electron-icon-builder": "^2.0.1",
     "eslint": "^8.40.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.1",
@@ -55,12 +58,13 @@
     "wait-on": "^8.0.3"
   },
   "build": {
-    "appId": "com.nodeappmanager.app",
-    "productName": "Node App Manager",
-    "copyright": "Copyright © 2025 Node App Manager Team",
+    "appId": "com.nodehubpro.app",
+    "productName": "NodeHub Pro",
+    "copyright": "Copyright © 2025 NodeHub Pro Team",
     "directories": {
       "output": "release"
     },
+    "icon": "build/icons/icon.png",
     "files": [
       "dist/**/*",
       "public/**/*",
@@ -105,16 +109,16 @@
         "NSNetworkVolumesUsageDescription": "此应用需要访问网络卷来管理项目",
         "CFBundleURLTypes": [
           {
-            "CFBundleURLName": "Node App Manager",
+            "CFBundleURLName": "NodeHub Pro",
             "CFBundleURLSchemes": [
-              "nodeappmanager"
+              "nodehubpro"
             ]
           }
         ]
       }
     },
     "dmg": {
-      "title": "Node App Manager",
+      "title": "NodeHub Pro",
       "backgroundColor": "#1a1a1a",
       "window": {
         "width": 540,
@@ -159,7 +163,7 @@
       "deleteAppDataOnUninstall": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Node App Manager"
+      "shortcutName": "NodeHub Pro"
     },
     "linux": {
       "target": [

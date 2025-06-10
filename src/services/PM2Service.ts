@@ -204,7 +204,57 @@ export class PM2Service {
         return { success: false, error: '不在 Electron 环境中' };
       }
 
+      const processName = this.generateProcessName(project);
+      console.log(`🚀 准备启动项目 ${project.name}，PM2进程名: ${processName}`);
+
+      // 1. 启动前检查是否存在同名进程
+      console.log(`🔍 检查是否存在已运行的进程: ${processName}`);
+      const existingStatus = await this.getProjectStatus(project);
+      
+      if (existingStatus.success && existingStatus.status) {
+        const currentStatus = existingStatus.status.pm2_env?.status;
+        console.log(`⚠️ 发现已存在的进程，状态: ${currentStatus}`);
+        
+        // 如果进程已在运行，先停止它
+        if (currentStatus === 'online' || currentStatus === 'launching') {
+          console.log(`🛑 停止已运行的进程: ${processName}`);
+          const stopResult = await this.stopProject(project);
+          if (!stopResult.success) {
+            console.warn(`⚠️ 停止进程失败，尝试强制删除: ${stopResult.error}`);
+            // 如果普通停止失败，尝试删除进程
+            await window.electronAPI.invoke('pm2:delete', processName);
+          }
+          // 等待一秒确保进程完全停止
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        } else if (currentStatus === 'stopped' || currentStatus === 'error' || currentStatus === 'errored') {
+          // 如果进程处于停止或错误状态，删除它
+          console.log(`🗑️ 删除处于 ${currentStatus} 状态的进程: ${processName}`);
+          await window.electronAPI.invoke('pm2:delete', processName);
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+
+      // 2. 检查端口占用情况
+      if (project.port) {
+        console.log(`🔍 检查端口 ${project.port} 是否被占用`);
+        const portCheckResult = await window.electronAPI.invoke('check-port', project.port);
+        if (portCheckResult.occupied) {
+          console.log(`⚠️ 端口 ${project.port} 被占用，尝试清理`);
+          const killResult = await window.electronAPI.invoke('kill-port', project.port);
+          if (killResult.success) {
+            console.log(`✅ 端口 ${project.port} 清理成功`);
+            // 等待端口完全释放
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          } else {
+            console.warn(`⚠️ 端口清理失败: ${killResult.error}`);
+          }
+        }
+      }
+
+      // 3. 生成配置并启动
       const config = this.generatePM2Config(project);
+      console.log(`📋 生成PM2配置:`, config);
+      
       const result = await window.electronAPI.invoke('pm2:start', config);
       
       if (result.success) {
@@ -216,12 +266,14 @@ export class PM2Service {
           pid: result.pid // 返回系统进程ID
         };
       } else {
+        console.error(`❌ 项目启动失败: ${result.error}`);
         return {
           success: false,
           error: result.error || '启动失败'
         };
       }
     } catch (error) {
+      console.error(`💥 启动项目时发生异常:`, error);
       return {
         success: false,
         error: error instanceof Error ? error.message : '启动项目时发生错误'
@@ -557,16 +609,57 @@ export class PM2Service {
    * 生成 PM2 配置
    */
   private static generatePM2Config(project: Project) {
-    const startScript = project.scripts.find(s => s.name === 'start') || project.scripts[0];
+    // 检查并处理空的或未定义的scripts数组
+    const scripts = project.scripts || [];
+    let startScript = scripts.find(s => s.name === 'start') || scripts[0];
+    
+    // 如果没有找到任何脚本，创建默认脚本
+    if (!startScript) {
+      console.log(`⚠️ 项目 ${project.name} 没有可用的启动脚本，使用默认配置`);
+      
+      // 根据项目类型和包管理器生成默认启动命令
+      const packageManager = project.packageManager || 'npm';
+      let defaultCommand = `${packageManager} start`;
+      
+      // 根据项目类型调整默认命令 - 使用正确的枚举值
+      if (project.type === 'pure-api' || project.type === 'node') {
+        // 对于API后端项目，默认使用node命令启动
+        defaultCommand = 'node server.js'; // 默认使用server.js
+      } else if (project.type === 'react') {
+        defaultCommand = `${packageManager} run dev`;
+      } else if (project.type === 'vue') {
+        defaultCommand = `${packageManager} run dev`;
+      } else if (project.type === 'full-stack') {
+        defaultCommand = `${packageManager} run dev`;
+      } else if (project.type === 'static-app') {
+        defaultCommand = `${packageManager} run dev`;
+      }
+      
+      startScript = {
+        name: 'start',
+        command: defaultCommand,
+        description: '启动项目'
+      };
+    }
+
+    // 环境变量配置
+    const envVars: Record<string, string> = {
+      NODE_ENV: 'development'
+    };
+
+    // 如果项目有端口配置，添加PORT环境变量
+    if (project.port) {
+      envVars.PORT = project.port.toString();
+      console.log(`🌐 为项目 ${project.name} 设置端口: ${project.port}`);
+    } else {
+      console.log(`⚠️ 项目 ${project.name} 未配置端口，PM2将使用项目默认端口配置`);
+    }
     
     return {
       name: this.generateProcessName(project), // 使用稳定ID作为进程名称
-      script: startScript?.command || 'npm start',
+      script: startScript.command,
       cwd: project.path,
-      // 不设置 PORT 环境变量，让项目使用自己的配置（.env文件、代码中的默认值等）
-      env: {
-        NODE_ENV: 'development'
-      },
+      env: envVars,
       // PM2 配置选项
       exec_mode: 'fork',
       instances: 1,

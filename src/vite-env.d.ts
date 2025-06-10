@@ -7,6 +7,7 @@ interface ElectronAPI {
     properties: string[];
     title?: string;
     defaultPath?: string;
+    filters?: Array<{ name: string; extensions: string[] }>;
   }) => Promise<{
     canceled: boolean;
     filePaths: string[];

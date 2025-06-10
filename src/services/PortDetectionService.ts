@@ -94,16 +94,31 @@ export class PortDetectionService {
 
                 if (result?.success) {
                     const content = result.content;
-                    // 匹配 PORT=3000 或 PORT = 3000
-                    const portMatch = content.match(/PORT\s*=\s*(\d+)/);
+                    // 增强端口匹配模式，支持更多格式
+                    const portPatterns = [
+                        /PORT\s*=\s*(\d+)/i,          // PORT=3000
+                        /SERVER_PORT\s*=\s*(\d+)/i,   // SERVER_PORT=3000
+                        /APP_PORT\s*=\s*(\d+)/i,      // APP_PORT=3000
+                        /HTTP_PORT\s*=\s*(\d+)/i,     // HTTP_PORT=3000
+                        /NEXT_PUBLIC_PORT\s*=\s*(\d+)/i, // Next.js 公开端口
+                        /VITE_PORT\s*=\s*(\d+)/i,     // Vite 端口配置
+                    ];
 
-                    if (portMatch) {
-                        results.push({
-                            source: "env",
-                            port: parseInt(portMatch[1]),
-                            file: envFile,
-                            confidence: "high" as const,
-                        });
+                    for (const pattern of portPatterns) {
+                        const portMatch = content.match(pattern);
+                        if (portMatch) {
+                            const port = parseInt(portMatch[1]);
+                            // 验证端口范围有效性
+                            if (port >= 1024 && port <= 65535) {
+                                results.push({
+                                    source: "env",
+                                    port: port,
+                                    file: envFile,
+                                    confidence: "high" as const,
+                                });
+                                break; // 找到第一个有效端口后停止
+                            }
+                        }
                     }
                 }
             } catch (error) {

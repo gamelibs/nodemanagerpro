@@ -6,7 +6,7 @@ import { useLogs } from "./useLogs";
 import type { Project, ProjectCreationConfig } from "../types";
 import { ProjectStatusService } from "../services/ProjectStatusService";
 import { PortDetectionService } from "../services/PortDetectionService";
-import { DefaultProjectSetupService } from "../services/DefaultProjectSetupService";
+import { ProjectConfigAnalysisService } from "../services/ProjectConfigAnalysisService";
 
 export function useProjects() {
     const { state, dispatch } = useApp();
@@ -114,14 +114,33 @@ export function useProjects() {
     //     },
     //     [dispatch, showToast]
     // );
-    // 🔧 重构的导入项目方法 - 优化检测流程
+    // 🔧 重构的导入项目方法 - 添加配置分析
     const importProject = useCallback(
-        async (projectPath?: string) => {
+        async (projectPath?: string, skipConfigAnalysis: boolean = false) => {
             // 如果没有提供路径，显示文件选择器
             if (!projectPath) {
                 const selectedPath = await showDirectoryPicker();
                 if (!selectedPath) return;
                 projectPath = selectedPath;
+            }
+
+            // 如果不跳过配置分析，则先进行配置分析
+            if (!skipConfigAnalysis) {
+                try {
+                    console.log("🔍 开始项目配置分析...");
+                    const analysis = await ProjectConfigAnalysisService.analyzeProjectConfiguration(projectPath);
+                    
+                    // 返回分析结果和项目路径，让调用者决定如何处理
+                    return {
+                        requiresConfigAnalysis: true,
+                        analysis,
+                        projectPath,
+                        proceedWithImport: () => importProject(projectPath, true) // 跳过配置分析直接导入
+                    };
+                } catch (error) {
+                    console.error("❌ 配置分析失败:", error);
+                    // 如果配置分析失败，继续正常导入流程
+                }
             }
 
             dispatch({ type: "SET_LOADING", payload: true });
@@ -148,63 +167,37 @@ export function useProjects() {
                     const duplicateMessage = buildDuplicateMessage(existingProject);
                     showToastWin("项目重复导入", duplicateMessage, [], "warning");
                     dispatch({ type: "SET_LOADING", payload: false });
-                    return;
+                    return { requiresConfigAnalysis: false };
                 }
 
                 onProgress("✅ 项目路径检查通过", "success");
 
-                // 🔧 2. 基础配置检查
-                onProgress("🔍 检查项目基础配置...", "info");
-                const basicCheckResult = await checkProjectBasics(projectPath);
+                // 🔧 2. 基础验证 (仅验证项目有效性，不自动创建配置)
+                onProgress("🔍 验证项目基础结构...", "info");
+                const validationResult = await validateProjectStructure(projectPath);
 
-                // 显示基础检查结果
-                logBasicCheckResults(basicCheckResult, onProgress);
+                // 显示验证结果
+                logValidationResults(validationResult, onProgress);
 
-                // 🔧 3. 关键配置自动修复
-                let needsPortRedetection = false;
-                if (basicCheckResult.needsBasicSetup) {
-                    onProgress("🔧 正在修复基础配置...", "info");
-                    const setupResult = await DefaultProjectSetupService.createDefaultProjectSetup(projectPath);
-
-                    if (setupResult.success) {
-                        onProgress("✅ 基础配置修复完成", "success");
-                        needsPortRedetection = true;
-
-                        // 显示修复详情
-                        const setupMessage = buildSetupMessage(setupResult.created, projectPath);
-                        showToastWin("已创建基础项目配置", setupMessage, [], "info");
-                    } else {
-                        onProgress("⚠️ 基础配置修复部分失败，但不影响导入", "warn");
-                    }
-                }
-
-                // 🔧 4. 端口配置检查 (在配置修复后)
+                // 🔧 3. 端口配置检查
                 onProgress("🔌 检测项目端口配置...", "info");
                 let portInfo = await PortDetectionService.detectProjectPorts(projectPath);
-
-                // 🔧 如果创建了默认配置，重新检测端口确保获取最新配置
-                if (needsPortRedetection) {
-                    console.log("🔄 检测到基础配置已修复，重新检测端口配置...");
-                    onProgress("🔄 重新检测端口配置...", "info");
-                    portInfo = await PortDetectionService.detectProjectPorts(projectPath);
-                    console.log("🔄 端口重新检测完成:", portInfo);
-                }
 
                 // 显示端口检测结果
                 logPortDetectionResults(portInfo, onProgress);
 
-                // 🔧 5. 端口冲突检查
+                // 🔧 4. 端口冲突检查
                 const conflictWarnings = await checkPortConflicts(portInfo, state.projects, onProgress);
 
-                // 🔧 6. 问题汇总 (不阻止导入)
-                const warnings = [...basicCheckResult.warnings, ...conflictWarnings];
+                // 🔧 5. 问题汇总 (不阻止导入)
+                const warnings = [...validationResult.warnings, ...conflictWarnings];
 
                 if (warnings.length > 0) {
                     onProgress(`⚠️ 发现 ${warnings.length} 个提醒事项，但不影响导入`, "warn");
-                    // 可以选择性地显示警告汇总
+                    onProgress("💡 您可以在项目详情页面手动配置启动文件和启动命令", "info");
                 }
 
-                // 🔧 7. 项目导入 (始终执行)
+                // 🔧 6. 项目导入 (始终执行)
                 onProgress("📦 开始导入项目...", "info");
                 const result = await ProjectService.importProject(projectPath, onProgress, portInfo);
 
@@ -215,6 +208,16 @@ export function useProjects() {
                     const successMessage = buildSuccessMessage(result.data, portInfo, warnings);
                     onProgress(successMessage, "success");
                     showToast(`项目导入成功: ${result.data.name}`, "success");
+
+                    // 如果有配置问题，提醒用户手动配置
+                    if (warnings.length > 0) {
+                        showToastWin(
+                            "项目导入成功", 
+                            `项目 "${result.data.name}" 已成功导入！\n\n💡 建议在项目详情页面配置启动文件和启动命令以获得最佳体验。`, 
+                            [], 
+                            "info"
+                        );
+                    }
 
                     // PM2状态同步
                     shouldAutoSync.current = true;
@@ -234,13 +237,112 @@ export function useProjects() {
             } finally {
                 dispatch({ type: "SET_LOADING", payload: false });
             }
+
+            return { requiresConfigAnalysis: false };
         },
         [dispatch, showToast, showToastWin, state.projects]
     );
 
+    // 导入JSON文件中的项目数据
+    const importProjectsFromJson = useCallback(async () => {
+        try {
+            // 显示文件选择对话框
+            if (!window.electronAPI) {
+                showToast("文件导入功能需要在桌面应用中使用", "error");
+                return;
+            }
+
+            const result = await window.electronAPI.showOpenDialog({
+                title: "选择项目数据文件",
+                properties: ["openFile"],
+                filters: [
+                    { name: "JSON文件", extensions: ["json"] },
+                    { name: "所有文件", extensions: ["*"] }
+                ]
+            });
+
+            if (result.canceled || !result.filePaths || result.filePaths.length === 0) {
+                return; // 用户取消了选择
+            }
+
+            const filePath = result.filePaths[0];
+            dispatch({ type: "SET_LOADING", payload: true });
+
+            // 读取文件内容
+            const fileResult = await window.electronAPI.invoke('fs:readFile', filePath);
+            
+            if (!fileResult.success) {
+                showToast(`读取文件失败: ${fileResult.error}`, "error");
+                return;
+            }
+
+            // 解析JSON
+            let jsonData;
+            try {
+                jsonData = JSON.parse(fileResult.content);
+            } catch (error) {
+                showToast("文件格式不正确，请选择有效的JSON文件", "error");
+                return;
+            }
+
+            // 确保是数组格式
+            if (!Array.isArray(jsonData)) {
+                showToast("JSON文件格式不正确，应该包含项目数组", "error");
+                return;
+            }
+
+            if (jsonData.length === 0) {
+                showToast("JSON文件中没有项目数据", "info");
+                return;
+            }
+
+            // 验证和导入项目数据
+            const importResult = await window.electronAPI.invoke('fs:importProjectsFromJson', jsonData);
+            
+            if (importResult.success) {
+                const { imported, errors } = importResult.data;
+                
+                // 添加导入的项目到状态
+                for (const project of imported) {
+                    dispatch({ type: "ADD_PROJECT", payload: project });
+                }
+
+                // 显示导入结果
+                const successCount = imported.length;
+                const errorCount = errors.length;
+                
+                if (successCount > 0) {
+                    showToast(`成功导入 ${successCount} 个项目`, "success");
+                }
+                
+                if (errorCount > 0) {
+                    console.warn("导入过程中的错误:", errors);
+                    showToast(`${errorCount} 个项目导入失败，请查看控制台`, "warning");
+                }
+
+                // 触发状态同步
+                if (successCount > 0) {
+                    shouldAutoSync.current = true;
+                    setTimeout(() => {
+                        console.log("🔄 开始导入后PM2状态同步...");
+                    }, 1000);
+                }
+            } else {
+                showToast(`导入失败: ${importResult.error}`, "error");
+            }
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : "导入过程中发生未知错误";
+            console.error("❌ 导入JSON失败:", error);
+            showToast(`导入失败: ${errorMessage}`, "error");
+        } finally {
+            dispatch({ type: "SET_LOADING", payload: false });
+        }
+    }, [dispatch, showToast, state.projects]);
+
     // 🔧 检查项目基础配置
-    async function checkProjectBasics(projectPath: string): Promise<{
-        needsBasicSetup: boolean;
+    // 🔧 验证项目结构 (不自动创建，仅验证)
+    async function validateProjectStructure(projectPath: string): Promise<{
+        isValid: boolean;
         hasPackageJson: boolean;
         hasStartScript: boolean;
         hasStartFile: boolean;
@@ -286,10 +388,10 @@ export function useProjects() {
             warnings.push("基础配置检查时发生错误");
         }
 
-        const needsBasicSetup = !hasPackageJson || !hasStartScript || !hasStartFile;
+        const isValid = hasPackageJson; // 至少需要有 package.json
 
         return {
-            needsBasicSetup,
+            isValid,
             hasPackageJson,
             hasStartScript,
             hasStartFile,
@@ -297,8 +399,8 @@ export function useProjects() {
         };
     }
 
-    // 🔧 记录基础检查结果
-    function logBasicCheckResults(
+    // 🔧 记录验证结果
+    function logValidationResults(
         result: {
             hasPackageJson: boolean;
             hasStartScript: boolean;
@@ -309,21 +411,24 @@ export function useProjects() {
     ) {
         if (result.hasPackageJson) {
             onProgress("✅ package.json 文件存在", "info");
+        } else {
+            onProgress("❌ 缺少 package.json 文件", "warn");
         }
 
         if (result.hasStartScript) {
             onProgress("✅ 启动脚本配置正常", "info");
+        } else {
+            onProgress("⚠️ 缺少启动脚本 (建议在项目详情页面配置)", "warn");
         }
 
         if (result.hasStartFile) {
             onProgress("✅ 检测到启动文件", "info");
+        } else {
+            onProgress("⚠️ 未找到标准启动文件 (建议在项目详情页面配置)", "warn");
         }
 
         if (result.warnings.length > 0) {
-            onProgress(`⚠️ 检测到 ${result.warnings.length} 个配置问题，将自动修复`, "warn");
-            result.warnings.forEach((warning) => {
-                onProgress(`  • ${warning}`, "info");
-            });
+            onProgress(`💡 发现 ${result.warnings.length} 个配置建议`, "info");
         }
     }
 
@@ -393,20 +498,6 @@ export function useProjects() {
 最后打开：${new Date(existingProject.lastOpened).toLocaleString()}
 
 如果您想重新配置这个项目，可以先删除现有项目再重新导入。`;
-    }
-
-    function buildSetupMessage(created: { serverJs: boolean; packageJsonScripts: boolean; envFile: boolean }, projectPath: string): string {
-        let message = "检测到项目缺少基础配置，已自动创建：\n\n";
-
-        const createdFiles = [];
-        if (created.serverJs) createdFiles.push("✅ server.js - 默认 Express 服务器");
-        if (created.packageJsonScripts) createdFiles.push("✅ package.json scripts - 启动脚本");
-        if (created.envFile) createdFiles.push("✅ .env - 环境配置 (端口: 2222)");
-
-        message += createdFiles.join("\n") + "\n\n";
-        message += "💡 项目现在可以使用 'npm start' 启动";
-
-        return message;
     }
 
     function buildConflictMessage(conflicts: any[]): string {
@@ -812,6 +903,7 @@ Vite 将使用配置文件中的端口 ${vitePort}
         error: state.error,
         loadProjects,
         importProject,
+        importProjectsFromJson,
         removeProject,
         createProject,
         updateProject,

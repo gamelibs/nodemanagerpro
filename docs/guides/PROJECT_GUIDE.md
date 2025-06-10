@@ -709,3 +709,62 @@ const handleProjectStart = async (projectId: string) => {
 ```
 
 > 📖 **完整文档**: [LOGGING_SYSTEM_GUIDE.md](./LOGGING_SYSTEM_GUIDE.md)
+
+## 🚀 项目启动方式
+
+### 1. 智能启动脚本（推荐）
+
+`smart-start.sh` 是推荐的启动方式，它提供了以下优势：
+
+- 🎯 自动确保正确的工作目录
+- 📝 完整的启动日志记录
+- 🔍 自动的环境和依赖检查
+- 🚀 一键式启动体验
+
+#### 使用方法
+
+1. 设置快捷方式（推荐）
+```bash
+# 添加到你的 .bashrc 或 .zshrc
+alias nam='~/works/NodeAppManager/smart-start.sh'
+
+# 然后可以从任何位置启动
+nam
+```
+
+2. 直接运行脚本
+```bash
+# 从项目目录运行
+./smart-start.sh
+
+# 或从任何位置运行（使用完整路径）
+~/works/NodeAppManager/smart-start.sh
+```
+
+### 2. 开发环境启动 (dev.sh)
+
+适用于开发调试场景：
+- ⚡ 支持热更新 (HMR)
+- 🔄 自动端口管理
+- 📊 开发调试工具
+
+```bash
+./dev.sh
+```
+
+### 3. 生产环境启动 (run.sh)
+
+适用于生产预览和性能测试：
+- 🚀 快速启动
+- ⚡ 性能优先
+- 🛡️ 智能进程管理
+
+```bash
+./run.sh
+```
+
+### ⚖️ 选择建议
+
+- 👉 日常使用：使用 `smart-start.sh`
+- 👉 开发调试：使用 `dev.sh`
+- 👉 性能测试：使用 `run.sh`

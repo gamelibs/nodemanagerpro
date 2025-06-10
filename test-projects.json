@@ -1,0 +1,33 @@
+[
+  {
+    "name": "测试项目1",
+    "path": "/Users/vidar/test-project-1",
+    "description": "这是一个测试项目用于验证JSON导入功能",
+    "type": "node",
+    "status": "stopped",
+    "port": 3000,
+    "scripts": {
+      "start": "npm start",
+      "dev": "npm run dev",
+      "build": "npm run build"
+    },
+    "packageManager": "npm",
+    "template": "basic",
+    "tags": ["测试", "导入"]
+  },
+  {
+    "name": "测试项目2",
+    "path": "/Users/vidar/test-project-2",
+    "description": "另一个测试项目",
+    "type": "react",
+    "status": "stopped",
+    "port": 3001,
+    "scripts": {
+      "start": "react-scripts start",
+      "build": "react-scripts build"
+    },
+    "packageManager": "yarn",
+    "template": "react",
+    "tags": ["React", "测试"]
+  }
+]

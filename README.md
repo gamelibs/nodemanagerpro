@@ -53,31 +53,53 @@
 ## �🚀 快速开始
 
 ### 环境要求
-- Node.js >= 16.0.0
-- npm >= 8.0.0
-- PM2 (自动安装)
+- Node.js 16.x 或更高版本
+- npm 7.x 或更高版本
+- PM2 全局安装 (`npm install -g pm2`)
 
 ### 安装依赖
 ```bash
 npm install
-npm install -g pm2  # 如果尚未安装
 ```
 
 ### 启动应用
 
-#### 🧪 测试环境（推荐首次使用）
-```bash
-chmod +x start-dev.sh
-./start-dev.sh
-```
-**特点**: 完整初始化、环境检查、依赖安装、详细日志
+#### 方式一：智能启动脚本（推荐）
+使用智能启动脚本可以确保在正确的工作目录下启动应用，并提供完整的日志记录：
 
-#### 🚀 生产环境（快速启动）  
+1. 设置快捷方式（推荐）
 ```bash
-chmod +x run.sh
-./run.sh
+# 添加到你的 .bashrc 或 .zshrc
+alias nam='~/works/NodeAppManager/smart-start.sh'
+
+# 然后可以从任何位置启动
+nam
 ```
-**特点**: 快速启动、跳过检查、性能优先、精简流程
+
+2. 直接运行脚本
+```bash
+# 从项目目录运行
+./smart-start.sh
+
+# 或从任何位置运行（使用完整路径）
+~/works/NodeAppManager/smart-start.sh
+```
+
+智能启动脚本特性：
+- 🎯 自动确保正确的工作目录
+- 📝 完整的启动日志记录
+- 🔍 环境和依赖检查
+- 🚀 一键式启动体验
+
+#### 方式二：传统启动
+如果你已经在正确的项目目录下：
+```bash
+# 开发模式启动（支持热更新）
+npm run electron:dev
+
+# 生产模式启动
+npm run electron:build
+```
 
 ### 停止应用
 ```bash
@@ -259,3 +281,38 @@ MIT License
 ---
 
 **开源协议**: [MIT License](./LICENSE) | **版本**: beta0.1.0 | **最后更新**: 2025年6月1日
+
+## 📚 文档导航
+
+### 发布文档
+- [macOS Beta 0.1.1 构建报告](docs/releases/MACOS_BUILD_REPORT_v0.1.1-beta.md)  
+- [版本 Beta 0.1.1 发布清单](docs/releases/RELEASE_CHECKLIST_v0.1.1-beta.md)
+- [Beta 0.1.1 macOS 发布总结](docs/releases/BETA_0.1.1_MACOS_RELEASE_SUMMARY.md)
+- [NodeHub Pro 正式版发布报告](docs/releases/NODEHUB_PRO_FINAL_RELEASE_REPORT.md)
+- [Beta 0.1.0 修复报告](docs/releases/FIX_REPORT_BETA0.1.0.md)
+
+### 功能文档
+- [PM2 集成报告](docs/features/PM2_INTEGRATION_REPORT.md)
+- [国际化功能更新](docs/features/I18N_FEATURE_UPDATE.md)
+- [稳定 ID 系统完成报告](docs/features/STABLE_ID_SYSTEM_COMPLETION.md)
+- [模板重设计完成报告](docs/features/TEMPLATE_REDESIGN_COMPLETION.md)
+- [特性完成报告](docs/features/FEATURE_COMPLETION_REPORT.md)
+
+### 使用指南
+- [项目指南](docs/guides/PROJECT_GUIDE.md)
+- [测试应用指南](docs/guides/TEST_APP_GUIDE.md)
+- [日志系统指南](docs/guides/LOGGING_SYSTEM_GUIDE.md)
+- [自动日志监控指南](docs/guides/AUTO_LOG_MONITOR_GUIDE.md)
+
+### 测试与报告
+- [UI 重构 Beta 0.1.0](docs/reports/UI_REFACTOR_BETA0.1.0.md)
+- [启动配置测试计划](docs/reports/STARTUP_CONFIG_TEST_PLAN.md)
+- [应用构建报告](docs/reports/APP_BUILD_REPORT.md)
+- [GitHub 兼容性测试](docs/reports/GITHUB_COMPATIBILITY_TEST.md)
+- [完成总结](docs/reports/COMPLETION_SUMMARY.md)
+- [手动配置完成报告](docs/reports/MANUAL_CONFIG_COMPLETION_REPORT.md)
+- [迁移测试报告](docs/reports/MIGRATION_TEST.md)
+
+---
+
+**让 Node.js 项目管理变得简单高效！** 🎯

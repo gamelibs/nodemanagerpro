@@ -15,6 +15,7 @@
   },
   "include": [
     "electron-main.ts",
+    "src/preload/**/*",
     "src/ipc/**/*",
     "src/services/FileSystemService.ts",
     "src/services/LoggerService.ts",

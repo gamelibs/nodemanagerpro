@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'fs:saveProjects', 
       'fs:addProject',
       'fs:removeProject',
+      'fs:importProjectsFromJson', // 添加导入项目JSON频道
       'fs:updateProject', // 添加项目更新频道
       'fs:updateProjectStatus',
       'fs:getDataInfo',
